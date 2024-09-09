@@ -1,0 +1,8 @@
+[paths]
+source =
+   media_similarity
+    .tox/*/site-packages
+omit =
+   media_similarity/entrypoints/*
+[report]
+skip_empty = true

@@ -1,0 +1,4 @@
+{
+  "media_similarity/*.py": {"type": "core", "alternate": "tests/unit/test_{}.py"},
+  "tests/unit/test_*.py": {"alternate": "media_similarity/{}.py"},
+}
