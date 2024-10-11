@@ -17,9 +17,12 @@ AdaptiveThreshold is used to identify whether media in a given a media pair
 are considered similar based on their similarity score.
 """
 
+# pylint: disable=C0330, g-bad-import-order, g-multiple-import
+
 from __future__ import annotations
 
 import dataclasses
+import sys
 from typing import Final
 
 import numpy as np
@@ -49,17 +52,6 @@ class AdaptiveThreshold:
     """Ensures that threshold values is not smaller that minimal one."""
     self.threshold = max(MINIMAL_ADAPTIVE_THRESHOLD, self.threshold)
 
-  def __add__(self, other: AdaptiveThreshold) -> AdaptiveThreshold:
-    """Adds two thresholds together via weighted average."""
-    new_adaptive_threshold = np.average(
-      [self.threshold, other.threshold],
-      weights=[self.num_pairs, other.num_pairs],
-    )
-    return AdaptiveThreshold(
-      threshold=new_adaptive_threshold,
-      num_pairs=self.num_pairs + other.num_pairs,
-    )
-
   def __eq__(self, other: AdaptiveThreshold) -> bool:
     """Compares two thresholds with 2 digit precision."""
     return (round(self.threshold, 2), self.num_pairs) == (
@@ -80,9 +72,13 @@ def compute_adaptive_threshold(
   Returns:
     Calculated adaptive threshold.
   """
-  similarity_scores = [s.similarity_score for s in similarity_scores]
+  similarity_scores = [
+    s.similarity_score
+    for s in similarity_scores
+    if s.similarity_score < sys.float_info.max
+  ]
   threshold_value = np.sqrt(
-    np.std(similarity_scores + np.median(similarity_scores))
+    np.std(similarity_scores) + np.median(similarity_scores)
   )
   return AdaptiveThreshold(
     threshold=threshold_value,

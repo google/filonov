@@ -87,7 +87,7 @@ def _calculate_cluster_assignments(
     media_1, media_2 = pair.media
     media.add(media_1)
     media.add(media_2)
-    if pair.similarity_score >= threshold.threshold:
+    if pair.similarity_score > threshold.threshold:
       similar_media.add(pair.media)
 
   graph = igraph.Graph.DataFrame(
