@@ -13,6 +13,8 @@
 # limitations under the License.
 """CLI entrypoint for media clustering."""
 
+# pylint: disable=C0330, g-bad-import-order, g-multiple-import
+
 import argparse
 
 import gaarf.cli.utils as gaarf_utils
@@ -34,14 +36,28 @@ def main():  # noqa: D103
     dest='tagger_type',
     help=f'Tagger type, on of the following: {AVAILABLE_TAGGERS}',
   )
+  parser.add_argument(
+    '--db-uri',
+    dest='db_uri',
+    help='Database connection string to store and retrieve tagging results',
+  )
+  parser.add_argument(
+    '--parallel-threshold',
+    dest='parallel_threshold',
+    default=10,
+    type=int,
+    help='Number of parallel processes to perform media tagging',
+  )
   args, kwargs = parser.parse_known_args()
 
   gaarf_utils.init_logging(logger_type='rich')
   media_tagger = tagger.create_tagger(args.tagger_type)
-  tagging_repository = media_tagging_repository.PickleTaggingResultsRepository()
+  tagging_repository = (
+    media_tagging_repository.SqlAlchemyTaggingResultsRepository(args.db_uri)
+  )
   tagging_results = media_tagger.tag_media(
     media_paths=args.media_paths,
-    parallel_threshold=0,
+    parallel_threshold=args.parallel_threshold,
     persist_repository=tagging_repository,
   )
   clustering_results = media_similarity_service.cluster_media(tagging_results)
