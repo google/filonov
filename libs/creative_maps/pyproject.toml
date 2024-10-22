@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "creative-maps"
+version = "0.0.1"
+dependencies = [
+]
+requires-python = ">=3.8"
+description = "description"
+readme = "README.md"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python"
+]
+
+[options.extras_require]
+test =  [
+  "media_similarity",
+  "pyvis",
+]
+
+[project.scripts]
+filonov="creative_maps.entrypoints.cli:main"
