@@ -13,6 +13,8 @@
 # limitations under the License.
 """Responsible for performing media clustering."""
 
+# pylint: disable=C0330, g-bad-import-order, g-multiple-import
+
 from __future__ import annotations
 
 import dataclasses
@@ -22,8 +24,21 @@ from collections.abc import Iterable
 import igraph
 import pandas as pd
 from media_tagging.taggers import base as base_tagger
+from networkx.readwrite import json_graph
 
 from media_similarity import adaptive_threshold, idf_context, media_pair
+
+
+def _to_json(self):
+  """Converts graph to JSON."""
+  graph = json_graph.node_link_data(self.to_networkx(), edges='edges')
+  return {
+    'nodes': graph.get('nodes'),
+    'edges': graph.get('links', []),
+  }
+
+
+igraph.Graph.to_json = _to_json
 
 
 @dataclasses.dataclass
@@ -41,11 +56,15 @@ class ClusteringResults:
 
 def cluster_media(
   tagging_results: Iterable[base_tagger.TaggingResult],
+  normalize: bool = True,
+  custom_threshold: float | None = None,
 ) -> ClusteringResults:
   """Assigns clusters number for each media.
 
   Args:
     tagging_results: Results of tagging used for clustering.
+    normalize: Whether to normalize adaptive threshold.
+    custom_threshold: Don't calculated adaptive threshold but use custom one.
 
   Returns:
      Results of clustering that contain mapping between media identifier.
@@ -56,9 +75,14 @@ def cluster_media(
     for pair in media_pair.build_media_pairs(tagging_results)
   )
   [t1, t2] = itertools.tee(similarity_pairs, 2)
-  threshold = adaptive_threshold.compute_adaptive_threshold(
-    similarity_scores=t1, normalize=True
-  )
+  if not custom_threshold:
+    threshold = adaptive_threshold.compute_adaptive_threshold(
+      similarity_scores=t1, normalize=normalize
+    )
+  else:
+    threshold = adaptive_threshold.AdaptiveThreshold(
+      custom_threshold, num_pairs=None
+    )
   return _calculate_cluster_assignments(t2, threshold)
 
 
@@ -82,16 +106,18 @@ def _calculate_cluster_assignments(
      its cluster number as well as graph.
   """
   media: set[str] = set()
-  similar_media: set[tuple[str, str]] = set()
+  similar_media: set[tuple[str, str, float]] = set()
   for pair in similarity_pairs:
     media_1, media_2 = pair.media
     media.add(media_1)
     media.add(media_2)
     if pair.similarity_score > threshold.threshold:
-      similar_media.add(pair.media)
+      similar_media.add(pair.to_tuple())
 
   graph = igraph.Graph.DataFrame(
-    edges=pd.DataFrame(similar_media, columns=['media_1', 'media_2']),
+    edges=pd.DataFrame(
+      similar_media, columns=['media_1', 'media_2', 'similarity']
+    ),
     directed=False,
     use_vids=False,
     vertices=pd.DataFrame(media, columns=['media']),

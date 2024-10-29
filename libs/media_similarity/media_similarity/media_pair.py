@@ -13,6 +13,8 @@
 # limitations under the License.
 """Represent pairs of media."""
 
+# pylint: disable=C0330, g-bad-import-order, g-multiple-import
+
 from __future__ import annotations
 
 import dataclasses
@@ -125,3 +127,8 @@ class SimilarityPair:
 
   media: tuple[str, str]
   similarity_score: float
+
+  def to_tuple(self) -> tuple[str, str, float]:
+    """Converts all data to tuple of values."""
+    media_1, media_2 = self.media
+    return (media_1, media_2, self.similarity_score)

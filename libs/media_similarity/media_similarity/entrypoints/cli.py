@@ -48,6 +48,8 @@ def main():  # noqa: D103
     type=int,
     help='Number of parallel processes to perform media tagging',
   )
+  parser.add_argument('--no-normalize', dest='normalize', action='store_false')
+  parser.set_defaults(normalize=True)
   args, kwargs = parser.parse_known_args()
 
   gaarf_utils.init_logging(logger_type='rich')
@@ -60,7 +62,9 @@ def main():  # noqa: D103
     parallel_threshold=args.parallel_threshold,
     persist_repository=tagging_repository,
   )
-  clustering_results = media_similarity_service.cluster_media(tagging_results)
+  clustering_results = media_similarity_service.cluster_media(
+    tagging_results, normalize=args.normalize
+  )
   print(clustering_results.clusters)
 
 
