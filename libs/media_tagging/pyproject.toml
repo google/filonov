@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "media-tagging"
+version = "0.5.2"
+dependencies = [
+    "pillow",
+    "smart_open",
+    "jq",
+    "gaarf-executors==0.0.1"
+]
+authors = [
+  {name = "Google Inc. (gTech gPS CSE team)", email = "no-reply@google.com"},
+]
+license = {text = "Apache 2.0"}
+requires-python = ">=3.10"
+description = "Performs tagging of image and videos based on various taggers"
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: Apache Software License",
+]
+
+[project.optional-dependencies]
+image-api=[
+  "google-cloud-vision",
+]
+video-api=[
+  "google-cloud-videointelligence",
+]
+api=[
+  "media-tagging[image-api,video-api]",
+]
+base-llm=[
+  "langchain==0.2.7",
+  "langchain-core==0.2.21",
+  "langchain-community==0.2.7",
+]
+google-genai=[
+  "media-tagging[image-api,video-api]",
+  "langchain-google-genai==1.0.7",
+]
+google-vertexai=[
+  "media-tagging[image-api,video-api]",
+  "langchain-google-vertexai",
+]
+llm=[
+  "media-tagging[base-llm,google-genai,google-vertexai]",
+]
+server = [
+  "fastapi==0.111.0"
+]
+all = [
+  "media-tagging[api,llm,server]"
+]
+[tool.setuptools.package-data]
+taggers= ["*.txt"]
+
+[project.scripts]
+media-tagger="media_tagging.entrypoints.cli:main"

@@ -1,0 +1,1 @@
+Find whether the following tags can be found in the image: {tags}.
