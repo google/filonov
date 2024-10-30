@@ -76,4 +76,6 @@ cat FILES_WITH_LINKS.txt | xargs media-similarity \
 where `FILES_WITH_LINKS.txt` contains either media paths or links to media.
 
 ## Disclaimer
-This is not an officially supported Google product.
+This is not an officially supported Google product. This project is not
+eligible for the [Google Open Source Software Vulnerability Rewards
+Program](https://bughunters.google.com/open-source-security).
