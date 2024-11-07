@@ -60,10 +60,10 @@ Alternatively you can install subsets of `media-tagging` library:
 Once `media-tagger` is installed you can call it:
 
 ```
-media-tagger --media-path MEDIA_PATH --tagger TAGGER_TYPE --writer WRITER_TYPE
+media-tagger MEDIA_PATHs --tagger TAGGER_TYPE --writer WRITER_TYPE
 ```
 where:
-* MEDIA_PATH - comma-separated names of files for tagging (can be urls).
+* MEDIA_PATHs - names of files for tagging (can be urls).
 * TAGGER_TYPE - name of tagger, supported options:
   * `vision-api` - tags images based on [Google Cloud Vision API](https://cloud.google.com/vision/),
   * `video-api` for videos based on [Google Cloud Video Intelligence API](https://cloud.google.com/video-intelligence/)

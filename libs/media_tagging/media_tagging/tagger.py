@@ -22,7 +22,7 @@ from typing import Final
 
 from media_tagging.taggers import api, base, llm
 
-_TAGGERS = {
+TAGGERS = {
   'vision-api': api.GoogleVisionAPITagger,
   'video-api': api.GoogleVideoIntelligenceAPITagger,
   'gemini-image': llm.GeminiImageTagger,
@@ -51,7 +51,7 @@ _LLM_TAGGERS_TYPES = {
 MEDIA_TAGGER_DESCRIPTION: Final[str] = f"""
   Helps to analyze content of images and videos with APIs and Large language
   models. Several taggers are available -
-  {list(_TAGGERS.keys())}
+  {list(TAGGERS.keys())}
   When URL is provided it's always treated as 'media_url' parameter.
 """
 
@@ -70,7 +70,7 @@ def create_tagger(
   """
   if not tagger_parameters:
     tagger_parameters = {}
-  if tagger := _TAGGERS.get(tagger_type):
+  if tagger := TAGGERS.get(tagger_type):
     if issubclass(tagger, llm.LLMTagger):
       return tagger(
         tagger_type=_LLM_TAGGERS_TYPES.get(tagger_type), **tagger_parameters
@@ -78,5 +78,5 @@ def create_tagger(
     return tagger(**tagger_parameters)
   raise ValueError(
     f'Incorrect tagger "{tagger_type}" is provided, '
-    f'valid options: {list(_TAGGERS.keys())}'
+    f'valid options: {list(TAGGERS.keys())}'
   )

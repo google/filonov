@@ -22,25 +22,40 @@ from gaarf_executors.entrypoints import utils as gaarf_utils
 
 from media_tagging import repository, tagger, writer
 
+AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
+
 
 def main():
   """Main entrypoint."""
   parser = argparse.ArgumentParser()
-  parser.add_argument('--media-path', dest='media_path')
-  parser.add_argument('--tagger', dest='tagger', default='vision-api')
+  parser.add_argument(
+    'media_paths', nargs='*', help='Paths to local/remote files or URLs'
+  )
+  parser.add_argument(
+    '--tagger',
+    dest='tagger_type',
+    help=f'Tagger type, on of the following: {AVAILABLE_TAGGERS}',
+  )
   parser.add_argument('--writer', dest='writer', default='json')
-  parser.add_argument('--db-url', dest='db_url', default=None)
+  parser.add_argument(
+    '--db-uri',
+    dest='db_uri',
+    help='Database connection string to store and retrieve tagging results',
+  )
   parser.add_argument('--output-to-file', dest='output', default=None)
   parser.add_argument('--loglevel', dest='loglevel', default='INFO')
   parser.add_argument('--no-parallel', dest='parallel', action='store_false')
   parser.add_argument(
-    '--parallel-threshold', dest='parallel_threshold', default=10, type=int
+    '--parallel-threshold',
+    dest='parallel_threshold',
+    default=10,
+    type=int,
+    help='Number of parallel processes to perform media tagging',
   )
   parser.set_defaults(parallel=True)
   args, kwargs = parser.parse_known_args()
 
   concrete_tagger = tagger.create_tagger(args.tagger)
-  concrete_writer = writer.create_writer(args.writer)
   tagging_parameters = gaarf_utils.ParamsParser(['tagger']).parse(kwargs)
 
   logging.basicConfig(
@@ -57,12 +72,14 @@ def main():
     persist_repository = None
   logging.info('Initializing tagger: %s', args.tagger)
   tagging_results = concrete_tagger.tag_media(
-    media_paths=args.media_path.split(','),
+    media_paths=args.media_path,
     tagging_parameters=tagging_parameters.get('tagger'),
     parallel_threshold=args.parallel_threshold,
     persist_repository=persist_repository,
   )
-  concrete_writer.write(tagging_results, args.output)
+  if output := args.output:
+    concrete_writer = writer.create_writer(args.writer)
+    concrete_writer.write(tagging_results, output)
 
 
 if __name__ == '__main__':
