@@ -18,7 +18,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 import json
 import os
 import pickle
@@ -73,7 +72,8 @@ class CreativeMap:
         node['media_path'] = node_extra_info.media_path
         node['label'] = node_extra_info.media_name
         node['cluster'] = clustering_results.clusters.get(node_name)
-        node['info'] = dataclasses.asdict(node_extra_info)
+        node['info'] = node_extra_info.info
+        node['series'] = node_extra_info.series
         node['tags'] = [
           {'tag': tag.name, 'score': tag.score}
           for tag in tagging_mapping.get(node_name)

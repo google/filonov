@@ -17,8 +17,9 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import dataclasses
+import operator
 import os
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Literal
 
 from creative_maps.inputs import interfaces
@@ -60,10 +61,15 @@ class AppAssetPerformance(base_query.BaseQuery):
 
   query_text = """
   SELECT
+    segments.date AS date,
     asset.id AS asset_id,
     asset.name AS asset_name,
     {media_url} AS media_url,
-    metrics.cost_micros / 1e6 AS cost
+    metrics.cost_micros / 1e6 AS cost,
+    metrics.clicks AS clicks,
+    metrics.impressions AS impressions,
+    metrics.biddable_app_install_conversions AS installs,
+    metrics.biddable_app_post_install_conversions AS inapps
   FROM ad_group_ad_asset_view
   WHERE
     asset.type = {media_type}
@@ -118,14 +124,35 @@ class ExtraInfoFetcher:
         'WHERE campaign.advertising_channel_type = MULTI_CHANNEL'
       ),
     )
+    core_metrics = ('cost', 'impressions', 'clicks', 'inapps')
     asset_performance = fetcher.fetch(
       AppAssetPerformance(**dataclasses.asdict(fetching_request)),
       customer_ids,
-    )
-    return {
-      media.convert_path_to_media_name(row.media_url): interfaces.MediaInfo(
-        media_path=row.media_url, media_name=row.asset_id, cost=row.cost
+    ).to_dict(key_column='media_url')
+    results = {}
+    for media_url, values in asset_performance.items():
+      series = {
+        entry.get('date'): _build_info(entry, core_metrics) for entry in values
+      }
+      results[media.convert_path_to_media_name(media_url)] = (
+        interfaces.MediaInfo(
+          media_path=media_url,
+          media_name=values[0].get('asset_id'),
+          info=_build_info(values, core_metrics),
+          series=series,
+        )
       )
-      for row in asset_performance
-      if row.media_url
-    }
+    return results
+
+
+def _sum_nested_metric(
+  metric_name: str, data: Mapping[str, float] | Sequence[Mapping[str, float]]
+) -> float | int:
+  get_metric_getter = operator.itemgetter(metric_name)
+  if isinstance(data, Mapping):
+    return get_metric_getter(data)
+  return sum(map(get_metric_getter, data))
+
+
+def _build_info(data, core_metrics) -> dict[str, float | int]:
+  return {metric: _sum_nested_metric(metric, data) for metric in core_metrics}

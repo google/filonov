@@ -17,8 +17,6 @@
 
 import dataclasses
 
-import numpy as np
-
 
 @dataclasses.dataclass
 class MediaInfo:
@@ -26,9 +24,5 @@ class MediaInfo:
 
   media_path: str
   media_name: str
-  cost: float = 10
-  size: int = 10
-  recency: str = 'New'
-
-  def __post_init__(self) -> None:  # noqa: D105
-    self.size = np.log(self.cost) * np.log10(self.cost)
+  info: dict[str, str | int | float]
+  series: list[dict[str, dict[str, str | int | float]]]
