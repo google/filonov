@@ -18,7 +18,7 @@
 import argparse
 import logging
 
-from gaarf_executors.entrypoints import utils as gaarf_utils
+from garf_executors.entrypoints import utils as garf_utils
 
 from media_tagging import repository, tagger, writer
 
@@ -56,7 +56,7 @@ def main():
   args, kwargs = parser.parse_known_args()
 
   concrete_tagger = tagger.create_tagger(args.tagger)
-  tagging_parameters = gaarf_utils.ParamsParser(['tagger']).parse(kwargs)
+  tagging_parameters = garf_utils.ParamsParser(['tagger']).parse(kwargs)
 
   logging.basicConfig(
     format='[%(asctime)s][%(name)s][%(levelname)s] %(message)s',
