@@ -6,10 +6,12 @@ build-backend = "setuptools.build_meta"
 name = "media-similarity"
 version = "0.0.1"
 dependencies = [
-  "media-tagging==0.5.0",
+  "media-tagging==0.5.2",
   "igraph",
   "pandas",
   "numpy",
+  "pydantic",
+  "networkx"
 ]
 requires-python = ">=3.8"
 description = "Groups similar media into clusters"
