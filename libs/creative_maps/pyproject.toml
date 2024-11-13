@@ -6,6 +6,13 @@ build-backend = "setuptools.build_meta"
 name = "creative-maps"
 version = "0.0.1"
 dependencies = [
+  "media-tagging[all]==0.5.2",
+  "igraph",
+  "pandas",
+  "numpy",
+  "pydantic",
+  "networkx",
+  "pyvis",
 ]
 requires-python = ">=3.8"
 description = "description"
