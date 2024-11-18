@@ -19,7 +19,10 @@ from __future__ import annotations
 
 import dataclasses
 import itertools
-from collections.abc import Iterable
+import logging
+from collections.abc import Iterable, Sequence
+from concurrent import futures
+from typing import Final
 
 import igraph
 import pandas as pd
@@ -27,6 +30,8 @@ from media_tagging.taggers import base as base_tagger
 from networkx.readwrite import json_graph
 
 from media_similarity import adaptive_threshold, idf_context, media_pair
+
+BATCH_SIZE: Final[int] = 1_000
 
 
 def _to_json(self):
@@ -39,6 +44,12 @@ def _to_json(self):
 
 
 igraph.Graph.to_json = _to_json
+
+
+def _batched(iterable: Iterable[media_pair.MediaPair], chunk_size: int):
+  iterator = iter(iterable)
+  while chunk := tuple(itertools.islice(iterator, chunk_size)):
+    yield chunk
 
 
 @dataclasses.dataclass
@@ -54,10 +65,22 @@ class ClusteringResults:
   graph: igraph.Graph
 
 
+def _create_similarity_pairs(
+  pairs: Sequence[media_pair.MediaPair],
+  idf_tag_context: idf_context.IdfContext,
+  batch_idx: int,
+  total_batches: int,
+) -> list[media_pair.SimilarityPair]:
+  logging.info('processing index %d of %d', batch_idx, total_batches)
+  return [pair.calculate_similarity(idf_tag_context) for pair in pairs]
+
+
 def cluster_media(
   tagging_results: Iterable[base_tagger.TaggingResult],
   normalize: bool = True,
   custom_threshold: float | None = None,
+  parallel: bool = False,
+  parallel_threshold: int = 10,
 ) -> ClusteringResults:
   """Assigns clusters number for each media.
 
@@ -65,25 +88,68 @@ def cluster_media(
     tagging_results: Results of tagging used for clustering.
     normalize: Whether to normalize adaptive threshold.
     custom_threshold: Don't calculated adaptive threshold but use custom one.
+    parallel: Whether to perform similarity_calculation in parallel batches.
+    parallel_threshold: Max number of parallel executions.
 
   Returns:
      Results of clustering that contain mapping between media identifier.
   """
+  logging.info('calculating context...')
   idf_tag_context = idf_context.calculate_idf_context(tagging_results)
-  similarity_pairs = (
-    pair.calculate_similarity(idf_tag_context)
-    for pair in media_pair.build_media_pairs(tagging_results)
-  )
-  [t1, t2] = itertools.tee(similarity_pairs, 2)
+  similarity_pairs = []
+  logging.info('generating media pairs...')
+  media_pairs = list(media_pair.build_media_pairs(tagging_results))
+  if parallel:
+    total_batches = len(media_pairs)
+    total_batches = (
+      total_batches // BATCH_SIZE
+      if total_batches % BATCH_SIZE == 0
+      else total_batches // BATCH_SIZE + 1
+    )
+
+    logging.info('calculating similarity...')
+    logging.debug(
+      'running similarity calculation for %s batches (to process %s pairs '
+      'in total)',
+      total_batches,
+      len(media_pairs),
+    )
+
+    with futures.ThreadPoolExecutor(max_workers=parallel_threshold) as executor:
+      future_to_batch = {
+        executor.submit(
+          _create_similarity_pairs,
+          batch,
+          idf_tag_context,
+          batch_index,
+          total_batches,
+        ): batch_index
+        for batch_index, batch in enumerate(
+          _batched(media_pairs, BATCH_SIZE), 1
+        )
+      }
+      for future in futures.as_completed(future_to_batch):
+        similarity_pairs.append(future.result())
+    similarity_pairs = itertools.chain.from_iterable(similarity_pairs)
+  else:
+    logging.info('calculating similarity...')
+    similarity_pairs = (
+      pair.calculate_similarity(idf_tag_context) for pair in media_pairs
+    )
+
+  [pairs1, pairs2] = itertools.tee(similarity_pairs, 2)
+  logging.info('calculating threshold...')
   if not custom_threshold:
     threshold = adaptive_threshold.compute_adaptive_threshold(
-      similarity_scores=t1, normalize=normalize
+      similarity_scores=pairs1, normalize=normalize
     )
   else:
     threshold = adaptive_threshold.AdaptiveThreshold(
       custom_threshold, num_pairs=None
     )
-  return _calculate_cluster_assignments(t2, threshold)
+  logging.info('threshold is %.2f', threshold.threshold)
+  logging.info('assigning clusters...')
+  return _calculate_cluster_assignments(pairs2, threshold)
 
 
 def _calculate_cluster_assignments(
