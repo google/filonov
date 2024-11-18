@@ -19,9 +19,11 @@
 import dataclasses
 import operator
 import os
+from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Literal
 
+import pandas as pd
 from creative_maps.inputs import interfaces
 from gaarf import api_clients, base_query, report_fetcher
 from media_tagging import media
@@ -97,6 +99,73 @@ class FetchingRequest:
   media_type: SupportedMediaTypes
   start_date: str
   end_date: str
+
+
+@dataclasses.dataclass
+class MediaInfoFileInput:
+  """Specifies column names in input file."""
+
+  media_identifier: str
+  media_name: str
+  media_path_name: str
+  metric_names: Sequence[str]
+
+
+def from_file(
+  path: os.PathLike[str],
+  file_column_input: MediaInfoFileInput,
+  media_type: Literal['image', 'youtube_video'],
+) -> dict[str, interfaces.MediaInfo]:
+  """Generates MediaInfo from a file.
+
+  Args:
+    path: Path to files with Google Ads performance data.
+    file_column_input: Identifiers for MediaInfo results.
+    media_type: Type of media found in a file.
+
+  Returns:
+    File content converted to MediaInfo mapping.
+
+  Raises:
+    ValueError: If file doesn't have all required input columns.
+  """
+  media_identifier, media_name, media_path, metrics = (
+    file_column_input.media_identifier,
+    file_column_input.media_name,
+    file_column_input.media_path_name,
+    file_column_input.metric_names,
+  )
+  data = pd.read_csv(path)
+  if missing_columns := {media_name, media_path, *metrics}.difference(
+    set(data.columns)
+  ):
+    raise ValueError(f'Missing column(s) in {path}: {missing_columns}')
+  data['media_path'] = data.apply(
+    lambda row: f'https://img.youtube.com/vi/{row[media_path]}/0.jpg'
+    if media_type == 'youtube_video'
+    else row[media_path],
+    axis=1,
+  )
+  data['info'] = data.apply(
+    lambda row: {metric: row[metric] for metric in metrics},
+    axis=1,
+  )
+  grouped = (
+    data.groupby([media_name, media_path]).info.apply(list).reset_index()
+  )
+  results = {}
+  for _, row in grouped.iterrows():
+    info = defaultdict(float)
+    for element in row['info']:
+      for metric in metrics:
+        info[metric] += element.get(metric)
+    results[row[media_identifier]] = interfaces.MediaInfo(
+      media_path=row[media_path],
+      media_name=row[media_name],
+      info=info,
+      series={},
+    )
+  return results
 
 
 class ExtraInfoFetcher:
