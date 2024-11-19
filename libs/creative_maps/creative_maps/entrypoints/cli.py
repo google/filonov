@@ -20,7 +20,6 @@ import json
 
 import gaarf.cli.utils as gaarf_utils
 from media_similarity import media_similarity_service
-from media_tagging import repository as media_tagging_repository
 from media_tagging import tagger, tagging_result
 
 from creative_maps import creative_map
@@ -44,6 +43,11 @@ def main():  # noqa: D103
     dest='media_type',
     choices=['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO'],
     help='Type of media',
+  )
+  parser.add_argument(
+    '--db-uri',
+    dest='db_uri',
+    help='Database connection string to store and retrieve results',
   )
   parser.add_argument(
     '--map-name',
@@ -107,15 +111,10 @@ def main():  # noqa: D103
     )
     media_tagger = tagger.create_tagger(request.tagger)
     media_paths = [info.media_path for info in extra_info.values()]
-    tagging_repository = (
-      media_tagging_repository.SqlAlchemyTaggingResultsRepository(
-        request.db_uri
-      )
-    )
     tagging_results = media_tagger.tag_media(
       media_paths=media_paths,
       parallel_threshold=args.parallel_threshold,
-      persist_repository=tagging_repository,
+      persist_repository=args.db_uri,
     )
   clustering_results = media_similarity_service.cluster_media(
     tagging_results,
@@ -123,6 +122,7 @@ def main():  # noqa: D103
     custom_threshold=args.custom_threshold,
     parallel=args.parallel_threshold > 1,
     parallel_threshold=args.parallel_threshold,
+    persist_repository=args.db_uri,
   )
   generated_map = creative_map.CreativeMap.from_clustering(
     clustering_results, tagging_results, extra_info

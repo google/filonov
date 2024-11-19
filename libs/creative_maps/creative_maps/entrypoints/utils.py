@@ -51,5 +51,4 @@ class ApiInputRequest:
   start_date: str
   end_date: str
   tagger: str
-  db_uri: str
   ads_config_path: str | os.PathLike[str]
