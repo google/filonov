@@ -68,7 +68,7 @@ class CreativeMap:
       if node_extra_info := extra_info.get(node_name):
         node['shape'] = 'image'
         node['type'] = 'image'
-        node['image'] = node_extra_info.media_path
+        node['image'] = node_extra_info.media_preview
         node['media_path'] = node_extra_info.media_path
         node['label'] = node_extra_info.media_name
         node['cluster'] = clustering_results.clusters.get(node_name)
