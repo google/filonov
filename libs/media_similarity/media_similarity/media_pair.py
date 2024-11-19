@@ -132,3 +132,22 @@ class SimilarityPair:
     """Converts all data to tuple of values."""
     media_1, media_2 = self.media
     return (media_1, media_2, self.similarity_score)
+
+  def to_dict(self) -> dict[str, str | float]:
+    """Converts all data to tuple of values."""
+    return {'identifier': self.key, 'score': self.similarity_score}
+
+  @property
+  def key(self) -> str:
+    """Sorted identifiers."""
+    media_1, media_2 = self.media
+    return (
+      f'{media_1}|{media_2}' if media_1 < media_2 else f'{media_2}|{media_1}'
+    )
+
+  def __eq__(self, other: SimilarityPair) -> bool:
+    """Compares two SimilarityPairs based on their identifiers and score."""
+    return (self.key, self.similarity_score) == (
+      other.key,
+      other.similarity_score,
+    )
