@@ -18,7 +18,6 @@
 import argparse
 
 import gaarf.cli.utils as gaarf_utils
-from media_tagging import repository as media_tagging_repository
 from media_tagging import tagger
 
 from media_similarity import media_similarity_service
@@ -54,16 +53,13 @@ def main():  # noqa: D103
 
   gaarf_utils.init_logging(logger_type='rich')
   media_tagger = tagger.create_tagger(args.tagger_type)
-  tagging_repository = (
-    media_tagging_repository.SqlAlchemyTaggingResultsRepository(args.db_uri)
-  )
   tagging_results = media_tagger.tag_media(
     media_paths=args.media_paths,
     parallel_threshold=args.parallel_threshold,
-    persist_repository=tagging_repository,
+    persist_repository=args.db_uri,
   )
   clustering_results = media_similarity_service.cluster_media(
-    tagging_results, normalize=args.normalize
+    tagging_results, normalize=args.normalize, persist_repository=args.db_uri
   )
   print(clustering_results.clusters)
 
