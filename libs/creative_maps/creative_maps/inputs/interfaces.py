@@ -26,3 +26,9 @@ class MediaInfo:
   media_name: str
   info: dict[str, str | int | float]
   series: list[dict[str, dict[str, str | int | float]]]
+  media_preview: str | None = None
+
+  def __post_init__(self) -> None:  # noqa: D105
+    if not self.media_preview:
+      self.media_preview = self.media_path
+    self.info = dict(self.info)

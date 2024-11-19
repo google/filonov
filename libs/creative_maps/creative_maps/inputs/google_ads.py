@@ -107,7 +107,6 @@ class MediaInfoFileInput:
 
   media_identifier: str
   media_name: str
-  media_path_name: str
   metric_names: Sequence[str]
 
 
@@ -129,29 +128,20 @@ def from_file(
   Raises:
     ValueError: If file doesn't have all required input columns.
   """
-  media_identifier, media_name, media_path, metrics = (
+  media_identifier, media_name, metrics = (
     file_column_input.media_identifier,
     file_column_input.media_name,
-    file_column_input.media_path_name,
     file_column_input.metric_names,
   )
   data = pd.read_csv(path)
-  if missing_columns := {media_name, media_path, *metrics}.difference(
-    set(data.columns)
-  ):
+  if missing_columns := {media_name, *metrics}.difference(set(data.columns)):
     raise ValueError(f'Missing column(s) in {path}: {missing_columns}')
-  data['media_path'] = data.apply(
-    lambda row: f'https://img.youtube.com/vi/{row[media_path]}/0.jpg'
-    if media_type == 'youtube_video'
-    else row[media_path],
-    axis=1,
-  )
   data['info'] = data.apply(
     lambda row: {metric: row[metric] for metric in metrics},
     axis=1,
   )
   grouped = (
-    data.groupby([media_name, media_path]).info.apply(list).reset_index()
+    data.groupby([media_name, media_identifier]).info.apply(list).reset_index()
   )
   results = {}
   for _, row in grouped.iterrows():
@@ -160,7 +150,7 @@ def from_file(
       for metric in metrics:
         info[metric] += element.get(metric)
     results[row[media_identifier]] = interfaces.MediaInfo(
-      media_path=row[media_path],
+      **_create_node_links(row[media_identifier], media_type),
       media_name=row[media_name],
       info=info,
       series={},
@@ -199,13 +189,14 @@ class ExtraInfoFetcher:
       customer_ids,
     ).to_dict(key_column='media_url')
     results = {}
+    media_type = fetching_request.media_type
     for media_url, values in asset_performance.items():
       series = {
         entry.get('date'): _build_info(entry, core_metrics) for entry in values
       }
       results[media.convert_path_to_media_name(media_url)] = (
         interfaces.MediaInfo(
-          media_path=media_url,
+          **_create_node_links(media_url, media_type),
           media_name=values[0].get('asset_id'),
           info=_build_info(values, core_metrics),
           series=series,
@@ -225,3 +216,22 @@ def _sum_nested_metric(
 
 def _build_info(data, core_metrics) -> dict[str, float | int]:
   return {metric: _sum_nested_metric(metric, data) for metric in core_metrics}
+
+
+def _create_node_links(url: str, media_type: str) -> dict[str, str]:
+  return {
+    'media_path': _to_youtube_video_link(url)
+    if media_type.lower() == 'youtube_video'
+    else url,
+    'media_preview': _to_youtube_preview_link(url)
+    if media_type.lower() == 'youtube_video'
+    else url,
+  }
+
+
+def _to_youtube_preview_link(video_id: str) -> str:
+  return f'https://img.youtube.com/vi/{video_id}/0.jpg'
+
+
+def _to_youtube_video_link(video_id: str) -> str:
+  return f'https://www.youtube.com/watch?v={video_id}'
