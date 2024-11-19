@@ -17,14 +17,14 @@
 
 import argparse
 import json
-import pathlib
 
 import gaarf.cli.utils as gaarf_utils
 from media_similarity import media_similarity_service
 from media_tagging import repository as media_tagging_repository
-from media_tagging import tagger
+from media_tagging import tagger, tagging_result
 
 from creative_maps import creative_map
+from creative_maps.entrypoints import utils
 from creative_maps.inputs import google_ads
 
 AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
@@ -33,7 +33,17 @@ AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
 def main():  # noqa: D103
   parser = argparse.ArgumentParser()
   parser.add_argument(
-    'media_paths', nargs='*', help='Paths to local/remote files or URLs'
+    '--mode',
+    dest='mode',
+    choices=['api', 'file'],
+    default='api',
+    help='Which datasources to use for generating a map',
+  )
+  parser.add_argument(
+    '--media-type',
+    dest='media_type',
+    choices=['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO'],
+    help='Type of media',
   )
   parser.add_argument(
     '--map-name',
@@ -42,39 +52,10 @@ def main():  # noqa: D103
     help='Name of creative map (without .html extension)',
   )
   parser.add_argument(
-    '--account',
-    dest='account',
-    default=None,
-    help='Google Ads Account / MCC',
-  )
-  parser.add_argument(
-    '--start-date',
-    dest='start_date',
-    default=None,
-    help='First date of fetching',
-  )
-  parser.add_argument(
-    '--end-date',
-    dest='end_date',
-    default=None,
-    help='Last date of fetching',
-  )
-  parser.add_argument(
-    '--ads-config',
-    dest='ads_config',
-    default=str(pathlib.Path.home() / 'google-ads.yaml'),
-    help='Path to google-ads.yaml',
-  )
-  parser.add_argument(
     '--output',
     dest='output',
     default='json',
     help='Result of map generation, one of "json", "file", "html"',
-  )
-  parser.add_argument(
-    '--tagger',
-    dest='tagger_type',
-    help=f'Tagger type, on of the following: {AVAILABLE_TAGGERS}',
   )
   parser.add_argument(
     '--custom-threshold',
@@ -82,11 +63,6 @@ def main():  # noqa: D103
     default=None,
     type=float,
     help='Custom threshold of identifying similar media',
-  )
-  parser.add_argument(
-    '--db-uri',
-    dest='db_uri',
-    help='Database connection string to store and retrieve tagging results',
   )
   parser.add_argument(
     '--parallel-threshold',
@@ -97,33 +73,56 @@ def main():  # noqa: D103
   )
   parser.add_argument('--no-normalize', dest='normalize', action='store_false')
   parser.set_defaults(normalize=True)
-  args = parser.parse_args()
+  args, kwargs = parser.parse_known_args()
 
   gaarf_utils.init_logging(loglevel='INFO', logger_type='rich')
-  media_type = 'IMAGE' if 'vision-api' in args.tagger_type else 'YOUTUBE_VIDEO'
-  extra_info = google_ads.ExtraInfoFetcher(
-    accounts=args.account, ads_config=args.ads_config
-  ).generate_extra_info(
-    google_ads.FetchingRequest(
-      media_type=media_type,
-      start_date=args.start_date,
-      end_date=args.end_date,
+  mode_parameters = (
+    gaarf_utils.ParamsParser([args.mode]).parse(kwargs).get(args.mode)
+  )
+
+  media_type = args.media_type
+  if args.mode == 'file':
+    request = utils.FileInputRequest(**mode_parameters)
+    tagging_results = tagging_result.from_file(
+      path=request.tagging_results_path,
+      file_column_input=request.tagging_columns,
+      media_type=media_type.lower(),
     )
-  )
-  media_tagger = tagger.create_tagger(args.tagger_type)
-  media_paths = [info.media_path for info in extra_info.values()]
-  tagging_repository = (
-    media_tagging_repository.SqlAlchemyTaggingResultsRepository(args.db_uri)
-  )
-  tagging_results = media_tagger.tag_media(
-    media_paths=media_paths,
-    parallel_threshold=args.parallel_threshold,
-    persist_repository=tagging_repository,
-  )
+    extra_info = google_ads.from_file(
+      path=request.performance_results_path,
+      file_column_input=request.performance_columns,
+      media_type=media_type.lower(),
+    )
+  elif args.mode == 'api':
+    request = utils.ApiInputRequest(**mode_parameters)
+    extra_info = google_ads.ExtraInfoFetcher(
+      accounts=request.account,
+      ads_config=request.ads_config_path,
+    ).generate_extra_info(
+      google_ads.FetchingRequest(
+        media_type=media_type,
+        start_date=request.start_date,
+        end_date=request.end_date,
+      )
+    )
+    media_tagger = tagger.create_tagger(request.tagger)
+    media_paths = [info.media_path for info in extra_info.values()]
+    tagging_repository = (
+      media_tagging_repository.SqlAlchemyTaggingResultsRepository(
+        request.db_uri
+      )
+    )
+    tagging_results = media_tagger.tag_media(
+      media_paths=media_paths,
+      parallel_threshold=args.parallel_threshold,
+      persist_repository=tagging_repository,
+    )
   clustering_results = media_similarity_service.cluster_media(
     tagging_results,
     normalize=args.normalize,
     custom_threshold=args.custom_threshold,
+    parallel=args.parallel_threshold > 1,
+    parallel_threshold=args.parallel_threshold,
   )
   generated_map = creative_map.CreativeMap.from_clustering(
     clustering_results, tagging_results, extra_info
