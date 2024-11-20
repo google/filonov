@@ -152,6 +152,8 @@ class BaseTagger(abc.ABC):
         if media.convert_path_to_media_name(media_path)
         not in tagged_media_names
       }
+    if not untagged_media:
+      return tagged_media
 
     if not parallel_threshold:
       return (
