@@ -24,7 +24,7 @@ import os
 from collections.abc import MutableSequence, Sequence
 from concurrent import futures
 
-from media_tagging import media, repository, tagging_result
+from media_tagging import media, repositories, tagging_result
 
 
 @dataclasses.dataclass
@@ -84,8 +84,7 @@ class BaseTagger(abc.ABC):
     self,
     media_paths: Sequence[str | os.PathLike[str]],
     tagging_parameters: dict[str, str] | None = None,
-    persist_repository: repository.Basetagging_result.TaggingResultsRepository
-    | None = None,
+    persist_repository: repositories.BaseTaggingResultsRepository | None = None,
   ) -> list[tagging_result.TaggingResult]:
     """Runs media tagging algorithm.
 
@@ -125,7 +124,7 @@ class BaseTagger(abc.ABC):
     media_paths: Sequence[str | os.PathLike[str]],
     tagging_parameters: dict[str, str] | None = None,
     parallel_threshold: int = 1,
-    persist_repository: repository.BaseTaggingResultsRepository | None = None,
+    persist_repository: str | None = None,
   ) -> list[tagging_result.TaggingResult]:
     """Runs media tagging algorithm.
 
@@ -138,11 +137,14 @@ class BaseTagger(abc.ABC):
     Returns:
       Results of tagging for all media.
     """
+    if persist_repository:
+      repository = repositories.SqlAlchemyTaggingResultsRepository(
+        persist_repository
+      )
+      repository.initialize()
     untagged_media = media_paths
     tagged_media = []
-    if persist_repository and (
-      tagged_media := persist_repository.get(media_paths)
-    ):
+    if persist_repository and (tagged_media := repository.get(media_paths)):
       tagged_media_names = {media.identifier for media in tagged_media}
       untagged_media = {
         media_path
@@ -150,11 +152,13 @@ class BaseTagger(abc.ABC):
         if media.convert_path_to_media_name(media_path)
         not in tagged_media_names
       }
+    if not untagged_media:
+      return tagged_media
 
     if not parallel_threshold:
       return (
         self.tag_media_sequentially(
-          untagged_media, tagging_parameters, persist_repository
+          untagged_media, tagging_parameters, repository
         )
         + tagged_media
       )
@@ -164,7 +168,7 @@ class BaseTagger(abc.ABC):
           self.tag_media_sequentially,
           [media_path],
           tagging_parameters,
-          persist_repository,
+          repository,
         ): media_path
         for media_path in media_paths
       }

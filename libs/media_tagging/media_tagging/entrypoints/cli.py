@@ -20,7 +20,7 @@ import logging
 
 from garf_executors.entrypoints import utils as garf_utils
 
-from media_tagging import repository, tagger, writer
+from media_tagging import tagger, writer
 
 AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
 
@@ -65,17 +65,12 @@ def main():
   )
   logging.getLogger(__file__)
 
-  if db_url := args.db_url:
-    persist_repository = repository.SqlAlchemyTaggingResultsRepository(db_url)
-    persist_repository.initialize()
-  else:
-    persist_repository = None
   logging.info('Initializing tagger: %s', args.tagger)
   tagging_results = concrete_tagger.tag_media(
     media_paths=args.media_path,
     tagging_parameters=tagging_parameters.get('tagger'),
     parallel_threshold=args.parallel_threshold,
-    persist_repository=persist_repository,
+    persist_repository=args.db_url,
   )
   if output := args.output:
     concrete_writer = writer.create_writer(args.writer)

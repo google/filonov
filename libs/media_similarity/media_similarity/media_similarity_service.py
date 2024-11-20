@@ -29,7 +29,12 @@ import pandas as pd
 from media_tagging.taggers import base as base_tagger
 from networkx.readwrite import json_graph
 
-from media_similarity import adaptive_threshold, idf_context, media_pair
+from media_similarity import (
+  adaptive_threshold,
+  idf_context,
+  media_pair,
+  repositories,
+)
 
 BATCH_SIZE: Final[int] = 1_000
 
@@ -81,6 +86,7 @@ def cluster_media(
   custom_threshold: float | None = None,
   parallel: bool = False,
   parallel_threshold: int = 10,
+  persist_repository: str | None = None,
 ) -> ClusteringResults:
   """Assigns clusters number for each media.
 
@@ -90,6 +96,7 @@ def cluster_media(
     custom_threshold: Don't calculated adaptive threshold but use custom one.
     parallel: Whether to perform similarity_calculation in parallel batches.
     parallel_threshold: Max number of parallel executions.
+    persist_repository: Connection string to DB with similarity scores.
 
   Returns:
      Results of clustering that contain mapping between media identifier.
@@ -99,8 +106,39 @@ def cluster_media(
   similarity_pairs = []
   logging.info('generating media pairs...')
   media_pairs = list(media_pair.build_media_pairs(tagging_results))
+  uncalculated_media_pairs = media_pairs
+  calculated_similarity_pairs = []
+  if persist_repository:
+    repository = repositories.SqlAlchemySimilarityPairsRepository(
+      persist_repository
+    )
+    repository.initialize()
+    if calculated_similarity_pairs := repository.get(media_pairs):
+      calculated_similarity_pairs_keys = {
+        pair.key for pair in calculated_similarity_pairs
+      }
+      uncalculated_media_pairs = [
+        pair
+        for pair in media_pairs
+        if str(pair) not in calculated_similarity_pairs_keys
+      ]
+
+  if not uncalculated_media_pairs:
+    [pairs1, pairs2] = itertools.tee(calculated_similarity_pairs, 2)
+    logging.info('calculating threshold...')
+    if not custom_threshold:
+      threshold = adaptive_threshold.compute_adaptive_threshold(
+        similarity_scores=pairs1, normalize=normalize
+      )
+    else:
+      threshold = adaptive_threshold.AdaptiveThreshold(
+        custom_threshold, num_pairs=None
+      )
+    logging.info('threshold is %.2f', threshold.threshold)
+    logging.info('assigning clusters...')
+    return _calculate_cluster_assignments(pairs2, threshold)
   if parallel:
-    total_batches = len(media_pairs)
+    total_batches = len(uncalculated_media_pairs)
     total_batches = (
       total_batches // BATCH_SIZE
       if total_batches % BATCH_SIZE == 0
@@ -112,7 +150,7 @@ def cluster_media(
       'running similarity calculation for %s batches (to process %s pairs '
       'in total)',
       total_batches,
-      len(media_pairs),
+      len(uncalculated_media_pairs),
     )
 
     with futures.ThreadPoolExecutor(max_workers=parallel_threshold) as executor:
@@ -125,16 +163,20 @@ def cluster_media(
           total_batches,
         ): batch_index
         for batch_index, batch in enumerate(
-          _batched(media_pairs, BATCH_SIZE), 1
+          _batched(uncalculated_media_pairs, BATCH_SIZE), 1
         )
       }
       for future in futures.as_completed(future_to_batch):
-        similarity_pairs.append(future.result())
-    similarity_pairs = itertools.chain.from_iterable(similarity_pairs)
+        processed_batch = future.result()
+        similarity_pairs.append(processed_batch)
+        repository.add(processed_batch)
+    similarity_pairs = list(itertools.chain.from_iterable(similarity_pairs))
+    similarity_pairs = similarity_pairs + calculated_similarity_pairs
   else:
     logging.info('calculating similarity...')
     similarity_pairs = (
-      pair.calculate_similarity(idf_tag_context) for pair in media_pairs
+      pair.calculate_similarity(idf_tag_context)
+      for pair in uncalculated_media_pairs
     )
 
   [pairs1, pairs2] = itertools.tee(similarity_pairs, 2)
