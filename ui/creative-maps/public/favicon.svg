@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <!-- Network nodes and connections -->
+  <g id="network">
+    <!-- Connections -->
+    <line x1="50" y1="50" x2="110" y2="70" stroke="#486878" stroke-width="2"/>
+    <line x1="50" y1="50" x2="70" y2="110" stroke="#486878" stroke-width="2"/>
+    <line x1="110" y1="70" x2="70" y2="110" stroke="#486878" stroke-width="2"/>
+    <line x1="110" y1="70" x2="130" y2="40" stroke="#486878" stroke-width="2"/>
+    <line x1="70" y1="110" x2="120" y2="120" stroke="#486878" stroke-width="2"/>
+    
+    <!-- Nodes as squares with play buttons -->
+    <rect x="38" y="38" width="24" height="24" fill="#2a4858" rx="2"/>
+    <path d="M45 45 L45 55 L55 50 Z" fill="white"/>
+    
+    <rect x="102" y="62" width="16" height="16" fill="#486878" rx="2"/>
+    <path d="M107 67 L107 73 L113 70 Z" fill="white"/>
+    
+    <rect x="60" y="100" width="20" height="20" fill="#486878" rx="2"/>
+    <path d="M66 106 L66 114 L74 110 Z" fill="white"/>
+    
+    <rect x="124" y="34" width="12" height="12" fill="#6d8fa0" rx="2"/>
+    <path d="M128 38 L128 42 L132 40 Z" fill="white"/>
+    
+    <rect x="113" y="113" width="14" height="14" fill="#6d8fa0" rx="2"/>
+    <path d="M118 117 L118 123 L124 120 Z" fill="white"/>
+  </g>
+  
+  <!-- Central node -->
+  <rect x="70" y="70" width="20" height="20" fill="#486878" rx="2"/>
+  <path d="M76 76 L76 84 L84 80 Z" fill="white"/>
+</svg>

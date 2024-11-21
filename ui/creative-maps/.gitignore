@@ -27,3 +27,4 @@ yarn-error.log*
 .env.local*
 .firebaserc
 .firebase/
+public/icons/
