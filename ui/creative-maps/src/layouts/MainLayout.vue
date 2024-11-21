@@ -11,7 +11,9 @@
           @click="toggleLeftDrawer"
         /> -->
 
-        <q-toolbar-title>Filonov (a.k.a Creative Maps) </q-toolbar-title>
+        <q-toolbar-title class="flex items-center"
+          ><Logo :size="40" class="q-mr-sm" />Filonov (a.k.a Creative Maps)
+        </q-toolbar-title>
       </q-toolbar>
     </q-header>
 

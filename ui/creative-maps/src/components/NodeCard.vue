@@ -1,6 +1,6 @@
 <template>
   <q-card>
-    <q-img :src="node.image" class="node-preview" />
+    <q-img :src="node.image" class="node-preview" @click="showCreative = true" style="cursor: pointer;"/>
 
     <q-card-section>
       <div class="absolute-top-right">
@@ -116,5 +116,11 @@ export default defineComponent({
   justify-content: center;
   align-items: center;
   min-height: 60vh;
+}
+.creative-preview.video {
+  width: 100%;
+  height: 80vh; /* Set explicit height */
+  max-width: 1280px; /* Optional: limit max width */
+  border: none;
 }
 </style>

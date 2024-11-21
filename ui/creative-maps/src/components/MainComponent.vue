@@ -25,14 +25,13 @@
           :vertices="vertices"
           :edges="edges"
           :debug="true"
-          style="border1: 1px solid black"
           class="graph-container"
           @cluster-selected="onClusterSelected"
           @node-selected="onNodeSelected"
         />
       </div>
       <div class="col-2">
-        <div v-if="selectedCluster" class="cluster-details">
+        <div class="cluster-details">
           <q-card>
             <q-tabs
               v-model="activeTab"
@@ -40,7 +39,7 @@
               align="justify"
               narrow-indicator
             >
-              <q-tab name="metrics" label="Metrics" />
+              <q-tab v-if="selectedCluster" name="metrics" label="Metrics" />
               <q-tab name="tags" label="Tags" />
               <q-tab v-if="selectedNode" name="node" label="Node" />
             </q-tabs>
@@ -48,7 +47,7 @@
             <q-separator />
 
             <q-tab-panels v-model="activeTab" animated>
-              <q-tab-panel name="metrics">
+              <q-tab-panel v-if="selectedCluster" name="metrics">
                 <div class="text-h6">Cluster Metrics</div>
                 <q-list separator>
                   <q-item>
@@ -97,8 +96,10 @@
                 </q-list>
               </q-tab-panel>
 
-              <q-tab-panel name="tags">
-                <div class="text-h6">Cluster Tags</div>
+              <q-tab-panel name="tags" v-if="sortedTags.length">
+                <div class="text-h6">
+                  {{ selectedCluster ? 'Cluster Tags' : 'All Tags' }}
+                </div>
                 <q-space />
                 <q-btn
                   flat
@@ -144,7 +145,7 @@
                   <time-series-chart
                     :data="timeSeriesData"
                     :metric="selectedMetric"
-                    :cluster-nodes="selectedCluster.nodes"
+                    :cluster-nodes="selectedCluster!.nodes"
                     :height="400"
                   />
                 </q-card-section>
@@ -157,17 +158,7 @@
               transition-show="slide-up"
               transition-hide="slide-down"
             >
-              <q-card class="full-width">
-                <q-card-section class="row items-center">
-                  <div class="text-h6">Tags Metrics Dashboard</div>
-                  <q-space />
-                  <q-btn icon="close" flat round dense v-close-popup />
-                </q-card-section>
-
-                <q-card-section>
-                  <tags-dashboard :tags-stats="collectTags(selectedCluster)" />
-                </q-card-section>
-              </q-card>
+              <tags-dashboard :tags-stats="sortedTags" />
             </q-dialog>
           </q-card>
         </div>
@@ -215,11 +206,14 @@ const vertices = ref([] as Node[]);
 const edges = ref([] as Edge[]);
 const selectedCluster = ref(null as ClusterInfo | null);
 const selectedNode = ref(null as Node | null);
-const activeTab = ref('metrics');
+const activeTab = ref('tags');
 
 const sortedTags = computed(() => {
-  if (!selectedCluster.value) return [];
-  return collectTags(selectedCluster.value);
+  if (!selectedCluster.value) {
+    // Global scope - collect tags from all vertices
+    return collectTags(vertices.value);
+  }
+  return collectTags(selectedCluster.value.nodes);
 });
 const timeSeriesDialogVisible = ref(false);
 const tagsDashboardVisible = ref(false);
@@ -235,7 +229,9 @@ const timeSeriesData = computed(() => {
       value: metrics[selectedMetric.value] || 0,
     }));
   });
-
+  if (!allSeries.length) {
+    console.log('selectedCluster has no time series');
+  }
   // Aggregate by date
   const aggregated = d3.rollup(
     allSeries,
@@ -257,10 +253,10 @@ async function onDataLoaded(args: { data: GraphData; origin: string }) {
   dataSourceDescription.value = args.origin || 'Custom data';
 }
 
-function collectTags(cluster: ClusterInfo): TagStats[] {
+function collectTags(nodes: Node[]): TagStats[] {
   const tagsMap = new Map<string, { freq: number; nodes: Node[] }>();
 
-  cluster.nodes.forEach((node: Node) => {
+  nodes.forEach((node: Node) => {
     node.tags?.forEach((tagInfo) => {
       if (!tagsMap.has(tagInfo.tag)) {
         tagsMap.set(tagInfo.tag, { freq: 0, nodes: [] });
@@ -285,10 +281,11 @@ function onNodeSelected(node: Node) {
 }
 
 function onClusterSelected(cluster: ClusterInfo) {
-  if (cluster && cluster.persistenSelection) {
+  if (cluster) {
     selectedCluster.value = cluster;
   } else {
     selectedCluster.value = null;
+    activeTab.value = 'tags';
   }
 }
 

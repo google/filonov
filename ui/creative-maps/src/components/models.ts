@@ -15,6 +15,10 @@ export interface Node {
    */
   label: string;
   /**
+   * cluster id.
+   */
+  cluster: string;
+  /**
    * Url to preview image.
    */
   image: string;
@@ -77,7 +81,6 @@ export interface GraphData {
 export interface ClusterInfo {
   nodeCount: number;
   metrics: Record<string, string | number | boolean | undefined>;
-  persistenSelection: boolean;
   nodes: Node[];
 }
 

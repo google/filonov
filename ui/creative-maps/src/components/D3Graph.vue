@@ -29,6 +29,17 @@
         @click="fitGraph"
         color="primary"
       />
+      <q-select
+        style="max-width: 300px"
+        v-model="selectedClusterId"
+        :options="clusterIds"
+        label="Select Cluster"
+        emit-value
+        outlined
+        map-options
+        @update:model-value="onClusterSelect"
+        clearable
+      />
     </div>
     <div ref="chartContainer" class="graph-content"></div>
     <!-- <div v-if="debug" style="font-size: 12px; margin-top: 10px">
@@ -99,6 +110,8 @@ export default defineComponent({
   },
 
   setup(props, { emit }) {
+    const clusterIds = ref([]);
+    const selectedClusterId = ref(null);
     const chartContainer = ref(null);
     const showLabels = ref(false);
     const tooltipVisible = ref(false);
@@ -110,11 +123,10 @@ export default defineComponent({
     const zoom = ref(null);
     const physicsActive = ref(true);
     const showImages = ref(true);
-    const nodeSizeMultiplier = ref(1); // default multiplier is 1x
+    const nodeSizeMultiplier = ref(1);
     const currentCluster = ref({
       nodeCount: 0,
       metrics: {},
-      persistenSelection: false,
       nodes: [],
     });
     const currentNode = ref(null);
@@ -230,12 +242,18 @@ export default defineComponent({
         simulation.value.alpha(0);
         simulation.value.stop();
       }
-      highlightCluster(node);
-      if (currentCluster.value) {
-        currentCluster.value.persistenSelection = true;
-        emit('cluster-selected', currentCluster.value);
-        emit('node-selected', node);
-      }
+
+      tooltipTarget.value = event.currentTarget;
+      tooltipVisible.value = true;
+
+      const connectedNodes = findConnectedNodes(
+        node,
+        props.vertices,
+        props.edges,
+      );
+      currentNode.value = node;
+      setCurrentCluster(connectedNodes);
+      emit('node-selected', node);
     };
 
     const highlightNode = (event, d) => {
@@ -310,38 +328,40 @@ export default defineComponent({
         });
     };
 
-    const highlightCluster = (node) => {
-      tooltipTarget.value = event.currentTarget;
-      tooltipVisible.value = true;
+    const setCurrentCluster = (connectedNodes) => {
+      if (!connectedNodes || !connectedNodes.length) {
+        currentCluster.value = null;
+        resetHighlight();
+      } else {
+        currentCluster.value = {
+          nodes: connectedNodes,
+          nodeCount: connectedNodes.length,
+          metrics: {},
+        };
+        highlightNodes(connectedNodes);
 
-      const connectedNodes = findConnectedNodes(
-        node,
-        props.vertices,
-        props.edges,
-      );
+        calculateClusterMetrics(currentCluster.value);
+      }
+      emit('cluster-selected', currentCluster.value);
+    };
 
-      currentCluster.value = {
-        nodes: connectedNodes,
-        nodeCount: connectedNodes.length,
-        metrics: {},
-      };
-      currentNode.value = node;
-
-      highlightNodes(connectedNodes);
-
-      calculateClusterMetrics(currentCluster.value);
-      return false;
+    const onClusterSelect = (clusterId) => {
+      selectedClusterId.value = clusterId;
+      if (!clusterId) {
+        setCurrentCluster(null);
+      } else {
+        const clusterNodes = props.vertices.filter(
+          (node) => node.cluster === clusterId,
+        );
+        setCurrentCluster(clusterNodes);
+      }
     };
 
     const resetHighlight = () => {
       tooltipVisible.value = false;
       currentNode.value = null;
       if (currentCluster.value) {
-        if (!currentCluster.value.persistenSelection) {
-          currentCluster.value = null;
-        } else {
-          return;
-        }
+        return;
       }
 
       d3.select(chartContainer.value)
@@ -420,12 +440,12 @@ export default defineComponent({
         props.vertices.length,
       );
 
-      console.log('updateNodeSizes:', {
-        multiplier: nodeSizeMultiplier.value,
-        circleBaseSize,
-        imageBaseSize,
-        showImages: showImages.value,
-      });
+      // console.log('updateNodeSizes:', {
+      //   multiplier: nodeSizeMultiplier.value,
+      //   circleBaseSize,
+      //   imageBaseSize,
+      //   showImages: showImages.value,
+      // });
 
       d3.select(chartContainer.value)
         .selectAll('g > g')
@@ -498,6 +518,9 @@ export default defineComponent({
       console.log('drawGraph start, multiplier:', nodeSizeMultiplier.value);
 
       d3.select(chartContainer.value).selectAll('*').remove();
+      clusterIds.value = Array.from(
+        new Set(props.vertices.map((node) => node.cluster)),
+      ).sort();
 
       const rect = chartContainer.value.getBoundingClientRect();
       const width = rect.width;
@@ -520,6 +543,7 @@ export default defineComponent({
           currentNode.value = null;
           resetHighlight();
           emit('cluster-selected', null);
+          emit('node-selected', null);
         });
       const g = svg.append('g');
 
@@ -885,6 +909,9 @@ export default defineComponent({
 
     return {
       chartContainer,
+      clusterIds,
+      selectedClusterId,
+      onClusterSelect,
       showLabels,
       showImages,
       physicsActive,
@@ -907,7 +934,7 @@ export default defineComponent({
 
 <style lang="scss">
 .graph-content {
-  height: calc(100vh - 400px);
+  height: calc(100vh - 200px);
   width: 100%;
 }
 

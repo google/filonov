@@ -6,13 +6,20 @@
         :options="availableNodes"
         multiple
         use-chips
-        :label="`Add node's ${metric} values`"
+        :label="`Add cluster nodes`"
         class="col-grow"
         emit-value
-        map-options
         option-label="label"
-        option-value="id"
-      />
+      >
+        <template v-slot:selected-item="scope">
+          <q-chip
+            removable
+            @remove="scope.removeAtIndex(scope.index)"
+            :tabindex="scope.tabindex"
+            >{{ scope.opt.name }}</q-chip
+          >
+        </template>
+      </q-select>
     </div>
     <apexchart
       type="line"
@@ -22,10 +29,10 @@
     />
     <div class="row q-gutter-md q-mt-lg">
       <node-card
-        v-for="nodeId in selectedNodes"
-        :key="nodeId"
-        :node="getNode(nodeId)"
-        @remove="removeNode(nodeId)"
+        v-for="node in selectedNodes"
+        :key="node.id"
+        :node="getNode(node.id)"
+        @remove="removeNode(node.id)"
         style="width: 300px"
       />
     </div>
@@ -39,7 +46,11 @@ import { ComputedRef } from 'vue';
 import { Node } from 'components/models';
 import { formatMetricValue } from 'src/helpers/utils';
 import NodeCard from './NodeCard.vue';
-
+interface SelectOption {
+  label: string;
+  id: number;
+  metric: number;
+}
 export default defineComponent({
   name: 'TimeSeriesChart',
   props: {
@@ -62,14 +73,18 @@ export default defineComponent({
   },
   components: { NodeCard },
   setup(props) {
-    const selectedNodes = ref([]);
+    const selectedNodes = ref<SelectOption[]>([]);
 
     const availableNodes = computed(() =>
-      props.clusterNodes.map((node: Node) => ({
-        label: node.label + ' (' + node.name + ')',
-        id: node.id,
-        series: node.series,
-      })),
+      props.clusterNodes
+        .map((node: Node) => ({
+          id: node.id,
+          label: `${node.label} (${node.name}, ${props.metric}: ${node.info![props.metric]})`,
+          name: node.label,
+          // series: node.series,
+          metric: node.info![props.metric] as number,
+        }))
+        .sort((a, b) => b.metric - a.metric),
     );
 
     const series = computed(() => {
@@ -85,11 +100,11 @@ export default defineComponent({
       ];
 
       // Add selected nodes series
-      selectedNodes.value.forEach((nodeId) => {
-        const node = props.clusterNodes.find((n) => n.id === nodeId);
+      selectedNodes.value.forEach((opt) => {
+        const node = props.clusterNodes.find((n) => n.id === opt.id);
         if (node?.series) {
           allSeries.push({
-            name: `Node ${nodeId}`,
+            name: `Node ${node.id}`,
             data: Object.entries(node.series).map(([date, metrics]) => ({
               x: new Date(date),
               y: metrics[props.metric] as number,
@@ -146,7 +161,9 @@ export default defineComponent({
       props.clusterNodes.find((node) => node.id === nodeId)!;
 
     const removeNode = (nodeId: number) => {
-      selectedNodes.value = selectedNodes.value.filter((id) => id !== nodeId);
+      selectedNodes.value = selectedNodes.value.filter(
+        (node) => node.id !== nodeId,
+      );
     };
 
     return {
