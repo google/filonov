@@ -65,6 +65,9 @@ all = [
   "media-tagging[api,llm,server]"
 ]
 
+[project.entry-points.creative_assistant]
+media-tagger = "media_tagging.tools"
+
 [tool.setuptools.package-data]
 taggers= ["*.txt"]
 
