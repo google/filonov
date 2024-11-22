@@ -142,6 +142,8 @@ class BaseTagger(abc.ABC):
         persist_repository
       )
       repository.initialize()
+    else:
+      repository = None
     untagged_media = media_paths
     tagged_media = []
     if persist_repository and (tagged_media := repository.get(media_paths)):
