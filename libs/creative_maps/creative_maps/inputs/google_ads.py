@@ -21,8 +21,9 @@ import operator
 import os
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Literal
+from typing import Final, Literal
 
+import garf_youtube_data_api
 import pandas as pd
 from creative_maps.inputs import interfaces
 from gaarf import api_clients, base_query, report_fetcher
@@ -32,28 +33,15 @@ SupportedMediaTypes = Literal['IMAGE', 'YOUTUBE_VIDEO']
 
 
 @dataclasses.dataclass
-class ImageLinks(base_query.BaseQuery):
-  """Fetches image urls."""
-
-  query_text = """
-   SELECT
-     asset.id AS asset_id,
-     asset.image_asset.full_size.url AS media_url
-   FROM asset
-   WHERE asset.type = IMAGE
-  """
-
-
-@dataclasses.dataclass
-class YouTubeLinks(base_query.BaseQuery):
+class YouTubeVideoDurations(base_query.BaseQuery):
   """Fetches YouTube links."""
 
   query_text = """
    SELECT
-     asset.id AS asset_id,
-     asset.youtube_video_asset.youtube_video_id AS media_url
-   FROM asset
-   WHERE asset.type = YOUTUBE_VIDEO
+     media_file.video.youtube_video_id AS video_id,
+     media_file.video.ad_duration_millis / 1000 AS video_duration
+   FROM media_file
+   WHERE media_file.type = VIDEO
   """
 
 
@@ -67,6 +55,8 @@ class AppAssetPerformance(base_query.BaseQuery):
     asset.id AS asset_id,
     asset.name AS asset_name,
     {media_url} AS media_url,
+    {aspect_ratio} AS aspect_ratio,
+    {size} AS media_size,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
     metrics.impressions AS impressions,
@@ -88,8 +78,24 @@ class AppAssetPerformance(base_query.BaseQuery):
     self.min_cost = int(self.min_cost * 1e6)
     if self.media_type == 'IMAGE':
       self.media_url = 'asset.image_asset.full_size.url'
+      self.aspect_ratio = (
+        'asset.image_asset.full_size.width_pixels / '
+        'asset.image_asset.full_size.height_pixels'
+      )
+      self.size = 'asset.image_asset.file_size / 1024'
     else:
       self.media_url = 'asset.youtube_video_asset.youtube_video_id'
+      self.aspect_ratio = 0.0
+      self.size = 0.0
+
+
+YOUTUBE_VIDEO_ORIENTATIONS_QUERY: Final[str] = """
+SELECT
+  id,
+  player.embedWidth AS width,
+  player.embedHeight AS height
+FROM videos
+"""
 
 
 @dataclasses.dataclass
@@ -176,6 +182,7 @@ class ExtraInfoFetcher:
     fetcher = report_fetcher.AdsReportFetcher(
       api_client=api_clients.GoogleAdsApiClient(path_to_config=self.ads_config)
     )
+    youtube_api_fetcher = garf_youtube_data_api.YouTubeDataApiReportFetcher()
     customer_ids = fetcher.expand_mcc(
       self.accounts,
       customer_ids_query=(
@@ -187,10 +194,47 @@ class ExtraInfoFetcher:
     asset_performance = fetcher.fetch(
       AppAssetPerformance(**dataclasses.asdict(fetching_request)),
       customer_ids,
-    ).to_dict(key_column='media_url')
+    )
+    if fetching_request.media_type == 'YOUTUBE_VIDEO':
+      video_durations = fetcher.fetch(
+        YouTubeVideoDurations(), customer_ids
+      ).to_dict(
+        key_column='video_id',
+        value_column='video_duration',
+        value_column_output='scalar',
+      )
+      video_orientations = youtube_api_fetcher.fetch(
+        YOUTUBE_VIDEO_ORIENTATIONS_QUERY,
+        id=asset_performance['media_url'].to_list(flatten=True, distinct=True),
+        maxWidth=500,
+      )
+
+      for row in video_orientations:
+        row['aspect_ratio'] = round(int(row.width) / int(row.height), 2)
+
+      video_orientations = video_orientations.to_dict(
+        key_column='id',
+        value_column='aspect_ratio',
+        value_column_output='scalar',
+      )
+      for row in asset_performance:
+        row['media_size'] = video_durations.get(row.media_url, 0)
+        row['aspect_ratio'] = video_orientations.get(row.media_url, 0)
+    for row in asset_performance:
+      if row.aspect_ratio > 1:
+        row['orientation'] = 'Landscape'
+      elif row.aspect_ratio < 1:
+        row['orientation'] = 'Portrait'
+      else:
+        row['orientation'] = 'Square'
+    asset_performance = asset_performance.to_dict(key_column='media_url')
     results = {}
     media_type = fetching_request.media_type
     for media_url, values in asset_performance.items():
+      info = _build_info(values, core_metrics)
+      info.update(
+        {'orientation': row.orientation, 'media_size': row.media_size}
+      )
       series = {
         entry.get('date'): _build_info(entry, core_metrics) for entry in values
       }
@@ -198,7 +242,7 @@ class ExtraInfoFetcher:
         interfaces.MediaInfo(
           **_create_node_links(media_url, media_type),
           media_name=values[0].get('asset_id'),
-          info=_build_info(values, core_metrics),
+          info=info,
           series=series,
         )
       )
