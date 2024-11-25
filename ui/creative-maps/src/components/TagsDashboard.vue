@@ -6,7 +6,8 @@
       <q-btn icon="close" flat round dense v-close-popup />
     </q-card-section>
     <q-card-section class="row items-center">
-      <q-btn-toggle col="col"
+      <q-btn-toggle
+        col="col"
         v-model="isDynamicView"
         :options="[
           { label: 'Static', value: false },
@@ -24,7 +25,20 @@
         row-key="tag"
         separator="vertical"
         :pagination="{ rowsPerPage: 0 }"
-      ></q-table>
+      >
+        <template #body-cell-tag="props">
+          <q-td :props="props">
+            <a
+              href="#"
+              class="text-primary"
+              style="text-decoration: none"
+              @click.prevent="onTagClick(props.row)"
+            >
+              {{ props.value }}
+            </a>
+          </q-td>
+        </template>
+      </q-table>
 
       <template v-else>
         <div class="row q-col-gutter-md q-mb-md">
@@ -92,15 +106,14 @@ export default defineComponent({
       required: true,
     },
   },
-  setup(props) {
+  emits: ['select-tag'],
+  setup(props, { emit }) {
     const isDynamicView = ref(false);
     const selectedTags = ref<string[]>([]);
     const selectedMetric = ref('');
 
-    const tagOptions = computed(() => props.tagsStats.map((t) => t.tag));
-
     const sortedTagOptions = computed(() => {
-      if (!selectedMetric.value) return tagOptions.value;
+      if (!selectedMetric.value) return props.tagsStats.map((t) => t.tag);
       return [...props.tagsStats]
         .sort((a, b) => {
           const aValue = a.nodes.reduce(
@@ -165,6 +178,7 @@ export default defineComponent({
           tag: tagStat.tag,
           freq: tagStat.freq,
           metrics: metricValues,
+          nodes: tagStat.nodes,
         };
       });
     });
@@ -206,6 +220,11 @@ export default defineComponent({
 
       return [...baseColumns, ...metricColumns];
     });
+
+    const onTagClick = (tagData: TagStats) => {
+      console.log(tagData);
+      emit('select-tag', tagData);
+    };
 
     const chartSeries = computed(() => {
       return selectedTags.value.map((tag) => {
@@ -263,8 +282,8 @@ export default defineComponent({
       metrics,
       tagsMetrics,
       columns,
+      onTagClick,
       selectedTags,
-      tagOptions,
       sortedTagOptions,
       selectedMetric,
       chartSeries,

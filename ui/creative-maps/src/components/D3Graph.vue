@@ -421,6 +421,7 @@ export default defineComponent({
         return false;
       }
     };
+
     const calculateNodeSizes = (nodesCount) => {
       return {
         circleBaseSize:
@@ -928,6 +929,7 @@ export default defineComponent({
       formatMetricValue,
       highlightNodes,
       fitGraph,
+      setCurrentCluster,
     };
   },
 });
