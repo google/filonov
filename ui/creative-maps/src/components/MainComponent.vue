@@ -39,14 +39,56 @@
               align="justify"
               narrow-indicator
             >
+              <q-tab name="info" label="Info" v-if="vertices" />
               <q-tab v-if="selectedCluster" name="metrics" label="Metrics" />
-              <q-tab name="tags" label="Tags" />
+              <q-tab name="tags" label="Tags" v-if="vertices" />
               <q-tab v-if="selectedNode" name="node" label="Node" />
             </q-tabs>
 
             <q-separator />
 
             <q-tab-panels v-model="activeTab" animated>
+              <q-tab-panel name="info">
+                <div class="text-h6">Global Statistics</div>
+
+                <!-- Basic stats -->
+                <div class="row q-gutter-md q-mb-lg">
+                  <q-card class="col">
+                    <q-card-section>
+                      <div class="text-subtitle2">Total Clusters</div>
+                      <div class="text-h4">{{ clusterIds.length }}</div>
+                    </q-card-section>
+                  </q-card>
+
+                  <q-card class="col">
+                    <q-card-section>
+                      <div class="text-subtitle2">Total Nodes</div>
+                      <div class="text-h4">{{ vertices.length }}</div>
+                    </q-card-section>
+                  </q-card>
+                </div>
+
+                <!-- Cluster sizes histogram -->
+                <q-card>
+                  <q-card-section>
+                    <div class="text-subtitle2">Cluster Sizes Distribution</div>
+                    <metric-histogram
+                      :data="getClusterSizesHistogramData"
+                      metric="Cluster Size"
+                    />
+                  </q-card-section>
+                </q-card>
+
+                <!-- Compare clusters button -->
+                <q-btn
+                  color="primary"
+                  label="Compare Clusters"
+                  icon="compare"
+                  class="q-mt-md"
+                  @click="showClusterComparison = true"
+                />
+              </q-tab-panel>
+
               <q-tab-panel v-if="selectedCluster" name="metrics">
                 <div class="text-h6">Cluster Metrics</div>
                 <q-list separator>
@@ -76,7 +118,7 @@
                           dense
                           size="sm"
                           icon="show_chart"
-                          @click="showTimeSeriesDialog(metric)"
+                          @click="doShowTimeSeriesDialog(metric)"
                         >
                           <q-tooltip anchor="bottom middle" self="top middle">
                             Open time series chart
@@ -105,7 +147,7 @@
                   flat
                   icon="dashboard"
                   label="Tags Dashboard"
-                  @click="tagsDashboardVisible = true"
+                  @click="showTagsDashboardDialog = true"
                 >
                   <q-tooltip>Show metrics by tag</q-tooltip>
                 </q-btn>
@@ -129,7 +171,7 @@
             </q-tab-panels>
             <!-- Time Series Dialog -->
             <q-dialog
-              v-model="timeSeriesDialogVisible"
+              v-model="showTimeSeriesDialog"
               maximized
               transition-show="slide-up"
               transition-hide="slide-down"
@@ -153,12 +195,25 @@
             </q-dialog>
             <!-- Tags Dashboard Dialog -->
             <q-dialog
-              v-model="tagsDashboardVisible"
+              v-model="showTagsDashboardDialog"
               maximized
               transition-show="slide-up"
               transition-hide="slide-down"
             >
               <tags-dashboard :tags-stats="sortedTags" />
+            </q-dialog>
+            <!-- Clusters Comparison Dialog -->
+            <q-dialog
+              v-model="showClusterComparison"
+              maximized
+              transition-show="slide-up"
+              transition-hide="slide-down"
+            >
+              <cluster-comparison
+                :vertices="vertices"
+                :clusterIds="clusterIds"
+                @select-cluster="selectCluster"
+              ></cluster-comparison>
             </q-dialog>
           </q-card>
         </div>
@@ -190,12 +245,14 @@ import MetricHistogram from './MetricHistogram.vue';
 import TimeSeriesChart from './TimeSeriesChart.vue';
 import TagsDashboard from './TagsDashboard.vue';
 import NodeCard from './NodeCard.vue';
+import ClusterComparison from './ClusterComparison.vue';
 import {
   Node,
   Edge,
   GraphData,
   ClusterInfo,
   TagStats,
+  AbstractNode,
 } from 'components/models';
 import { formatMetricValue } from 'src/helpers/utils';
 
@@ -206,7 +263,12 @@ const vertices = ref([] as Node[]);
 const edges = ref([] as Edge[]);
 const selectedCluster = ref(null as ClusterInfo | null);
 const selectedNode = ref(null as Node | null);
-const activeTab = ref('tags');
+const activeTab = ref('info');
+const showClusterComparison = ref(false);
+const showTimeSeriesDialog = ref(false);
+const showTagsDashboardDialog = ref(false);
+const selectedMetric = ref('');
+const clusterIds = ref([] as string[]);
 
 const sortedTags = computed(() => {
   if (!selectedCluster.value) {
@@ -215,9 +277,6 @@ const sortedTags = computed(() => {
   }
   return collectTags(selectedCluster.value.nodes);
 });
-const timeSeriesDialogVisible = ref(false);
-const tagsDashboardVisible = ref(false);
-const selectedMetric = ref('');
 
 const timeSeriesData = computed(() => {
   if (!selectedCluster.value || !selectedMetric.value) return [];
@@ -249,6 +308,9 @@ async function onDataLoaded(args: { data: GraphData; origin: string }) {
   const jsonData: GraphData = args.data;
   vertices.value = jsonData.nodes;
   edges.value = jsonData.edges;
+  clusterIds.value = Array.from(
+    new Set(vertices.value.map((node) => node.cluster)),
+  ).sort();
   showLoadDataDialog.value = false;
   dataSourceDescription.value = args.origin || 'Custom data';
 }
@@ -285,8 +347,14 @@ function onClusterSelected(cluster: ClusterInfo) {
     selectedCluster.value = cluster;
   } else {
     selectedCluster.value = null;
-    activeTab.value = 'tags';
+    if (activeTab.value !== 'tags' && activeTab.value !== 'info') {
+      activeTab.value = 'tags';
+    }
   }
+}
+function selectCluster(clusterId: string) {
+  showClusterComparison.value = false;
+  d3GraphRef.value?.onClusterSelect(clusterId);
 }
 
 function getHistogramData(metric: string) {
@@ -295,19 +363,41 @@ function getHistogramData(metric: string) {
   }
 }
 
-function createHistogramData(nodes: Node[], metric: string) {
+const clusterSizes = computed(() => {
+  const sizes = new Map<string, number>();
+  vertices.value.forEach((node) => {
+    if (node.cluster) {
+      sizes.set(node.cluster, (sizes.get(node.cluster) || 0) + 1);
+    }
+  });
+  return sizes;
+});
+
+const getClusterSizesHistogramData = computed(() => {
+  // Create nodes-like array where each entry represents a cluster with its size as a metric
+  const clusterSizeNodes = Array.from(clusterSizes.value.entries()).map(
+    ([clusterId, size]) => ({
+      info: { size }, // Treat size as a metric
+      id: clusterId,
+    }),
+  );
+
+  return createHistogramData(clusterSizeNodes, 'size');
+});
+
+function createHistogramData(nodes: AbstractNode[], metric: string) {
   if (!nodes || nodes.length === 0) return [];
 
   // Get all values of the metric
-  const values: { value: number; node: Node }[] = nodes
-    .map((node: Node) => ({ value: node.info?.[metric] as number, node }))
+  const values = nodes
+    .map((node) => ({ value: node.info?.[metric] as number, node }))
     .filter((v) => v.value !== undefined && v.value !== null);
 
   if (!values || values.length === 0) return [];
 
   // Create bin generator
   const binner = d3
-    .bin<{ value: number; node: Node }, number>()
+    .bin<{ value: number; node: AbstractNode }, number>()
     .value((d) => d.value)
     .domain([d3.min(values, (d) => d.value)!, d3.max(values, (d) => d.value)!])
     .thresholds(10); // number of bins
@@ -332,9 +422,9 @@ function onClusterHistogramMetricClicked(args: {
   }
 }
 
-function showTimeSeriesDialog(metric: string) {
+function doShowTimeSeriesDialog(metric: string) {
   selectedMetric.value = metric;
-  timeSeriesDialogVisible.value = true;
+  showTimeSeriesDialog.value = true;
 }
 </script>
 <style scoped>

@@ -94,7 +94,27 @@ export default {
         .attr('cursor', 'pointer') // Show pointer cursor
         .on('click', (event, d) => {
           this.$emit('metric-clicked', { metric: this.metric, nodes: d.nodes });
+        })
+        .on('mouseover', (event, d) => {
+          const tooltip = d3
+            .select(this.$el)
+            .select('.tooltip')
+            .style('opacity', 1)
+            .style('left', `${event.offsetX + 10}px`)
+            .style('top', `${event.offsetY - 10}px`);
+          tooltip.html(`${d.x0.toFixed(1)}-${d.x1.toFixed(1)}: ${d.count}`);
+        })
+        .on('mouseout', () => {
+          d3.select(this.$el).select('.tooltip').style('opacity', 0);
         });
+
+      // Add tooltip div if not exists
+      if (!d3.select(this.$el).select('.tooltip').size()) {
+        d3.select(this.$el)
+          .append('div')
+          .attr('class', 'tooltip')
+          .style('opacity', 0);
+      }
 
       // Add axes
       g.append('g')
@@ -122,5 +142,14 @@ export default {
 .cluster-histogram {
   width: 100%;
   margin: 10px 0;
+}
+.tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
 }
 </style>

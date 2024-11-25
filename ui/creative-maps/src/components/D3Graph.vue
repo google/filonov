@@ -88,6 +88,7 @@
 <script>
 import { defineComponent, onMounted, onUnmounted, watch, ref } from 'vue';
 import * as d3 from 'd3';
+import { aggregateNodesMetrics } from 'src/helpers/utils';
 
 export default defineComponent({
   props: {
@@ -130,10 +131,6 @@ export default defineComponent({
       nodes: [],
     });
     const currentNode = ref(null);
-
-    const isNumeric = (value) => {
-      return !isNaN(parseFloat(value)) && isFinite(value);
-    };
 
     const formatMetricName = (metric) => {
       return metric
@@ -188,49 +185,9 @@ export default defineComponent({
       return nodes.filter((n) => connected.has(n.id.toString()));
     };
 
-    function aggregateMetric(name, values) {
-      // sum
-      return values.reduce((sum, val) => sum + val, 0);
-      // arvg
-      // values.reduce((sum, val) => sum + val, 0) / values.length;
-    }
     const calculateClusterMetrics = (cluster) => {
       if (cluster.nodeCount > 0) {
-        const metrics = {};
-
-        const sampleNode = cluster.nodes.find((n) => n.info);
-        const nodes = cluster.nodes;
-        if (sampleNode && sampleNode.info) {
-          Object.entries(sampleNode.info).forEach(([key, value]) => {
-            if (isNumeric(value)) {
-              const values = nodes
-                .map((n) => n.info?.[key])
-                .filter((v) => isNumeric(v));
-
-              if (values.length > 0) {
-                metrics[key] = aggregateMetric(key, values);
-              }
-            } else if (typeof value === 'string') {
-              const valueCounts = nodes
-                .map((n) => n.info?.[key])
-                .filter((v) => v !== undefined)
-                .reduce((acc, val) => {
-                  acc[val] = (acc[val] || 0) + 1;
-                  return acc;
-                }, {});
-
-              const mostCommon = Object.entries(valueCounts).sort(
-                (a, b) => b[1] - a[1],
-              )[0];
-
-              if (mostCommon) {
-                metrics[key] = mostCommon[0];
-              }
-            }
-          });
-        }
-
-        cluster.metrics = metrics;
+        cluster.metrics = aggregateNodesMetrics(cluster.nodes);
       }
     };
 

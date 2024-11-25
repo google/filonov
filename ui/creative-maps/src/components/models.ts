@@ -1,3 +1,29 @@
+/*
+ Copyright 2024 Google LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
+/**
+ * A metric value.
+ */
+export type MetricValue = string | number | boolean;
+
+/**
+ * Metrics for assets and clusters.
+ */
+export type MetricsObject = Record<string, MetricValue | undefined>;
+
 /**
  * Asset node.
  */
@@ -32,11 +58,11 @@ export interface Node {
    * Additional metrics (from Ads or other sources) of the current asset.
    * Examples: cost, impressions, clicks, duration
    */
-  info?: Record<string, string | number | boolean | undefined>;
+  info?: MetricsObject;
   /**
    * Same metrics as in `info` but segmented by day (time series).
    */
-  series?: Array<Record<string, string | number | boolean | undefined>>;
+  series?: MetricsObject[];
   /**
    * Current asset' tags.
    */
@@ -80,7 +106,7 @@ export interface GraphData {
  */
 export interface ClusterInfo {
   nodeCount: number;
-  metrics: Record<string, string | number | boolean | undefined>;
+  metrics: MetricsObject;
   nodes: Node[];
 }
 
@@ -91,4 +117,13 @@ export interface TagStats {
   tag: string;
   freq: number;
   nodes: Node[];
+}
+
+/**
+ * An abstract node (not necessary an asset node)
+ * with id and info object with metric values.
+ */
+export interface AbstractNode {
+  info?: MetricsObject;
+  id: number | string;
 }
