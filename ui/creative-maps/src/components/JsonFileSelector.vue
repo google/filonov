@@ -101,14 +101,15 @@ export default {
     },
 
     async handleRemoteFile() {
-      if (!this.remoteUrl) return;
+      const remoteUrl = this.removeUrl?.trim();
+      if (!remoteUrl) return;
 
       this.error = null;
       this.loading = true;
 
       try {
-        const response = await api.get(this.remoteUrl);
-        this.processJsonData(response.data, this.remoteUrl);
+        const response = await api.get(remoteUrl);
+        this.processJsonData(response.data, remoteUrl);
       } catch (err) {
         this.error = 'Error fetching remote file: ' + err.message;
       } finally {

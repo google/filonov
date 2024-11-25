@@ -82,6 +82,29 @@
         </div>
       </div>
     </q-tooltip>
+    <q-dialog v-model="imageLoading.inProgress" persistent>
+      <q-card class="bg-white" style="width: 300px">
+        <q-card-section class="row items-center">
+          <span class="text-h6">Loading Graph</span>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <div class="text-center q-mb-md">
+            Loading node previews: {{ imageLoading.current }} /
+            {{ imageLoading.total }}
+          </div>
+          <q-linear-progress
+            :value="imageLoading.current / imageLoading.total"
+            color="primary"
+            class="q-mt-sm"
+          />
+        </q-card-section>
+
+        <q-card-section class="row justify-center">
+          <q-spinner-dots color="primary" size="40px" />
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -111,26 +134,31 @@ export default defineComponent({
   },
 
   setup(props, { emit }) {
-    const clusterIds = ref([]);
-    const selectedClusterId = ref(null);
     const chartContainer = ref(null);
-    const showLabels = ref(false);
     const tooltipVisible = ref(false);
     const tooltipTarget = ref(null);
     const edgeTooltipVisible = ref(false);
     const edgeTooltipTarget = ref(null);
-    const currentEdge = ref(null);
+    const physicsActive = ref(true);
     const simulation = ref(null);
     const zoom = ref(null);
-    const physicsActive = ref(true);
+    const showLabels = ref(false);
     const showImages = ref(true);
     const nodeSizeMultiplier = ref(1);
+    const clusterIds = ref([]);
+    const selectedClusterId = ref(null);
+    const currentNode = ref(null);
+    const currentEdge = ref(null);
     const currentCluster = ref({
       nodeCount: 0,
       metrics: {},
       nodes: [],
     });
-    const currentNode = ref(null);
+    const imageLoading = ref({
+      total: 0,
+      current: 0,
+      inProgress: false,
+    });
 
     const formatMetricName = (metric) => {
       return metric
@@ -358,26 +386,41 @@ export default defineComponent({
     };
 
     const preloadImages = async (nodes) => {
-      const imagePromises = nodes
-        .filter((n) => n.image)
-        .map((node) => {
-          return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(node.image);
-            img.onerror = () => reject(node.image);
-            img.src = node.image;
-          });
+      const imagesToLoad = nodes.filter((n) => n.image);
+      let loadedCount = 0;
+      imageLoading.value = {
+        total: imagesToLoad.length,
+        current: 0,
+        inProgress: true,
+      };
+
+      const imagePromises = imagesToLoad.map((node) => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            loadedCount++;
+            imageLoading.value.current = loadedCount;
+            resolve(node.image);
+          };
+          img.onerror = () => {
+            loadedCount++;
+            imageLoading.value.current = loadedCount;
+            reject(node.image);
+          };
+          img.src = node.image;
         });
+      });
 
       try {
         await Promise.all(imagePromises);
+        imageLoading.value.inProgress = false;
         return true;
       } catch (error) {
         console.error('Failed to load some images:', error);
+        imageLoading.value.inProgress = false;
         return false;
       }
     };
-
     const calculateNodeSizes = (nodesCount) => {
       return {
         circleBaseSize:
@@ -866,6 +909,7 @@ export default defineComponent({
 
     return {
       chartContainer,
+      imageLoading,
       clusterIds,
       selectedClusterId,
       onClusterSelect,
@@ -875,10 +919,10 @@ export default defineComponent({
       nodeSizeMultiplier,
       tooltipVisible,
       tooltipTarget,
-      currentCluster,
-      currentNode,
       edgeTooltipVisible,
       edgeTooltipTarget,
+      currentCluster,
+      currentNode,
       currentEdge,
       formatMetricName,
       formatMetricValue,
