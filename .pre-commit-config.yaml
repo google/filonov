@@ -44,6 +44,6 @@ repos:
   hooks:
   - id: pytest-check
     name: pytest-check
-    entry: pytest -n auto libs/media_similarity/tests/unit
+    entry: pytest -n auto libs/media_tagging/tests/unit
     language: system
     pass_filenames: false

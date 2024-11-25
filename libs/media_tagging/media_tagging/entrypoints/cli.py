@@ -33,7 +33,7 @@ def main():
   )
   parser.add_argument(
     '--tagger',
-    dest='tagger_type',
+    dest='tagger',
     help=f'Tagger type, on of the following: {AVAILABLE_TAGGERS}',
   )
   parser.add_argument('--writer', dest='writer', default='json')
@@ -67,10 +67,10 @@ def main():
 
   logging.info('Initializing tagger: %s', args.tagger)
   tagging_results = concrete_tagger.tag_media(
-    media_paths=args.media_path,
+    media_paths=args.media_paths,
     tagging_parameters=tagging_parameters.get('tagger'),
     parallel_threshold=args.parallel_threshold,
-    persist_repository=args.db_url,
+    persist_repository=args.db_uri,
   )
   if output := args.output:
     concrete_writer = writer.create_writer(args.writer)

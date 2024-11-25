@@ -64,8 +64,14 @@ server = [
 all = [
   "media-tagging[api,llm,server]"
 ]
+
 [tool.setuptools.package-data]
 taggers= ["*.txt"]
+
+[tool.pytest.ini_options]
+testpaths = [
+  "tests",
+]
 
 [project.scripts]
 media-tagger="media_tagging.entrypoints.cli:main"

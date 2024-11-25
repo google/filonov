@@ -17,7 +17,7 @@
 
 import langchain_core
 
-from media_tagging import repository, tagger
+from media_tagging import repositories, tagger
 
 
 class MediaTaggingInput(langchain_core.pydantic_v1.BaseModel):
@@ -42,7 +42,7 @@ class MediaTaggingResults(langchain_core.tools.BaseTool):
 
   name: str = 'media_tagger'
   description: str = tagger.MEDIA_TAGGER_DESCRIPTION
-  persist_repository: repository.BaseTaggingResultsRepository = (
+  persist_repository: repositories.BaseTaggingResultsRepository = (
     'repository to persist tagging results'
   )
   args_schema: type[langchain_core.pydantic_v1.BaseModel] = MediaTaggingInput
