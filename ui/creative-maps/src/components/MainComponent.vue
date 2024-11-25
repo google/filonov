@@ -154,7 +154,16 @@
                 <q-list separator>
                   <q-item v-for="tagInfo in sortedTags" :key="tagInfo.tag">
                     <q-item-section>
-                      <q-item-label>{{ tagInfo.tag }}</q-item-label>
+                      <q-item-label>
+                        <a
+                          href="#"
+                          class="text-primary"
+                          style="text-decoration: none"
+                          @click.prevent="highlightNodesByTag(tagInfo)"
+                        >
+                          {{ tagInfo.tag }}
+                        </a>
+                      </q-item-label>
                     </q-item-section>
                     <q-item-section side>
                       <q-chip size="sm" color="primary" text-color="white">
@@ -200,7 +209,10 @@
               transition-show="slide-up"
               transition-hide="slide-down"
             >
-              <tags-dashboard :tags-stats="sortedTags" />
+              <tags-dashboard
+                :tags-stats="sortedTags"
+                @select-tag="onTagDashboardSelect"
+              />
             </q-dialog>
             <!-- Clusters Comparison Dialog -->
             <q-dialog
@@ -336,6 +348,20 @@ function collectTags(nodes: Node[]): TagStats[] {
       nodes: stats.nodes,
     }))
     .sort((a, b) => b.freq - a.freq); // Sort by frequency descending
+}
+
+function highlightNodesByTag(tagStat: TagStats) {
+  // Get nodes that have this tag
+  const nodesWithTag = tagStat.nodes;
+
+  // Use the D3Graph method to highlight these nodes
+  d3GraphRef.value?.setCurrentCluster(nodesWithTag);
+}
+
+function onTagDashboardSelect(tagStat: TagStats) {
+  showTagsDashboardDialog.value = false;
+  console.log('onTagDashboardSelect ' + tagStat);
+  d3GraphRef.value?.setCurrentCluster(tagStat.nodes);
 }
 
 function onNodeSelected(node: Node) {
