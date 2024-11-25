@@ -159,6 +159,7 @@ export default defineComponent({
       current: 0,
       inProgress: false,
     });
+    let resizeObserver; //ResizeObserver
 
     const formatMetricName = (metric) => {
       return metric
@@ -231,14 +232,9 @@ export default defineComponent({
       tooltipTarget.value = event.currentTarget;
       tooltipVisible.value = true;
 
-      const connectedNodes = findConnectedNodes(
-        node,
-        props.vertices,
-        props.edges,
-      );
       currentNode.value = node;
-      setCurrentCluster(connectedNodes);
       emit('node-selected', node);
+      onClusterSelect(node.cluster);
     };
 
     const highlightNode = (event, d) => {
@@ -540,11 +536,9 @@ export default defineComponent({
         .attr('height', height)
         .attr('fill', 'transparent')
         .on('click', () => {
-          currentCluster.value = null;
           currentNode.value = null;
-          resetHighlight();
-          emit('cluster-selected', null);
           emit('node-selected', null);
+          onClusterSelect(null);
         });
       const g = svg.append('g');
 
@@ -878,13 +872,39 @@ export default defineComponent({
       svg.transition().duration(750).call(zoom.value.transform, transform);
     };
 
+    const handleResize = () => {
+      if (!chartContainer.value) return;
+
+      const rect = chartContainer.value.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+
+      // Update SVG dimensions
+      d3.select(chartContainer.value)
+        .select('svg')
+        .attr('width', width)
+        .attr('height', height);
+
+      // Update force simulation center
+      if (simulation.value) {
+        simulation.value.force('center', d3.forceCenter(width / 2, height / 2));
+        simulation.value.alpha(0.3).restart();
+      }
+    };
+
     onMounted(() => {
+      resizeObserver = new ResizeObserver(handleResize);
+      if (chartContainer.value) {
+        resizeObserver.observe(chartContainer.value);
+      }
       drawGraph();
     });
     // Cleanup
     onUnmounted(() => {
       if (simulation.value) simulation.value.stop();
+      resizeObserver.disconnect();
     });
+
     watch(
       [() => props.vertices, () => props.edges, showLabels, showImages],
       (newValues) => {
@@ -936,8 +956,13 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
+.d3-graph {
+  width: 100%;
+  height: 100%;
+}
+
 .graph-content {
-  height: calc(100vh - 200px);
+  height: calc(100vh - 240px);
   width: 100%;
 }
 

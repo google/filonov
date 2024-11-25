@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page>
     <Suspense>
       <template #default>
         <MainComponent />

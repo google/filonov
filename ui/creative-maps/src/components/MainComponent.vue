@@ -1,5 +1,5 @@
 <template>
-  <div class="main-component">
+  <div class="main-component q-pa-md">
     <div class="row items-center q-pa-sm bg-grey-2">
       <q-btn
         flat
