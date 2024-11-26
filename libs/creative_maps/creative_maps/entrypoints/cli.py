@@ -45,6 +45,13 @@ def main():  # noqa: D103
     help='Type of media',
   )
   parser.add_argument(
+    '--campaign-type',
+    dest='campaign_type',
+    choices=['all', 'app', 'demandgen', 'pmax', 'video', 'display'],
+    default='app',
+    help='Type of campaign',
+  )
+  parser.add_argument(
     '--db-uri',
     dest='db_uri',
     help='Database connection string to store and retrieve results',
@@ -96,6 +103,7 @@ def main():  # noqa: D103
       path=request.performance_results_path,
       file_column_input=request.performance_columns,
       media_type=media_type.lower(),
+      campaign_type=args.campaign_type,
     )
   elif args.mode == 'api':
     request = utils.ApiInputRequest(**mode_parameters)
@@ -107,6 +115,7 @@ def main():  # noqa: D103
         media_type=media_type,
         start_date=request.start_date,
         end_date=request.end_date,
+        campaign_type=args.campaign_type,
       )
     )
     media_tagger = tagger.create_tagger(request.tagger)

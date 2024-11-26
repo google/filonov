@@ -21,88 +21,21 @@ import operator
 import os
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Final, Literal
+from typing import Literal
 
 import garf_youtube_data_api
 import pandas as pd
-from creative_maps.inputs import interfaces
-from gaarf import api_clients, base_query, report_fetcher
+from creative_maps.inputs import interfaces, queries
+from gaarf import api_clients, report_fetcher
 from media_tagging import media
-
-SupportedMediaTypes = Literal['IMAGE', 'YOUTUBE_VIDEO']
-
-
-@dataclasses.dataclass
-class YouTubeVideoDurations(base_query.BaseQuery):
-  """Fetches YouTube links."""
-
-  query_text = """
-   SELECT
-     media_file.video.youtube_video_id AS video_id,
-     media_file.video.ad_duration_millis / 1000 AS video_duration
-   FROM media_file
-   WHERE media_file.type = VIDEO
-  """
-
-
-@dataclasses.dataclass
-class AppAssetPerformance(base_query.BaseQuery):
-  """Fetches performance for app campaigns."""
-
-  query_text = """
-  SELECT
-    segments.date AS date,
-    asset.id AS asset_id,
-    asset.name AS asset_name,
-    {media_url} AS media_url,
-    {aspect_ratio} AS aspect_ratio,
-    {size} AS media_size,
-    metrics.cost_micros / 1e6 AS cost,
-    metrics.clicks AS clicks,
-    metrics.impressions AS impressions,
-    metrics.biddable_app_install_conversions AS installs,
-    metrics.biddable_app_post_install_conversions AS inapps
-  FROM ad_group_ad_asset_view
-  WHERE
-    asset.type = {media_type}
-    AND segments.date BETWEEN '{start_date}' AND '{end_date}'
-    AND metrics.cost_micros > {min_cost}
-  """
-
-  start_date: str
-  end_date: str
-  media_type: SupportedMediaTypes
-  min_cost: int = 0
-
-  def __post_init__(self) -> None:  # noqa: D105
-    self.min_cost = int(self.min_cost * 1e6)
-    if self.media_type == 'IMAGE':
-      self.media_url = 'asset.image_asset.full_size.url'
-      self.aspect_ratio = (
-        'asset.image_asset.full_size.width_pixels / '
-        'asset.image_asset.full_size.height_pixels'
-      )
-      self.size = 'asset.image_asset.file_size / 1024'
-    else:
-      self.media_url = 'asset.youtube_video_asset.youtube_video_id'
-      self.aspect_ratio = 0.0
-      self.size = 0.0
-
-
-YOUTUBE_VIDEO_ORIENTATIONS_QUERY: Final[str] = """
-SELECT
-  id,
-  player.embedWidth AS width,
-  player.embedHeight AS height
-FROM videos
-"""
 
 
 @dataclasses.dataclass
 class FetchingRequest:
   """Specifies parameters of report fetching."""
 
-  media_type: SupportedMediaTypes
+  media_type: queries.SupportedMediaTypes
+  campaign_type: queries.SupportedCampaignTypes
   start_date: str
   end_date: str
 
@@ -183,29 +116,40 @@ class ExtraInfoFetcher:
       api_client=api_clients.GoogleAdsApiClient(path_to_config=self.ads_config)
     )
     youtube_api_fetcher = garf_youtube_data_api.YouTubeDataApiReportFetcher()
-    customer_ids = fetcher.expand_mcc(
-      self.accounts,
-      customer_ids_query=(
-        'SELECT customer.id FROM campaign '
-        'WHERE campaign.advertising_channel_type = MULTI_CHANNEL'
-      ),
+    core_metrics = (
+      'cost',
+      'impressions',
+      'clicks',
+      'conversions',
+      'conversions_value',
     )
-    core_metrics = ('cost', 'impressions', 'clicks', 'inapps')
-    asset_performance = fetcher.fetch(
-      AppAssetPerformance(**dataclasses.asdict(fetching_request)),
+
+    query = queries.QUERIES_MAPPING.get(fetching_request.campaign_type)
+    if fetching_request.campaign_type == 'demandgen':
+      query = query.get(fetching_request.media_type)
+    campaign_types = queries.CAMPAIGN_TYPES_MAPPING.get(
+      fetching_request.campaign_type
+    )
+    customer_ids_query = (
+      'SELECT customer.id FROM campaign '
+      f'WHERE campaign.advertising_channel_type IN ({campaign_types})'
+    )
+    customer_ids = fetcher.expand_mcc(self.accounts, customer_ids_query)
+    performance = fetcher.fetch(
+      query(**dataclasses.asdict(fetching_request)),
       customer_ids,
     )
     if fetching_request.media_type == 'YOUTUBE_VIDEO':
       video_durations = fetcher.fetch(
-        YouTubeVideoDurations(), customer_ids
+        queries.YouTubeVideoDurations(), customer_ids
       ).to_dict(
         key_column='video_id',
         value_column='video_duration',
         value_column_output='scalar',
       )
       video_orientations = youtube_api_fetcher.fetch(
-        YOUTUBE_VIDEO_ORIENTATIONS_QUERY,
-        id=asset_performance['media_url'].to_list(flatten=True, distinct=True),
+        queries.YOUTUBE_VIDEO_ORIENTATIONS_QUERY,
+        id=performance['media_url'].to_list(flatten=True, distinct=True),
         maxWidth=500,
       )
 
@@ -217,20 +161,20 @@ class ExtraInfoFetcher:
         value_column='aspect_ratio',
         value_column_output='scalar',
       )
-      for row in asset_performance:
+      for row in performance:
         row['media_size'] = video_durations.get(row.media_url, 0)
         row['aspect_ratio'] = video_orientations.get(row.media_url, 0)
-    for row in asset_performance:
+    for row in performance:
       if row.aspect_ratio > 1:
         row['orientation'] = 'Landscape'
       elif row.aspect_ratio < 1:
         row['orientation'] = 'Portrait'
       else:
         row['orientation'] = 'Square'
-    asset_performance = asset_performance.to_dict(key_column='media_url')
+    performance = performance.to_dict(key_column='media_url')
     results = {}
     media_type = fetching_request.media_type
-    for media_url, values in asset_performance.items():
+    for media_url, values in performance.items():
       info = _build_info(values, core_metrics)
       info.update(
         {'orientation': row.orientation, 'media_size': row.media_size}
