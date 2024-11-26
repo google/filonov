@@ -62,67 +62,73 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref } from 'vue';
 import { api } from 'boot/axios';
 
-export default {
-  name: 'JsonFileHandler',
-  data() {
-    return {
-      sourceType: 'local',
-      file: null,
-      remoteUrl: '',
-      error: null,
-      loading: false,
-    };
-  },
-  methods: {
-    async handleFileUpload() {
-      this.error = null;
+// Types
+type SourceType = 'local' | 'remote';
+interface JsonLoadedEvent {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any;
+  origin: string;
+}
 
-      if (!this.file) return;
+// State
+const sourceType = ref<SourceType>('local');
+const file = ref<File | null>(null);
+const remoteUrl = ref('');
+const error = ref<string | null>(null);
+const loading = ref(false);
 
-      const reader = new FileReader();
+// Event emits
+const emit = defineEmits<{
+  (e: 'json-loaded', payload: JsonLoadedEvent): void;
+}>();
 
-      reader.onload = (e) => {
-        try {
-          const jsonData = JSON.parse(e.target.result);
-          this.processJsonData(jsonData, this.file.name);
-        } catch (err) {
-          this.error = 'Error parsing JSON file: ' + err.message;
-        }
-      };
+// Methods
+const handleFileUpload = async () => {
+  error.value = null;
+  if (!file.value) return;
 
-      reader.onerror = () => {
-        this.error = 'Error reading file';
-      };
+  const reader = new FileReader();
 
-      reader.readAsText(this.file);
-    },
+  reader.onload = (e) => {
+    try {
+      const jsonData = JSON.parse(e.target?.result as string);
+      processJsonData(jsonData, file.value!.name);
+    } catch (err) {
+      error.value = `Error parsing JSON file: ${(err as Error).message}`;
+    }
+  };
 
-    async handleRemoteFile() {
-      const remoteUrl = this.removeUrl?.trim();
-      if (!remoteUrl) return;
+  reader.onerror = () => {
+    error.value = 'Error reading file';
+  };
 
-      this.error = null;
-      this.loading = true;
+  reader.readAsText(file.value);
+};
 
-      try {
-        const response = await api.get(remoteUrl);
-        this.processJsonData(response.data, remoteUrl);
-      } catch (err) {
-        this.error = 'Error fetching remote file: ' + err.message;
-      } finally {
-        this.loading = false;
-      }
-    },
+const handleRemoteFile = async () => {
+  const url = remoteUrl.value?.trim();
+  if (!url) return;
 
-    processJsonData(jsonData, source) {
-      // Empty function for you to implement your own data handling
-      console.log('Received JSON data:', jsonData);
-      // You can emit the data to parent component if needed:
-      this.$emit('json-loaded', { data: jsonData, origin: source });
-    },
-  },
+  error.value = null;
+  loading.value = true;
+
+  try {
+    const response = await api.get(url);
+    processJsonData(response.data, url);
+  } catch (err) {
+    error.value = `Error fetching remote file: ${(err as Error).message}`;
+  } finally {
+    loading.value = false;
+  }
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const processJsonData = (jsonData: any, source: string) => {
+  console.log('Received JSON data:', jsonData);
+  emit('json-loaded', { data: jsonData, origin: source });
 };
 </script>
