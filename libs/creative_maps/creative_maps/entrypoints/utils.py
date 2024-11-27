@@ -17,6 +17,7 @@
 
 import dataclasses
 import os
+from typing import Any
 
 from media_tagging import tagging_result
 
@@ -24,7 +25,16 @@ from creative_maps.inputs import google_ads
 
 
 @dataclasses.dataclass
-class FileInputRequest:
+class BaseInputRequest:
+  """Base class for input requests."""
+
+  def to_dict(self) -> dict[str, Any]:
+    """Converts dataclass isinstance to dictionary."""
+    return dataclasses.asdict(self)
+
+
+@dataclasses.dataclass
+class FileInputRequest(BaseInputRequest):
   """Specifies necessary elements for interacting with file mode."""
 
   tagging_results_path: os.PathLike[str]
@@ -44,7 +54,7 @@ class FileInputRequest:
 
 
 @dataclasses.dataclass
-class ApiInputRequest:
+class ApiInputRequest(BaseInputRequest):
   """Specifies necessary elements for interacting with API mode."""
 
   account: str
