@@ -16,13 +16,23 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import abc
+import itertools
 from collections.abc import MutableSequence, Sequence
+from typing import Any, Final, Iterable
 
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from typing_extensions import override
 
 from media_similarity import media_pair
+
+DEFAULT_CHUNK_SIZE: Final[int] = 100
+
+
+def _batched(iterable: Iterable[Any], chunk_size: int):
+  iterator = iter(iterable)
+  while chunk := tuple(itertools.islice(iterator, chunk_size)):
+    yield chunk
 
 
 class BaseSimilarityPairsRepository(abc.ABC):
@@ -34,6 +44,11 @@ class BaseSimilarityPairsRepository(abc.ABC):
       pairs = {str(pair) for pair in pairs}
     else:
       pairs = (str(pairs),)
+    if len(pairs) > DEFAULT_CHUNK_SIZE:
+      results = [
+        self._get(batch) for batch in _batched(pairs, DEFAULT_CHUNK_SIZE)
+      ]
+      return list(itertools.chain.from_iterable(results))
     return self._get(pairs)
 
   def add(
