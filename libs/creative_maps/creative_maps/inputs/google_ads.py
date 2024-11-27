@@ -179,9 +179,13 @@ class ExtraInfoFetcher:
       info.update(
         {'orientation': row.orientation, 'media_size': row.media_size}
       )
-      series = {
-        entry.get('date'): _build_info(entry, core_metrics) for entry in values
-      }
+      if values[0].get('date'):
+        series = {
+          entry.get('date'): _build_info(entry, core_metrics)
+          for entry in values
+        }
+      else:
+        series = {}
       results[media.convert_path_to_media_name(media_url)] = (
         interfaces.MediaInfo(
           **_create_node_links(media_url, media_type),
