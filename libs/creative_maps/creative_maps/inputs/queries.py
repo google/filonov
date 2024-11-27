@@ -53,8 +53,10 @@ class DisplayAssetPerformance(base_query.BaseQuery):
     ad_group_ad.ad.image_ad.image_url AS media_url,
     ad_group_ad.ad.image_ad.pixel_width / ad_group_ad.ad.image_ad.pixel_height
       AS aspect_ratio,
+    0 AS media_size,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
+    metrics.impressions AS impressions,
     metrics.conversions AS conversions,
     metrics.conversions_value AS conversions_value
   FROM ad_group_ad
@@ -83,6 +85,7 @@ class VideoPerformance(base_query.BaseQuery):
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
+    campaign.advertising_channel_type AS channel_type,
     ad_group_ad.ad.type AS ad_type,
     video.id AS media_url,
     video.title AS asset_name,
@@ -90,6 +93,7 @@ class VideoPerformance(base_query.BaseQuery):
     video.duration_millis / 1000 AS media_size,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
+    metrics.impressions AS impressions,
     metrics.conversions AS conversions,
     metrics.conversions_value AS conversions_value
   FROM video
@@ -116,11 +120,17 @@ class PmaxAssetInfo(base_query.BaseQuery):
   query_text = """
   SELECT
     '{campaign_type}' AS campaign_type,
+    campaign.advertising_channel_type AS channel_type,
     asset.id AS asset_id,
     asset.name AS asset_name,
     {media_url} AS media_url,
     {aspect_ratio} AS aspect_ratio,
     {size} AS media_size,
+    0 AS cost,
+    0 AS clicks,
+    0 AS impressions,
+    0 AS conversions,
+    0 AS conversions_value
   FROM asset_group_asset
   WHERE
     asset.type = {media_type}
