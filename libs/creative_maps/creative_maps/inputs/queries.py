@@ -27,6 +27,44 @@ SupportedMediaTypes = Literal['IMAGE', 'YOUTUBE_VIDEO']
 SupportedCampaignTypes = Literal['pmax', 'app', 'demandgen', 'video', 'display']
 
 
+class PerformanceQuery(base_query.BaseQuery):
+  """Enforces presence of certain fields in the query.
+
+  Attributes:
+    base_query_text:
+      A Gaarf query text template that contains aliases specified
+      in `required_fields`.
+
+  Raises:
+    ValueError:
+      If subclass query_text does not contain all required fields.
+  """
+
+  query_text = ''
+
+  def __init_subclass__(cls) -> None:  # noqa: D105
+    required_fields = (
+      'campaign_type',
+      'media_url',
+      'aspect_ratio',
+      'media_size',
+      'clicks',
+      'impressions',
+      'cost',
+      'conversions',
+      'conversions_value',
+    )
+    super().__init_subclass__()
+    missing_fields: list[str] = []
+    missing_fields = [
+      field for field in required_fields if field not in cls.query_text
+    ]
+    if missing_fields:
+      raise ValueError(
+        'query_text does not contain required fields: ' f'{missing_fields}'
+      )
+
+
 @dataclasses.dataclass
 class YouTubeVideoDurations(base_query.BaseQuery):
   """Fetches YouTube links."""
@@ -41,7 +79,7 @@ class YouTubeVideoDurations(base_query.BaseQuery):
 
 
 @dataclasses.dataclass
-class DisplayAssetPerformance(base_query.BaseQuery):
+class DisplayAssetPerformance(PerformanceQuery):
   """Fetches image ads performance for Display campaigns."""
 
   query_text = """
@@ -78,7 +116,7 @@ class DisplayAssetPerformance(base_query.BaseQuery):
 
 
 @dataclasses.dataclass
-class VideoPerformance(base_query.BaseQuery):
+class VideoPerformance(PerformanceQuery):
   """Fetches video ad performance for Video campaigns."""
 
   query_text = """
@@ -114,7 +152,7 @@ class VideoPerformance(base_query.BaseQuery):
 
 
 @dataclasses.dataclass
-class PmaxAssetInfo(base_query.BaseQuery):
+class PmaxAssetInfo(PerformanceQuery):
   """Fetches asset info for Performance Max campaigns."""
 
   query_text = """
@@ -158,7 +196,7 @@ class PmaxAssetInfo(base_query.BaseQuery):
 
 
 @dataclasses.dataclass
-class DemandGenImageAssetPerformance(base_query.BaseQuery):
+class DemandGenImageAssetPerformance(PerformanceQuery):
   """Fetches image asset performance for Demand Gen campaigns."""
 
   query_text = """
@@ -196,7 +234,7 @@ class DemandGenImageAssetPerformance(base_query.BaseQuery):
 
 
 @dataclasses.dataclass
-class DemandGenVideoAssetPerformance(base_query.BaseQuery):
+class DemandGenVideoAssetPerformance(PerformanceQuery):
   """Fetches video asset performance for Demand Gen campaigns."""
 
   query_text = """
@@ -204,7 +242,10 @@ class DemandGenVideoAssetPerformance(base_query.BaseQuery):
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
     campaign.advertising_channel_type AS channel_type,
-    video.id AS asset_id,
+    video.id AS media_url,
+    video.title AS asset_name,
+    0 AS aspect_ratio,
+    video.duration_millis / 1000 AS media_size,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
     metrics.impressions AS impressions,
@@ -228,7 +269,7 @@ class DemandGenVideoAssetPerformance(base_query.BaseQuery):
 
 
 @dataclasses.dataclass
-class AppAssetPerformance(base_query.BaseQuery):
+class AppAssetPerformance(PerformanceQuery):
   """Fetches asset performance for App campaigns."""
 
   query_text = """
