@@ -149,11 +149,7 @@ export default defineComponent({
     const selectedClusterId = ref(null);
     const currentNode = ref(null);
     const currentEdge = ref(null);
-    const currentCluster = ref({
-      nodeCount: 0,
-      metrics: {},
-      nodes: [],
-    });
+    const currentCluster = ref(null);
     const imageLoading = ref({
       total: 0,
       current: 0,
