@@ -65,8 +65,9 @@ def main():  # noqa: D103
   parser.add_argument(
     '--output',
     dest='output',
+    choices=['json', 'html'],
     default='json',
-    help='Result of map generation, one of "json", "file", "html"',
+    help='Result of map generation',
   )
   parser.add_argument(
     '--custom-threshold',
@@ -107,17 +108,16 @@ def main():  # noqa: D103
     )
   elif args.mode == 'api':
     request = utils.ApiInputRequest(**mode_parameters)
+    fetching_request = google_ads.FetchingRequest(
+      media_type=media_type,
+      start_date=request.start_date,
+      end_date=request.end_date,
+      campaign_type=args.campaign_type,
+    )
     extra_info = google_ads.ExtraInfoFetcher(
       accounts=request.account,
       ads_config=request.ads_config_path,
-    ).generate_extra_info(
-      google_ads.FetchingRequest(
-        media_type=media_type,
-        start_date=request.start_date,
-        end_date=request.end_date,
-        campaign_type=args.campaign_type,
-      )
-    )
+    ).generate_extra_info(fetching_request)
     media_tagger = tagger.create_tagger(request.tagger)
     media_paths = [info.media_path for info in extra_info.values()]
     tagging_results = media_tagger.tag_media(
@@ -134,12 +134,10 @@ def main():  # noqa: D103
     persist_repository=args.db_uri,
   )
   generated_map = creative_map.CreativeMap.from_clustering(
-    clustering_results, tagging_results, extra_info
+    clustering_results, tagging_results, extra_info, request.to_dict()
   )
   map_name = args.map_name
-  if args.output == 'file':
-    generated_map.save(f'{map_name}.pickle')
-  elif args.output == 'json':
+  if args.output == 'json':
     with open(f'{map_name}.json', 'w', encoding='utf-8') as f:
       json.dump(generated_map.to_json(), f)
   elif args.output == 'html':
