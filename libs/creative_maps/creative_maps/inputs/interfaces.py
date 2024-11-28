@@ -16,6 +16,12 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import dataclasses
+import operator
+from collections.abc import Mapping, Sequence
+from typing import TypeAlias
+
+MetricInfo: TypeAlias = dict[str, int | float]
+Info: TypeAlias = dict[str, int | float | str | list[str]]
 
 
 @dataclasses.dataclass
@@ -24,11 +30,44 @@ class MediaInfo:
 
   media_path: str
   media_name: str
-  info: dict[str, str | int | float]
-  series: list[dict[str, dict[str, str | int | float]]]
+  info: Info
+  series: dict[str, MetricInfo]
   media_preview: str | None = None
 
   def __post_init__(self) -> None:  # noqa: D105
     if not self.media_preview:
       self.media_preview = self.media_path
     self.info = dict(self.info)
+
+
+def build_info(data: Info, metric_names: Sequence[str]) -> Info:
+  """Extracts and aggregated data for specified metrics."""
+  return {
+    metric: _aggregate_nested_metric(data, metric) for metric in metric_names
+  }
+
+
+def _aggregate_nested_metric(
+  data: Info | Sequence[Info],
+  metric_name: str,
+) -> float | int | str | list[str]:
+  """Performance appropriate aggregation over a dictionary.
+
+  Sums numerical values and deduplicates and sorts alphabetically
+  string values.
+
+  Args:
+    data: Data to extract metrics from.
+    metric_name: Name of a metric to be extracted from supplied data.
+
+  Returns:
+    Aggregated value of a metric.
+  """
+  get_metric_getter = operator.itemgetter(metric_name)
+  if isinstance(data, Mapping):
+    return get_metric_getter(data)
+  res = list(map(get_metric_getter, data))
+  try:
+    return sum(res)
+  except TypeError:
+    return sorted(set(res))
