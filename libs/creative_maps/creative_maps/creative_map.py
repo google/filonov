@@ -19,8 +19,6 @@
 from __future__ import annotations
 
 import json
-import os
-import pickle
 from collections.abc import Sequence
 from typing import Any
 
@@ -50,13 +48,6 @@ class CreativeMap:
     self.graph = graph
     self.adaptive_threshold = adaptive_threshold
     self.fetching_request = fetching_request or {}
-
-  @classmethod
-  def load(cls, path: os.PathLike[str]) -> CreativeMap:
-    """Loads map to pickle."""
-    with open(path, 'rb') as f:
-      graph = pickle.load(f)
-    return CreativeMap(graph)
 
   @classmethod
   def from_clustering(
@@ -111,16 +102,6 @@ class CreativeMap:
       'nodes': jsonify(res.get('nodes')),
       'edges': jsonify(res.get('edges')),
     }
-
-  def save(self, path: os.PathLike[str]) -> None:
-    """Saves map to pickle."""
-    with open(path, 'wb') as f:
-      pickle.dump(self.graph, f)
-
-  def export_json(self, output: str) -> None:
-    """Exports nodes and edges to json."""
-    with open(output, 'w', encoding='utf-8') as f:
-      json.dump(self.to_json(), f)
 
   def export_html(self, output: str) -> None:
     """Exports map to html file."""

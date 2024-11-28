@@ -65,8 +65,9 @@ def main():  # noqa: D103
   parser.add_argument(
     '--output',
     dest='output',
+    choices=['json', 'html'],
     default='json',
-    help='Result of map generation, one of "json", "file", "html"',
+    help='Result of map generation',
   )
   parser.add_argument(
     '--custom-threshold',
@@ -136,9 +137,7 @@ def main():  # noqa: D103
     clustering_results, tagging_results, extra_info, request.to_dict()
   )
   map_name = args.map_name
-  if args.output == 'file':
-    generated_map.save(f'{map_name}.pickle')
-  elif args.output == 'json':
+  if args.output == 'json':
     with open(f'{map_name}.json', 'w', encoding='utf-8') as f:
       json.dump(generated_map.to_json(), f)
   elif args.output == 'html':
