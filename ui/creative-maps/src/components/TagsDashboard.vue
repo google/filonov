@@ -38,6 +38,14 @@
             </a>
           </q-td>
         </template>
+        <template #top-right>
+          <q-btn
+            icon="download"
+            color="primary"
+            label="Export"
+            @click="handleExport"
+          />
+        </template>
       </q-table>
 
       <template v-else>
@@ -69,34 +77,22 @@
         />
       </template>
     </q-card-section>
-    <!-- <template v-slot:header="props">
-      <q-tr :props="props">
-        <q-th auto-width>Tag</q-th>
-        <q-th auto-width>Frequency</q-th>
-        <q-th v-for="metric in metrics" :key="metric" auto-width>
-          {{ metric }}
-        </q-th>
-      </q-tr>
-    </template> -->
-
-    <!-- <template v-slot:body="props">
-      <q-tr :props="props">
-        <q-td auto-width>{{ props.row.tag }}</q-td>
-        <q-td auto-width>{{ props.row.freq }}</q-td>
-        <q-td v-for="metric in metrics" :key="metric" auto-width>
-          {{ formatMetricValue(props.row.metrics[metric], metric) }}
-        </q-td>
-      </q-tr>
-    </template> -->
   </q-card>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref, computed, ComputedRef, onMounted } from 'vue';
-import { TagStats } from './models';
+import { useQuasar, QTableColumn } from 'quasar';
 import _ from 'lodash';
-import { formatMetricValue, capitalize } from 'src/helpers/utils';
-import { QTableColumn } from 'quasar';
+import { TagStats } from './models';
+import {
+  formatMetricValue,
+  capitalize,
+  assertIsError,
+} from 'src/helpers/utils';
+import { exportTable } from 'src/helpers/export';
+
+const $q = useQuasar();
 
 export default defineComponent({
   name: 'TagsDashboard',
@@ -277,6 +273,24 @@ export default defineComponent({
       },
     }));
 
+    const handleExport = () => {
+      try {
+        exportTable(columns.value, tagsMetrics.value, 'tags');
+      } catch (error) {
+        console.error('Export failed:', error);
+        assertIsError(error);
+        $q.dialog({
+          title: 'Export Error',
+          message: `Failed to export table: ${error.message}`,
+          color: 'negative',
+          persistent: true,
+          ok: {
+            color: 'primary',
+            label: 'Close',
+          },
+        });
+      }
+    };
     return {
       isDynamicView,
       metrics,
@@ -289,6 +303,7 @@ export default defineComponent({
       chartSeries,
       chartOptions,
       formatMetricValue,
+      handleExport,
     };
   },
 });

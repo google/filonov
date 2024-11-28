@@ -31,7 +31,7 @@
         />
       </div>
       <div class="col-2">
-        <div class="cluster-details">
+        <div class="right-side-menu">
           <q-card>
             <q-tabs
               v-model="activeTab"
@@ -454,7 +454,7 @@ function doShowTimeSeriesDialog(metric: string) {
 }
 </script>
 <style scoped>
-.cluster-details {
+.right-side-menu {
   height: 100%;
 }
 
