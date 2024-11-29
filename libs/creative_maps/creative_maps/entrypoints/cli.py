@@ -17,6 +17,7 @@
 
 import argparse
 import json
+from typing import get_args
 
 import gaarf.cli.utils as gaarf_utils
 from media_similarity import media_similarity_service
@@ -24,7 +25,7 @@ from media_tagging import tagger, tagging_result
 
 from creative_maps import creative_map
 from creative_maps.entrypoints import utils
-from creative_maps.inputs import google_ads
+from creative_maps.inputs import google_ads, queries
 
 AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
 
@@ -46,9 +47,9 @@ def main():  # noqa: D103
   )
   parser.add_argument(
     '--campaign-type',
-    dest='campaign_type',
     choices=['all', 'app', 'demandgen', 'pmax', 'video', 'display'],
     default='app',
+    nargs='*',
     help='Type of campaign',
   )
   parser.add_argument(
@@ -93,6 +94,9 @@ def main():  # noqa: D103
   )
 
   media_type = args.media_type
+  campaign_types = args.campaign_type
+  if campaign_types == ['all']:
+    campaign_types = get_args(queries.SupportedCampaignTypes)
   if args.mode == 'file':
     request = utils.FileInputRequest(**mode_parameters)
     tagging_results = tagging_result.from_file(
@@ -112,7 +116,7 @@ def main():  # noqa: D103
       media_type=media_type,
       start_date=request.start_date,
       end_date=request.end_date,
-      campaign_type=args.campaign_type,
+      campaign_types=campaign_types,
     )
     extra_info = google_ads.ExtraInfoFetcher(
       accounts=request.account,
