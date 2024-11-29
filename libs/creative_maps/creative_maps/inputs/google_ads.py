@@ -17,10 +17,9 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import dataclasses
-import operator
 import os
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import Literal
 
 import garf_youtube_data_api
@@ -175,13 +174,13 @@ class ExtraInfoFetcher:
     results = {}
     media_type = fetching_request.media_type
     for media_url, values in performance.items():
-      info = _build_info(values, core_metrics)
+      info = interfaces.build_info(values, core_metrics)
       info.update(
         {'orientation': row.orientation, 'media_size': row.media_size}
       )
       if values[0].get('date'):
         series = {
-          entry.get('date'): _build_info(entry, core_metrics)
+          entry.get('date'): interfaces.build_info(entry, core_metrics)
           for entry in values
         }
       else:
@@ -195,19 +194,6 @@ class ExtraInfoFetcher:
         )
       )
     return results
-
-
-def _sum_nested_metric(
-  metric_name: str, data: Mapping[str, float] | Sequence[Mapping[str, float]]
-) -> float | int:
-  get_metric_getter = operator.itemgetter(metric_name)
-  if isinstance(data, Mapping):
-    return get_metric_getter(data)
-  return sum(map(get_metric_getter, data))
-
-
-def _build_info(data, core_metrics) -> dict[str, float | int]:
-  return {metric: _sum_nested_metric(metric, data) for metric in core_metrics}
 
 
 def _create_node_links(url: str, media_type: str) -> dict[str, str]:

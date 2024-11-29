@@ -63,10 +63,12 @@ class ClusteringResults:
 
   Attributes:
     clusters: Mapping between media identifier and its cluster number.
+    adaptive_threshold: Minimal value for defining similar media.
     graph: Graph object used to perform clustering.
   """
 
   clusters: dict[str, int]
+  adaptive_threshold: float
   graph: igraph.Graph
 
 
@@ -235,4 +237,6 @@ def _calculate_cluster_assignments(
   for i, cluster_media in enumerate(clusters._formatted_cluster_iterator(), 1):
     for media in cluster_media.split(', '):
       final_clusters[media] = i
-  return ClusteringResults(clusters=final_clusters, graph=graph)
+  return ClusteringResults(
+    clusters=final_clusters, adaptive_threshold=threshold.threshold, graph=graph
+  )
