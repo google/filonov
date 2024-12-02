@@ -368,7 +368,6 @@ google-api-core[grpc]==2.21.0 \
     # via
     #   google-ads
     #   google-ai-generativelanguage
-    #   google-api-core
     #   google-api-python-client
     #   google-cloud-aiplatform
     #   google-cloud-bigquery
@@ -1593,9 +1592,9 @@ python-dotenv==1.0.1 \
     --hash=sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca \
     --hash=sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a
     # via uvicorn
-python-multipart==0.0.12 \
-    --hash=sha256:045e1f98d719c1ce085ed7f7e1ef9d8ccc8c02ba02b5566d5f7521410ced58cb \
-    --hash=sha256:43dcf96cf65888a9cd3423544dd0d75ac10f7aa0c3c28a175bbcd00c9ce1aebf
+python-multipart==0.0.18 \
+    --hash=sha256:7a68db60c8bfb82e460637fa4750727b45af1d5e2ed215593f917f64694d34fe \
+    --hash=sha256:efe91480f485f6a361427a541db4796f9e1591afc0fb8e7a4ba06bfbc6708996
     # via fastapi
 pytz==2024.2 \
     --hash=sha256:2aa355083c50a0f93fa581709deac0c9ad65cca8a9e9beac660adcbd493c798a \
@@ -1946,7 +1945,6 @@ uvicorn[standard]==0.31.1 \
     # via
     #   fastapi
     #   fastapi-cli
-    #   uvicorn
 uvloop==0.20.0 \
     --hash=sha256:265a99a2ff41a0fd56c19c3838b29bf54d1d177964c300dad388b27e84fd7847 \
     --hash=sha256:2beee18efd33fa6fdb0976e18475a4042cd31c7433c866e8a09ab604c7c22ff2 \
