@@ -19,15 +19,15 @@ import argparse
 import json
 from typing import get_args
 
-import gaarf.cli.utils as gaarf_utils
-from media_similarity import media_similarity_service
-from media_tagging import tagger, tagging_result
+import media_similarity
+import media_tagging
+from garf_executors.entrypoints import utils as gaarf_utils
 
 from creative_maps import creative_map
 from creative_maps.entrypoints import utils
 from creative_maps.inputs import google_ads, queries, youtube
 
-AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
+AVAILABLE_TAGGERS = list(media_tagging.TAGGERS.keys())
 
 
 def main():  # noqa: D103
@@ -98,6 +98,11 @@ def main():  # noqa: D103
     kwargs
   )
   source_parameters = extra_parameters.get(args.source)
+  tagging_service = media_tagging.MediaTaggingService(
+    tagging_results_repository=(
+      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
+    )
+  )
 
   media_type = args.media_type
   campaign_types = args.campaign_type
@@ -109,8 +114,8 @@ def main():  # noqa: D103
       channel=request.channel
     ).generate_extra_info()
     media_paths = [info.media_path for info in extra_info.values()]
-    media_tagger = tagger.create_tagger(request.tagger)
-    tagging_results = media_tagger.tag_media(
+    tagging_results = tagging_service.tag_media(
+      tagger_type=request.tagger,
       media_paths=media_paths,
       tagging_parameters=extra_parameters.get('tagger'),
       parallel_threshold=args.parallel_threshold,
@@ -118,7 +123,7 @@ def main():  # noqa: D103
     )
   elif args.source == 'file':
     request = utils.FileInputRequest(**source_parameters)
-    tagging_results = tagging_result.from_file(
+    tagging_results = media_tagging.tagging_result.from_file(
       path=request.tagging_results_path,
       file_column_input=request.tagging_columns,
       media_type=media_type.lower(),
@@ -140,24 +145,23 @@ def main():  # noqa: D103
       accounts=request.account,
       ads_config=request.ads_config_path,
     ).generate_extra_info(fetching_request, args.size_base)
-    media_tagger = tagger.create_tagger(request.tagger)
     media_paths = [info.media_path for info in extra_info.values()]
-    tagging_results = media_tagger.tag_media(
+    tagging_results = tagging_service.tag_media(
+      tagger_type=request.tagger,
       media_paths=media_paths,
       tagging_parameters=extra_parameters.get('tagger'),
       parallel_threshold=args.parallel_threshold,
-      persist_repository=args.db_uri,
     )
-  clustering_results = (
-    media_similarity_service.MediaSimilarityService.from_connection_string(
+  clustering_results = media_similarity.MediaSimilarityService(
+    media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
       args.db_uri
-    ).cluster_media(
-      tagging_results,
-      normalize=args.normalize,
-      custom_threshold=args.custom_threshold,
-      parallel=args.parallel_threshold > 1,
-      parallel_threshold=args.parallel_threshold,
     )
+  ).cluster_media(
+    tagging_results,
+    normalize=args.normalize,
+    custom_threshold=args.custom_threshold,
+    parallel=args.parallel_threshold > 1,
+    parallel_threshold=args.parallel_threshold,
   )
   generated_map = creative_map.CreativeMap.from_clustering(
     clustering_results, tagging_results, extra_info, request.to_dict()
