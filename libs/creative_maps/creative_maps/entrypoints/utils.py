@@ -54,11 +54,19 @@ class FileInputRequest(BaseInputRequest):
 
 
 @dataclasses.dataclass
-class ApiInputRequest(BaseInputRequest):
-  """Specifies necessary elements for interacting with API mode."""
+class GoogleAdsApiInputRequest(BaseInputRequest):
+  """Specifies necessary elements for interacting with Google Ads API."""
 
   account: str
   start_date: str
   end_date: str
   tagger: str
   ads_config_path: str | os.PathLike[str]
+
+
+@dataclasses.dataclass
+class YouTubeChannelInputRequest(BaseInputRequest):
+  """Specifies necessary elements for interacting with YouTube Data API."""
+
+  channel: str
+  tagger: str = 'gemini-youtube-video'
