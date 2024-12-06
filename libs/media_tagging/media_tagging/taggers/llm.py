@@ -312,6 +312,12 @@ class GeminiYouTubeVideoTagger(LLMTagger):
     return prompt + formatting_instructions
 
   @override
+  @tenacity.retry(
+    stop=tenacity.stop_after_attempt(3),
+    wait=tenacity.wait_exponential(),
+    retry=tenacity.retry_if_exception_type(json.decoder.JSONDecodeError),
+    reraise=True,
+  )
   def tag(
     self,
     medium: media.Medium,
@@ -383,6 +389,12 @@ class GeminiVideoTagger(LLMTagger):
     return google_genai.GenerativeModel(model_name=self.model_name)
 
   @override
+  @tenacity.retry(
+    stop=tenacity.stop_after_attempt(3),
+    wait=tenacity.wait_exponential(),
+    retry=tenacity.retry_if_exception_type(json.decoder.JSONDecodeError),
+    reraise=True,
+  )
   def tag(
     self,
     medium: media.Medium,
