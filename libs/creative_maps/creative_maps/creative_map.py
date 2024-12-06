@@ -18,13 +18,11 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from typing import Any, TypedDict
 
 from media_similarity import media_similarity_service
 from media_tagging import tagging_result
-from pyvis.network import Network
 
 from creative_maps.inputs import interfaces
 
@@ -92,23 +90,14 @@ class CreativeMap:
     fetching_request: dict[str, Any] | None = None,
   ) -> CreativeMap:
     """Builds network visualization with injected extra_info."""
-    g = Network()
-    g.from_nx(clustering_results.graph.to_networkx())
-    if not extra_info:
-      graph_json = json.loads(g.to_json())
-      return CreativeMap(
-        adaptive_threshold=clustering_results.adaptive_threshold,
-        fetching_request=fetching_request,
-        nodes=_jsonify(graph_json.get('nodes')),
-        edges=_jsonify(graph_json.get('edges')),
-      )
     tagging_mapping = {
       result.identifier: result.content for result in tagging_results
     }
-    nodes_info_metrics: list[NodeInfo] = []
-    for node in g.nodes:
+    for node in clustering_results.graph.nodes:
       node_name = node.get('name', '')
       if node_extra_info := extra_info.get(node_name):
+        node['id'] = node_name
+        node['size'] = 10
         node['type'] = 'image'
         node['image'] = node_extra_info.media_preview
         node['media_path'] = node_extra_info.media_path
@@ -117,22 +106,27 @@ class CreativeMap:
         node['info'] = node_extra_info.info
         node['series'] = node_extra_info.series
         node['tags'] = [
-          {'tag': tag.name, 'score': tag.score}
+          {'tag': tag.name.replace("'", ''), 'score': tag.score}
           for tag in tagging_mapping.get(node_name, [])
         ]
-        if not nodes_info_metrics:
-          nodes_info_metrics = list(node['info'].keys())
     clusters = {
       cluster_id: f'Cluster: {cluster_id}'
       for cluster_id in set(clustering_results.clusters.values())
     }
-    graph_json = json.loads(g.to_json())
+    edges = [
+      {
+        'from': _from,
+        'to': to,
+        'similarity': similarity,
+      }
+      for _from, to, similarity in clustering_results.graph.edges
+    ]
     return CreativeMap(
       adaptive_threshold=clustering_results.adaptive_threshold,
       fetching_request=fetching_request,
-      nodes=_jsonify(graph_json.get('nodes')),
-      edges=_jsonify(graph_json.get('edges')),
-      clusters=dict(clusters),
+      nodes=clustering_results.graph.nodes,
+      edges=edges,
+      clusters=clusters,
     )
 
   def to_json(self) -> CreativeMapJson:
@@ -149,7 +143,3 @@ class CreativeMap:
       'nodes': self.nodes,
       'edges': self.edges,
     }
-
-
-def _jsonify(value: str):
-  return json.loads(value.replace('"', '').replace("'", '"'))
