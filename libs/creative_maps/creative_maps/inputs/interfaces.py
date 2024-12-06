@@ -71,3 +71,22 @@ def _aggregate_nested_metric(
     return sum(res)
   except TypeError:
     return sorted(set(res))
+
+
+def create_node_links(url: str, media_type: str) -> dict[str, str]:
+  return {
+    'media_path': _to_youtube_video_link(url)
+    if media_type.lower() == 'youtube_video'
+    else url,
+    'media_preview': _to_youtube_preview_link(url)
+    if media_type.lower() == 'youtube_video'
+    else url,
+  }
+
+
+def _to_youtube_preview_link(video_id: str) -> str:
+  return f'https://img.youtube.com/vi/{video_id}/0.jpg'
+
+
+def _to_youtube_video_link(video_id: str) -> str:
+  return f'https://www.youtube.com/watch?v={video_id}'

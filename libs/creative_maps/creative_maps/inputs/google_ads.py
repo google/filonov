@@ -90,7 +90,7 @@ def from_file(
       for metric in metrics:
         info[metric] += element.get(metric)
     results[row[media_identifier]] = interfaces.MediaInfo(
-      **_create_node_links(row[media_identifier], media_type),
+      **interfaces.create_node_links(row[media_identifier], media_type),
       media_name=row[media_name],
       info=info,
       series={},
@@ -320,29 +320,10 @@ class ExtraInfoFetcher:
         series = {}
       results[media.convert_path_to_media_name(media_url)] = (
         interfaces.MediaInfo(
-          **_create_node_links(media_url, media_type),
+          **interfaces.create_node_links(media_url, media_type),
           media_name=values[0].get('asset_id'),
           info=info,
           series=series,
         )
       )
     return results
-
-
-def _create_node_links(url: str, media_type: str) -> dict[str, str]:
-  return {
-    'media_path': _to_youtube_video_link(url)
-    if media_type.lower() == 'youtube_video'
-    else url,
-    'media_preview': _to_youtube_preview_link(url)
-    if media_type.lower() == 'youtube_video'
-    else url,
-  }
-
-
-def _to_youtube_preview_link(video_id: str) -> str:
-  return f'https://img.youtube.com/vi/{video_id}/0.jpg'
-
-
-def _to_youtube_video_link(video_id: str) -> str:
-  return f'https://www.youtube.com/watch?v={video_id}'
