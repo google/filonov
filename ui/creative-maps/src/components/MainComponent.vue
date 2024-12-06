@@ -17,6 +17,7 @@
         </template>
         <span v-else class="text-grey">No data loaded</span>
       </div>
+      <q-btn v-if="vertices.length" flat @click="unloadData">Unload</q-btn>
     </div>
     <div class="row">
       <div class="col-10">
@@ -325,6 +326,13 @@ async function onDataLoaded(args: { data: GraphData; origin: string }) {
   ).sort();
   showLoadDataDialog.value = false;
   dataSourceDescription.value = args.origin || 'Custom data';
+}
+
+function unloadData() {
+  vertices.value = [];
+  edges.value = [];
+  clusterIds.value = [];
+  dataSourceDescription.value = '';
 }
 
 function collectTags(nodes: Node[]): TagStats[] {
