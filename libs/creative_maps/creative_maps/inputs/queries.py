@@ -41,23 +41,24 @@ class PerformanceQuery(base_query.BaseQuery):
   """
 
   query_text = ''
+  required_fields = (
+    'date',
+    'campaign_type',
+    'media_url',
+    'aspect_ratio',
+    'media_size',
+    'clicks',
+    'impressions',
+    'cost',
+    'conversions',
+    'conversions_value',
+  )
 
   def __init_subclass__(cls) -> None:  # noqa: D105
-    required_fields = (
-      'campaign_type',
-      'media_url',
-      'aspect_ratio',
-      'media_size',
-      'clicks',
-      'impressions',
-      'cost',
-      'conversions',
-      'conversions_value',
-    )
     super().__init_subclass__()
     missing_fields: list[str] = []
     missing_fields = [
-      field for field in required_fields if field not in cls.query_text
+      field for field in cls.required_fields if field not in cls.query_text
     ]
     if missing_fields:
       raise ValueError(
@@ -158,6 +159,7 @@ class PmaxAssetInfo(PerformanceQuery):
   query_text = """
   SELECT
     '{campaign_type}' AS campaign_type,
+    '' AS date,
     campaign.advertising_channel_type AS channel_type,
     asset.id AS asset_id,
     asset.name AS asset_name,

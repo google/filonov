@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, TypedDict
 
 from media_similarity import media_similarity_service
 from media_tagging import tagging_result
@@ -29,25 +29,59 @@ from pyvis.network import Network
 from creative_maps.inputs import interfaces
 
 
+class GraphInfo(TypedDict):
+  adaptive_threshold: float
+  period: dict[str, str]
+
+
+class ClusterInfo(TypedDict):
+  name: str
+
+
+class NodeInfo(TypedDict):
+  name: str
+  label: str
+  type: str
+  image: str
+  media_path: str
+  cluster: int
+  info: interfaces.Info
+  series: dict[str, interfaces.MetricInfo]
+  tags: list[dict[str, float]]
+
+
+class CreativeMapJson(TypedDict):
+  graph: GraphInfo
+  clusters: dict[int, ClusterInfo]
+  nodes: list[NodeInfo]
+  edges: list[dict[str, int | float]]
+
+
 class CreativeMap:
   """Defines CreativeMap based on a graph.
 
   Attributes:
-    graph: Network graph containing data for building a map.
     adaptive_threshold: Minimal value for defining similar media.
     fetching_request: Additional parameter used to generate a map.
+    nodes: Information on each node of the map.
+    edges: Information on each edge of the map.
+    clusters: Aggregated information on each cluster of the map.
   """
 
   def __init__(
     self,
-    graph: Network,
     adaptive_threshold: float,
     fetching_request: dict[str, Any] | None = None,
+    nodes: list[NodeInfo] | None = None,
+    edges: list[dict[str, int | float]] | None = None,
+    clusters: dict[int, ClusterInfo] | None = None,
   ) -> None:
     """Initializes CreativeMap."""
-    self.graph = graph
     self.adaptive_threshold = adaptive_threshold
     self.fetching_request = fetching_request or {}
+    self.nodes: list[NodeInfo] = nodes or []
+    self.edges: list[dict[str, int | float]] = edges or []
+    self.clusters: dict[int, ClusterInfo] = clusters or {}
 
   @classmethod
   def from_clustering(
@@ -58,17 +92,23 @@ class CreativeMap:
     fetching_request: dict[str, Any] | None = None,
   ) -> CreativeMap:
     """Builds network visualization with injected extra_info."""
+    g = Network()
+    g.from_nx(clustering_results.graph.to_networkx())
     if not extra_info:
-      extra_info = {}
+      graph_json = json.loads(g.to_json())
+      return CreativeMap(
+        adaptive_threshold=clustering_results.adaptive_threshold,
+        fetching_request=fetching_request,
+        nodes=_jsonify(graph_json.get('nodes')),
+        edges=_jsonify(graph_json.get('edges')),
+      )
     tagging_mapping = {
       result.identifier: result.content for result in tagging_results
     }
-    g = Network()
-    g.from_nx(clustering_results.graph.to_networkx())
+    nodes_info_metrics: list[NodeInfo] = []
     for node in g.nodes:
       node_name = node.get('name', '')
       if node_extra_info := extra_info.get(node_name):
-        node['shape'] = 'image'
         node['type'] = 'image'
         node['image'] = node_extra_info.media_preview
         node['media_path'] = node_extra_info.media_path
@@ -78,31 +118,38 @@ class CreativeMap:
         node['series'] = node_extra_info.series
         node['tags'] = [
           {'tag': tag.name, 'score': tag.score}
-          for tag in tagging_mapping.get(node_name)
+          for tag in tagging_mapping.get(node_name, [])
         ]
+        if not nodes_info_metrics:
+          nodes_info_metrics = list(node['info'].keys())
+    clusters = {
+      cluster_id: f'Cluster: {cluster_id}'
+      for cluster_id in set(clustering_results.clusters.values())
+    }
+    graph_json = json.loads(g.to_json())
     return CreativeMap(
-      g, clustering_results.adaptive_threshold, fetching_request
+      adaptive_threshold=clustering_results.adaptive_threshold,
+      fetching_request=fetching_request,
+      nodes=_jsonify(graph_json.get('nodes')),
+      edges=_jsonify(graph_json.get('edges')),
+      clusters=dict(clusters),
     )
 
-  def to_json(self) -> dict[str, list[dict[str, str]]]:
+  def to_json(self) -> CreativeMapJson:
     """Extracts nodes from Network."""
-
-    def jsonify(value):
-      return json.loads(value.replace('"', '').replace("'", '"'))
-
-    res = json.loads(self.graph.to_json())
     return {
       'graph': {
         'adaptive_threshold': self.adaptive_threshold,
         'period': {
-          'start_date': self.fetching_request.get('start_date', 'Unknown'),
-          'end_date': self.fetching_request.get('end_date', 'Unknown'),
+          'start_date': self.fetching_request.get('start_date', 'null'),
+          'end_date': self.fetching_request.get('end_date', 'null'),
         },
       },
-      'nodes': jsonify(res.get('nodes')),
-      'edges': jsonify(res.get('edges')),
+      'clusters': self.clusters,
+      'nodes': self.nodes,
+      'edges': self.edges,
     }
 
-  def export_html(self, output: str) -> None:
-    """Exports map to html file."""
-    self.graph.save_graph(output)
+
+def _jsonify(value: str):
+  return json.loads(value.replace('"', '').replace("'", '"'))
