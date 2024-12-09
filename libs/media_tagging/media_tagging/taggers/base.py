@@ -43,6 +43,9 @@ class TaggingOptions:
     if self.tags and not isinstance(self.tags, MutableSequence):
       self.tags = [tag.strip() for tag in self.tags.split(',')]
 
+  def __bool__(self) -> bool:  # noqa: D105
+    return bool(self.n_tags or self.tags)
+
 
 class BaseTagger(abc.ABC):
   """Interface to inherit all taggers from."""

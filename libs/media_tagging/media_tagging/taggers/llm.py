@@ -195,10 +195,11 @@ class LLMTagger(base.BaseTagger):
   def tag(
     self,
     medium: media.Medium,
-    tagging_options: base.TaggingOptions = base.TaggingOptions(
-      n_tags=_MAX_NUMBER_LLM_TAGS
-    ),
+    tagging_options: base.TaggingOptions = base.TaggingOptions(),
   ) -> tagging_result.TaggingResult:
+    if not tagging_options:
+      tagging_options = base.TaggingOptions(n_tags=_MAX_NUMBER_LLM_TAGS)
+
     logging.debug('Tagging image "%s" with LLMTagger', medium.name)
     image_data = base64.b64encode(medium.content).decode('utf-8')
     response = self.chain.invoke(
