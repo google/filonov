@@ -42,6 +42,8 @@ class TaggingOptions:
   def __post_init__(self):  # noqa: D105
     if self.tags and not isinstance(self.tags, MutableSequence):
       self.tags = [tag.strip() for tag in self.tags.split(',')]
+    if self.n_tags:
+      self.n_tags = int(self.n_tags)
 
   def __bool__(self) -> bool:  # noqa: D105
     return bool(self.n_tags or self.tags)
