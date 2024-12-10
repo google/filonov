@@ -11,19 +11,31 @@ run_file() {
     --file.performance_results_path=$FILONOV_PERFORMANCE_RESULTS \
     --parallel-threshold 10
 }
-run_api() {
-  echo "Running in api mode"
-  filonov --mode api --media-type IMAGE \
+run_googleads() {
+  echo "Running in googleads mode"
+  filonov --mode googleads --media-type IMAGE \
+    --campaign-type pmax \
     --db-uri=$FILONOV_DB_URI \
     --api.account=$FILONOV_ACCOUNT_ID \
     --api.start-date=$FILONOV_START_DATE --api.end-date=$FILONOV_END_DATE \
     --api.tagger=vision-api \
     --api.ads-config_path=$FILONOV_ADS_CONFIG \
-    --parallel-threshold 10
+    --parallel-threshold 10 \
+    --no-normalize
+}
+run_youtube() {
+  echo "Running in youtube mode"
+  filonov --mode youtube --media-type YOUTUBE_VIDEO \
+    --db-uri=$FILONOV_DB_URI \
+    --youtube.channel=$FILONOV_YOUTUBE_CHANNEL_ID \
+    --parallel-threshold 10 \
+    --no-normalize
 }
 mode=${1:api}
 if [[ $mode == 'file' ]]; then
   run_file
+elif [[ $mode == 'youtube' ]]; then
+  run_youtube
 else
-  run_api
+  run_googleads
 fi

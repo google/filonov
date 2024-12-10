@@ -27,7 +27,6 @@ from typing import Final
 import igraph
 import pandas as pd
 from media_tagging.taggers import base as base_tagger
-from networkx.readwrite import json_graph
 
 from media_similarity import (
   adaptive_threshold,
@@ -39,22 +38,16 @@ from media_similarity import (
 BATCH_SIZE: Final[int] = 1_000
 
 
-def _to_json(self):
-  """Converts graph to JSON."""
-  graph = json_graph.node_link_data(self.to_networkx(), edges='edges')
-  return {
-    'nodes': graph.get('nodes'),
-    'edges': graph.get('links', []),
-  }
-
-
-igraph.Graph.to_json = _to_json
-
-
 def _batched(iterable: Iterable[media_pair.MediaPair], chunk_size: int):
   iterator = iter(iterable)
   while chunk := tuple(itertools.islice(iterator, chunk_size)):
     yield chunk
+
+
+@dataclasses.dataclass
+class GraphInfo:
+  nodes: list[dict[str, str]]
+  edges: set[tuple[str, str, float]]
 
 
 @dataclasses.dataclass
@@ -64,12 +57,12 @@ class ClusteringResults:
   Attributes:
     clusters: Mapping between media identifier and its cluster number.
     adaptive_threshold: Minimal value for defining similar media.
-    graph: Graph object used to perform clustering.
+    graph: Mapping with nodes and edges.
   """
 
   clusters: dict[str, int]
   adaptive_threshold: float
-  graph: igraph.Graph
+  graph: GraphInfo
 
 
 def _create_similarity_pairs(
@@ -224,6 +217,7 @@ def _calculate_cluster_assignments(
     if pair.similarity_score > threshold.threshold:
       similar_media.add(pair.to_tuple())
 
+  nodes = [{'name': node} for node in media]
   graph = igraph.Graph.DataFrame(
     edges=pd.DataFrame(
       similar_media, columns=['media_1', 'media_2', 'similarity']
@@ -238,5 +232,7 @@ def _calculate_cluster_assignments(
     for media in cluster_media.split(', '):
       final_clusters[media] = i
   return ClusteringResults(
-    clusters=final_clusters, adaptive_threshold=threshold.threshold, graph=graph
+    clusters=final_clusters,
+    adaptive_threshold=threshold.threshold,
+    graph=GraphInfo(nodes=nodes, edges=similar_media),
   )
