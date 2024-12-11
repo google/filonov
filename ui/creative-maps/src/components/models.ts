@@ -52,8 +52,8 @@ export interface Node {
    * Url to creative: for videos - youtube.com/watch, for images the same as image.
    */
   media_path: string;
-  //color?: string;
-  size?: number;
+  color?: string;
+  size: number;
   /**
    * Additional metrics (from Ads or other sources) of the current asset.
    * Examples: cost, impressions, clicks, duration
@@ -85,6 +85,10 @@ export interface Edge {
    * Similarity score of the connected nodes.
    */
   similarity: number;
+  /**
+   * Edge width.
+   */
+  width?: number;
 }
 
 /**
@@ -105,7 +109,8 @@ export interface GraphData {
  * Currently selected cluster of nodes.
  */
 export interface ClusterInfo {
-  nodeCount: number;
+  id: string;
+  description?: string;
   metrics: MetricsObject;
   nodes: Node[];
 }
@@ -124,6 +129,16 @@ export interface TagStats {
  * with id and info object with metric values.
  */
 export interface AbstractNode {
-  info?: MetricsObject;
   id: number | string;
+  info?: MetricsObject;
+}
+
+/**
+ * Model for histograms.
+ */
+export interface HistogramData {
+  x0: number;
+  x1: number;
+  count: number;
+  nodes: AbstractNode[];
 }

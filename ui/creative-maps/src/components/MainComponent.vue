@@ -23,8 +23,9 @@
       <div class="col-10">
         <d3-graph
           ref="d3GraphRef"
-          :vertices="vertices"
+          :nodes="vertices"
           :edges="edges"
+          :clusters="clusters"
           :debug="true"
           class="graph-container"
           @cluster-selected="onClusterSelected"
@@ -160,7 +161,7 @@
                           href="#"
                           class="text-primary"
                           style="text-decoration: none"
-                          @click.prevent="highlightNodesByTag(tagInfo)"
+                          @click.prevent="selectNodesByTag(tagInfo)"
                         >
                           {{ tagInfo.tag }}
                         </a>
@@ -334,6 +335,9 @@ function unloadData() {
   dataSourceDescription.value = '';
 }
 
+/**
+ * Collect tags from nodes.
+ */
 function collectTags(nodes: Node[]): TagStats[] {
   const tagsMap = new Map<string, { freq: number; nodes: Node[] }>();
 
@@ -357,18 +361,21 @@ function collectTags(nodes: Node[]): TagStats[] {
     .sort((a, b) => b.freq - a.freq); // Sort by frequency descending
 }
 
-function highlightNodesByTag(tagStat: TagStats) {
+function selectNodesByTag(tagStat: TagStats) {
   // Get nodes that have this tag
   const nodesWithTag = tagStat.nodes;
 
   // Use the D3Graph method to highlight these nodes
-  d3GraphRef.value?.setCurrentCluster(nodesWithTag);
+  d3GraphRef.value?.selectNodes(nodesWithTag, 'Nodes with tag ' + tagStat.tag);
 }
 
+/**
+ * Handle of click on a tag in Tags Dashboard.
+ * @param tagStat
+ */
 function onTagDashboardSelect(tagStat: TagStats) {
   showTagsDashboardDialog.value = false;
-  console.log('onTagDashboardSelect ' + tagStat);
-  d3GraphRef.value?.setCurrentCluster(tagStat.nodes);
+  d3GraphRef.value?.selectNodes(tagStat.nodes, 'Nodes with tag ' + tagStat.tag);
 }
 
 function onNodeSelected(node: Node | null) {
@@ -385,33 +392,21 @@ function onClusterSelected(cluster: ClusterInfo | null) {
 }
 function selectCluster(clusterId: string) {
   showClusterComparison.value = false;
-  d3GraphRef.value?.onClusterSelect(clusterId);
+  d3GraphRef.value?.setCurrentCluster(clusterId);
 }
 
 function getHistogramData(metric: string) {
   if (selectedCluster.value) {
     return createHistogramData(selectedCluster.value.nodes, metric);
   }
+  return [];
 }
 
-const clusterSizes = computed(() => {
-  const sizes = new Map<string, number>();
-  vertices.value.forEach((node) => {
-    if (node.cluster) {
-      sizes.set(node.cluster, (sizes.get(node.cluster) || 0) + 1);
-    }
-  });
-  return sizes;
-});
-
 const getClusterSizesHistogramData = computed(() => {
-  // Create nodes-like array where each entry represents a cluster with its size as a metric
-  const clusterSizeNodes = Array.from(clusterSizes.value.entries()).map(
-    ([clusterId, size]) => ({
-      info: { size }, // Treat size as a metric
-      id: clusterId,
-    }),
-  );
+  const clusterSizeNodes = clusters.value.map((cluster) => ({
+    info: { size: cluster.nodes.length },
+    id: cluster.id.toString(),
+  }));
 
   return createHistogramData(clusterSizeNodes, 'size');
 });
