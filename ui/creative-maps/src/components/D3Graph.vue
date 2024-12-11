@@ -217,11 +217,6 @@ function highlightNode(event: Event, d: Node) {
   console.log(currentCluster.value);
   if (!currentCluster.value) {
     // if there's not selected cluster, highlight the cluster that the node belongs to
-    // const connectedNodes = findConnectedNodes(
-    //   d,
-    //   nodes,
-    //   links,
-    // );
     const connectedNodes = getCluster(d.cluster)?.nodes || [];
     //console.log('highlightNodes', connectedNodes);
     highlightNodes(connectedNodes);

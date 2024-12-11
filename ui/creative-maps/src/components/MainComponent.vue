@@ -10,20 +10,20 @@
         <q-tooltip>Load graph data from file or URL</q-tooltip>
       </q-btn>
       <div class="col">
-        <template v-if="vertices.length">
+        <template v-if="nodes.length">
           {{ dataSourceDescription }}
-          <q-badge class="q-ml-sm"> {{ vertices.length }} nodes </q-badge>
+          <q-badge class="q-ml-sm"> {{ nodes.length }} nodes </q-badge>
           <q-badge class="q-ml-sm"> {{ edges.length }} edges </q-badge>
         </template>
         <span v-else class="text-grey">No data loaded</span>
       </div>
-      <q-btn v-if="vertices.length" flat @click="unloadData">Unload</q-btn>
+      <q-btn v-if="nodes.length" flat @click="unloadData">Unload</q-btn>
     </div>
     <div class="row">
       <div class="col-10">
         <d3-graph
           ref="d3GraphRef"
-          :nodes="vertices"
+          :nodes="nodes"
           :edges="edges"
           :clusters="clusters"
           :debug="true"
@@ -41,9 +41,9 @@
               align="justify"
               narrow-indicator
             >
-              <q-tab name="info" label="Info" v-if="vertices" />
+              <q-tab v-if="nodes" name="info" label="Info" />
               <q-tab v-if="selectedCluster" name="metrics" label="Metrics" />
-              <q-tab name="tags" label="Tags" v-if="vertices" />
+              <q-tab v-if="nodes" name="tags" label="Tags" />
               <q-tab v-if="selectedNode" name="node" label="Node" />
             </q-tabs>
 
@@ -65,7 +65,7 @@
                   <q-card class="col">
                     <q-card-section>
                       <div class="text-subtitle2">Total Nodes</div>
-                      <div class="text-h4">{{ vertices.length }}</div>
+                      <div class="text-h4">{{ nodes.length }}</div>
                     </q-card-section>
                   </q-card>
                 </div>
@@ -82,13 +82,32 @@
                 </q-card>
 
                 <!-- Compare clusters button -->
-                <q-btn
-                  color="primary"
-                  label="Compare Clusters"
-                  icon="compare"
-                  class="q-mt-md"
-                  @click="showClusterComparison = true"
-                />
+                <div class="row q-gutter-md ">
+                  <div class="col">
+                    <q-btn
+                      v-if="clusters.length"
+                      color="primary"
+                      label="Compare Clusters"
+                      icon="compare"
+                      class="q-mt-md"
+                      @click="showClusterComparison = true"
+                      style="width: 100%;"
+                    />
+                  </div>
+                </div>
+                <div class="row q-gutter-md ">
+                  <div class="col">
+                    <q-btn
+                      v-if="nodes.length"
+                      color="primary"
+                      label="Compare Nodes"
+                      icon="compare_arrows"
+                      class="q-mt-md"
+                      @click="showNodeComparison = true"
+                      style="width: 100%;"
+                    />
+                  </div>
+                </div>
               </q-tab-panel>
 
               <q-tab-panel v-if="selectedCluster" name="metrics">
@@ -102,10 +121,14 @@
                       <q-item-label v-if="selectedCluster.id" caption>{{
                         selectedCluster.id
                       }}</q-item-label>
-                      <q-item-label v-if="selectedCluster.description">Selected nodes</q-item-label>
-                      <q-item-label v-if="selectedCluster.description" caption>{{
-                        selectedCluster.description
-                      }}</q-item-label>
+                      <q-item-label v-if="selectedCluster.description"
+                        >Selected nodes</q-item-label
+                      >
+                      <q-item-label
+                        v-if="selectedCluster.description"
+                        caption
+                        >{{ selectedCluster.description }}</q-item-label
+                      >
                       <q-item-label>Nodes</q-item-label>
                       <q-item-label caption>{{
                         selectedCluster.nodes.length
@@ -221,7 +244,7 @@
               transition-show="slide-up"
               transition-hide="slide-down"
             >
-              <tags-dashboard
+              <TagsDashboard
                 :tags-stats="sortedTags"
                 @select-tag="onTagDashboardSelect"
               />
@@ -237,6 +260,18 @@
                 :clusters="clusters"
                 @select-cluster="selectCluster"
               ></ClusterComparison>
+            </q-dialog>
+            <!-- Node Comparison dialog -->
+            <q-dialog
+              v-model="showNodeComparison"
+              maximized
+              transition-show="slide-up"
+              transition-hide="slide-down"
+            >
+              <NodeComparison
+                :nodes="nodes"
+                @select-node="selectNode"
+              ></NodeComparison>
             </q-dialog>
           </q-card>
         </div>
@@ -269,6 +304,7 @@ import TimeSeriesChart from './TimeSeriesChart.vue';
 import TagsDashboard from './TagsDashboard.vue';
 import NodeCard from './NodeCard.vue';
 import ClusterComparison from './ClusterComparison.vue';
+import NodeComparison from './NodeComparison.vue';
 import {
   Node,
   Edge,
@@ -284,13 +320,14 @@ import { initClusters } from 'src/helpers/graph';
 const d3GraphRef = ref<InstanceType<typeof D3Graph> | null>(null);
 const showLoadDataDialog = ref(false);
 const dataSourceDescription = ref('');
-const vertices = ref([] as Node[]);
+const nodes = ref([] as Node[]);
 const edges = ref([] as Edge[]);
 const clusters = ref<ClusterInfo[]>([]);
 const selectedCluster = ref(null as ClusterInfo | null);
 const selectedNode = ref(null as Node | null);
 const activeTab = ref('info');
 const showClusterComparison = ref(false);
+const showNodeComparison = ref(false);
 const showTimeSeriesDialog = ref(false);
 const showTagsDashboardDialog = ref(false);
 const selectedMetric = ref('');
@@ -298,7 +335,7 @@ const selectedMetric = ref('');
 const sortedTags = computed(() => {
   if (!selectedCluster.value) {
     // Global scope - collect tags from all vertices
-    return collectTags(vertices.value);
+    return collectTags(nodes.value);
   }
   return collectTags(selectedCluster.value.nodes);
 });
@@ -334,12 +371,12 @@ async function onDataLoaded(args: { data: GraphData; origin: string }) {
   dataSourceDescription.value = args.origin || 'Custom data';
   const jsonData: GraphData = args.data;
   clusters.value = initClusters(jsonData.nodes, jsonData.edges);
-  vertices.value = jsonData.nodes;
+  nodes.value = jsonData.nodes;
   edges.value = jsonData.edges;
 }
 
 function unloadData() {
-  vertices.value = [];
+  nodes.value = [];
   edges.value = [];
   clusters.value = [];
   dataSourceDescription.value = '';
@@ -400,9 +437,18 @@ function onClusterSelected(cluster: ClusterInfo | null) {
     }
   }
 }
+
 function selectCluster(clusterId: string) {
   showClusterComparison.value = false;
   d3GraphRef.value?.setCurrentCluster(clusterId);
+}
+
+function selectNode(nodeId: number) {
+  showNodeComparison.value = false;
+  const node = nodes.value.find((n) => n.id === nodeId);
+  if (node) {
+    d3GraphRef.value?.selectNodes([node]);
+  }
 }
 
 function getHistogramData(metric: string) {
