@@ -28,7 +28,7 @@
       :height="height"
     />
     <div class="row q-gutter-md q-mt-lg">
-      <node-card
+      <NodeCard
         v-for="node in selectedNodes"
         :key="node.id"
         :node="getNode(node.id)"

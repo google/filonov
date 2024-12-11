@@ -1,10 +1,22 @@
 <template>
   <q-card>
-    <q-img :src="node.image" class="node-preview" @click="showCreative = true" style="cursor: pointer;"/>
+    <q-img
+      :src="node.image"
+      class="node-preview"
+      @click="showCreative = true"
+      style="cursor: pointer"
+    />
 
     <q-card-section>
       <div class="absolute-top-right">
-        <q-btn v-if="!noClose" flat round dense icon="close" @click="$emit('remove')" />
+        <q-btn
+          v-if="!noClose"
+          flat
+          round
+          dense
+          icon="close"
+          @click="$emit('remove')"
+        />
       </div>
       <div class="text-h6">{{ node.label }}</div>
       <div class="text-caption">ID: {{ node.name }}</div>
@@ -61,49 +73,38 @@
   </q-card>
 </template>
 
-<script lang="ts">
-import { defineComponent, PropType, ref, computed } from 'vue';
+<script setup lang="ts">
+import { ref, computed } from 'vue';
 import { Node } from 'components/models';
 import { formatMetricValue } from 'src/helpers/utils';
 
-export default defineComponent({
-  name: 'NodeCard',
-  props: {
-    node: {
-      type: Object as PropType<Node>,
-      required: true,
-    },
-    noClose: {
-      type: Boolean,
-    },
-  },
-  emits: ['remove'],
-  setup(props) {
-    const showCreative = ref(false);
+interface Props {
+  node: Node;
+  noClose?: boolean;
+}
+const props = defineProps<Props>();
 
-    const isVideo = computed(() => {
-      return props.node.media_path?.includes('youtube.com');
-    });
+defineEmits<{
+  (e: 'remove'): void;
+}>();
 
-    const getEmbedUrl = (url: string) => {
-      if (!url) return '';
+const showCreative = ref(false);
 
-      // Convert YouTube watch URLs to embed URLs
-      if (url.includes('youtube.com/watch')) {
-        const videoId = new URL(url).searchParams.get('v');
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-      return url;
-    };
-
-    return {
-      formatMetricValue,
-      showCreative,
-      isVideo,
-      getEmbedUrl,
-    };
-  },
+const isVideo = computed(() => {
+  return props.node.media_path?.includes('youtube.com');
 });
+
+const getEmbedUrl = (url: string) => {
+  if (!url) return '';
+
+  // Convert YouTube watch URLs to embed URLs
+  if (url.includes('youtube.com/watch')) {
+    const videoId = new URL(url).searchParams.get('v');
+    return `https://www.youtube.com/embed/${videoId}`;
+  }
+  return url;
+};
+
 </script>
 
 <style scoped>
