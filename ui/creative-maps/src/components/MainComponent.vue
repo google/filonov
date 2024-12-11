@@ -73,7 +73,7 @@
                 <q-card>
                   <q-card-section>
                     <div class="text-subtitle2">Cluster Sizes Distribution</div>
-                    <metric-histogram
+                    <MetricHistogram
                       :data="getClusterSizesHistogramData"
                       metric="Cluster Size"
                     />
@@ -129,7 +129,7 @@
                       <q-item-label caption>{{
                         formatMetricValue(value, metric.toString())
                       }}</q-item-label>
-                      <metric-histogram
+                      <MetricHistogram
                         :data="getHistogramData(metric.toString())"
                         :metric="metric.toString()"
                         @metric-clicked="onClusterHistogramMetricClicked"
@@ -265,6 +265,7 @@ import {
   ClusterInfo,
   TagStats,
   AbstractNode,
+  HistogramData,
 } from 'components/models';
 import { formatMetricValue } from 'src/helpers/utils';
 import { initClusters } from 'src/helpers/graph';
@@ -415,7 +416,10 @@ const getClusterSizesHistogramData = computed(() => {
   return createHistogramData(clusterSizeNodes, 'size');
 });
 
-function createHistogramData(nodes: AbstractNode[], metric: string) {
+function createHistogramData(
+  nodes: AbstractNode[],
+  metric: string,
+): HistogramData[] {
   if (!nodes || nodes.length === 0) return [];
 
   // Get all values of the metric
@@ -436,8 +440,8 @@ function createHistogramData(nodes: AbstractNode[], metric: string) {
   const bins = binner(values);
 
   return bins.map((bin) => ({
-    x0: bin.x0,
-    x1: bin.x1,
+    x0: bin.x0 || 0,
+    x1: bin.x1 || 0,
     count: bin.length,
     nodes: bin.map((d) => d.node),
   }));
