@@ -26,7 +26,15 @@
           <strong>{{ key }}:</strong> {{ formatMetricValue(value, key) }}
         </div>
       </div>
-
+      <div class="q-mt-sm" align="right">
+        <q-btn v-if="showDrillDown"
+          flat
+          color="primary"
+          @click="showMetrics = true"
+          icon="show_chart"
+          label="Show in dynamic"
+        />
+      </div>
       <div class="q-mt-sm row q-gutter-xs">
         <q-chip
           v-for="tagInfo in node.tags"
@@ -40,6 +48,7 @@
     </q-card-section>
 
     <q-card-actions align="right">
+
       <q-btn
         v-if="node.media_path"
         flat
@@ -49,6 +58,10 @@
         label="View Creative"
       />
     </q-card-actions>
+    <!-- Metrics Dialog -->
+    <q-dialog v-model="showMetrics">
+      <NodeMetricsDialog :node="node" />
+    </q-dialog>
     <!-- Creative Dialog -->
     <q-dialog v-model="showCreative" maximized>
       <q-card class="creative-dialog">
@@ -77,10 +90,12 @@
 import { ref, computed } from 'vue';
 import { Node } from 'components/models';
 import { formatMetricValue } from 'src/helpers/utils';
+import NodeMetricsDialog from './NodeMetricsDialog.vue';
 
 interface Props {
   node: Node;
   noClose?: boolean;
+  showDrillDown?: boolean;
 }
 const props = defineProps<Props>();
 
@@ -89,6 +104,7 @@ defineEmits<{
 }>();
 
 const showCreative = ref(false);
+const showMetrics = ref(false);
 
 const isVideo = computed(() => {
   return props.node.media_path?.includes('youtube.com');
@@ -104,7 +120,6 @@ const getEmbedUrl = (url: string) => {
   }
   return url;
 };
-
 </script>
 
 <style scoped>

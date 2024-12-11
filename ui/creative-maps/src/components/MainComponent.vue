@@ -210,7 +210,7 @@
               </q-tab-panel>
 
               <q-tab-panel name="node" v-if="selectedNode">
-                <node-card :node="selectedNode" :noClose="true" />
+                <NodeCard :node="selectedNode" :noClose="true" :showDrillDown="true" />
               </q-tab-panel>
             </q-tab-panels>
             <!-- Time Series Dialog -->
