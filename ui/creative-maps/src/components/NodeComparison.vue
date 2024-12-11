@@ -93,6 +93,14 @@
               </a>
             </q-td>
           </template>
+          <template #top-right>
+            <q-btn
+              icon="download"
+              color="primary"
+              label="Export"
+              @click="handleExport"
+            />
+          </template>
         </q-table>
       </template>
     </q-card-section>
@@ -101,12 +109,17 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { QTableColumn } from 'quasar';
+import { useQuasar, QTableColumn } from 'quasar';
 import type { ApexOptions } from 'apexcharts';
 import NodeCard from './NodeCard.vue';
 import { Node } from './models';
-import { capitalize, formatMetricValue } from 'src/helpers/utils';
+import {
+  assertIsError,
+  capitalize,
+  formatMetricValue,
+} from 'src/helpers/utils';
 import { isNumber } from 'lodash';
+import { exportTable } from 'src/helpers/export';
 
 interface Props {
   nodes: Node[];
@@ -131,6 +144,7 @@ const emit = defineEmits<{
   (e: 'select-node', nodeId: number): void;
 }>();
 
+const $q = useQuasar();
 const isDynamicView = ref(false);
 const selectedNodeIds = ref<NodeOption[]>([]);
 const selectedMetric = ref('');
@@ -250,13 +264,32 @@ const chartOptions = computed(
   }),
 );
 
-const removeNode = (nodeId: number): void => {
+function removeNode(nodeId: number) {
   selectedNodeIds.value = selectedNodeIds.value.filter(
     (option) => option.id !== nodeId,
   );
-};
+}
 
-const selectNode = (nodeId: number): void => {
+function selectNode(nodeId: number) {
   emit('select-node', nodeId);
-};
+}
+
+function handleExport() {
+  try {
+    exportTable(nodesListColumns.value, nodesMetrics.value, 'nodes');
+  } catch (error) {
+    console.error('Export failed:', error);
+    assertIsError(error);
+    $q.dialog({
+      title: 'Export Error',
+      message: `Failed to export table: ${error.message}`,
+      color: 'negative',
+      persistent: true,
+      ok: {
+        color: 'primary',
+        label: 'Close',
+      },
+    });
+  }
+}
 </script>

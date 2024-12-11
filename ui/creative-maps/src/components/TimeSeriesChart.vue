@@ -6,7 +6,7 @@
         :options="availableNodes"
         multiple
         use-chips
-        :label="`Add cluster nodes`"
+        :label="`Add nodes`"
         class="col-grow"
         emit-value
         option-label="label"

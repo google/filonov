@@ -45,7 +45,6 @@ export function findConnectedNodes(
   const connected = new Set();
   const queue = [startNode.id.toString()];
   const visited = new Set();
-  console.log('findConnectedNodes: start', startNode.id);
 
   const adjacencyMap = new Map();
   edges.forEach((edge) => {
@@ -68,7 +67,6 @@ export function findConnectedNodes(
 
     const neighbors = adjacencyMap.get(currentId);
     if (neighbors) {
-      console.log('findConnectedNodes: neighbors of ', currentId, neighbors);
       for (const neighborId of neighbors) {
         if (!visited.has(neighborId)) {
           queue.push(neighborId);

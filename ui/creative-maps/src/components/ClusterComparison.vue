@@ -76,6 +76,14 @@
               </a>
             </q-td>
           </template>
+          <template #top-right>
+            <q-btn
+              icon="download"
+              color="primary"
+              label="Export"
+              @click="handleExport"
+            />
+          </template>
         </q-table>
       </template>
     </q-card-section>
@@ -86,9 +94,10 @@
 import { ref, computed, ComputedRef } from 'vue';
 import ClusterCard from './ClusterCard.vue';
 import { ClusterInfo } from './models';
-import { capitalize, formatMetricValue } from 'src/helpers/utils';
-import { QTableColumn } from 'quasar';
+import { assertIsError, capitalize, formatMetricValue } from 'src/helpers/utils';
+import { useQuasar, QTableColumn } from 'quasar';
 import { isNumber } from 'lodash';
+import { exportTable } from 'src/helpers/export';
 
 interface Props {
   clusters: Array<ClusterInfo>;
@@ -99,6 +108,7 @@ const emit = defineEmits<{
   (e: 'select-cluster', clusterId: string): void;
 }>();
 
+const $q = useQuasar();
 const isDynamicView = ref(false);
 const selectedClusterIds = ref<string[]>([]);
 const selectedMetric = ref('');
@@ -244,8 +254,28 @@ function removeCluster(clusterId: string) {
     (id) => id !== clusterId,
   );
 }
+
 function selectCluster(clusterId: string) {
   console.log('select-cluster ' + clusterId);
   emit('select-cluster', clusterId);
+}
+
+function handleExport() {
+  try {
+    exportTable(clustersListColumns.value, clustersMetrics.value, 'clusters');
+  } catch (error) {
+    console.error('Export failed:', error);
+    assertIsError(error);
+    $q.dialog({
+      title: 'Export Error',
+      message: `Failed to export table: ${error.message}`,
+      color: 'negative',
+      persistent: true,
+      ok: {
+        color: 'primary',
+        label: 'Close',
+      },
+    });
+  }
 }
 </script>
