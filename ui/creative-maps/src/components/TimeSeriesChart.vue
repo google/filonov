@@ -39,144 +39,123 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, computed, ref } from 'vue';
+<script setup lang="ts">
+import { computed, ref } from 'vue';
 import { ApexOptions } from 'apexcharts';
 import { ComputedRef } from 'vue';
 import { Node } from 'components/models';
-import { formatMetricValue } from 'src/helpers/utils';
 import NodeCard from './NodeCard.vue';
+
 interface SelectOption {
   label: string;
   id: number;
   metric: number;
 }
-export default defineComponent({
-  name: 'TimeSeriesChart',
-  props: {
-    data: {
-      type: Array<{ date: Date; value: number }>,
-      required: true,
-    },
-    metric: {
-      type: String,
-      required: true,
-    },
-    height: {
-      type: Number,
-      default: 300,
-    },
-    clusterNodes: {
-      type: Array<Node>,
-      required: true,
-    },
-  },
-  components: { NodeCard },
-  setup(props) {
-    const selectedNodes = ref<SelectOption[]>([]);
 
-    const availableNodes = computed(() =>
-      props.clusterNodes
-        .map((node: Node) => ({
-          id: node.id,
-          label: `${node.label} (${node.name}, ${props.metric}: ${node.info![props.metric]})`,
-          name: node.label,
-          // series: node.series,
-          metric: node.info![props.metric] as number,
-        }))
-        .sort((a, b) => b.metric - a.metric),
-    );
+interface Props {
+  data: Array<{ date: Date; value: number }>;
+  metric: string;
+  height?: number;
+  clusterNodes: Node[];
+}
 
-    const series = computed(() => {
-      // Start with cluster average series
-      const allSeries = [
-        {
-          name: 'Cluster',
-          data: props.data.map((d) => ({
-            x: d.date,
-            y: d.value,
-          })),
-        },
-      ];
-
-      // Add selected nodes series
-      selectedNodes.value.forEach((opt) => {
-        const node = props.clusterNodes.find((n) => n.id === opt.id);
-        if (node?.series) {
-          allSeries.push({
-            name: `Node ${node.id}`,
-            data: Object.entries(node.series).map(([date, metrics]) => ({
-              x: new Date(date),
-              y: metrics[props.metric] as number,
-            })),
-          });
-        }
-      });
-
-      return allSeries;
-    });
-
-    const chartOptions: ComputedRef<ApexOptions> = computed(() => ({
-      chart: {
-        type: 'line',
-        zoom: {
-          enabled: true,
-        },
-      },
-      markers: {
-        size: 4,
-        hover: {
-          size: 6,
-        },
-      },
-      stroke: {
-        curve: 'smooth',
-        width: 2,
-      },
-      tooltip: {
-        x: {
-          format: 'yyyy-MM-dd',
-        },
-        y: {
-          formatter: (value) => value.toFixed(2),
-        },
-      },
-      xaxis: {
-        type: 'datetime',
-        title: {
-          text: 'Date',
-        },
-      },
-      yaxis: {
-        title: {
-          text: props.metric,
-        },
-        labels: {
-          formatter: (val) => val.toFixed(2),
-        },
-      },
-    }));
-
-    const getNode = (nodeId: number) =>
-      props.clusterNodes.find((node) => node.id === nodeId)!;
-
-    const removeNode = (nodeId: number) => {
-      selectedNodes.value = selectedNodes.value.filter(
-        (node) => node.id !== nodeId,
-      );
-    };
-
-    return {
-      series,
-      chartOptions,
-      selectedNodes,
-      availableNodes,
-      getNode,
-      removeNode,
-      formatMetricValue,
-    };
-  },
+const props = withDefaults(defineProps<Props>(), {
+  height: 300,
 });
+
+const selectedNodes = ref<SelectOption[]>([]);
+
+const availableNodes = computed(() =>
+  props.clusterNodes
+    .map((node: Node) => ({
+      id: node.id,
+      label: `${node.label} (${node.name}, ${props.metric}: ${node.info![props.metric]})`,
+      name: node.label,
+      // series: node.series,
+      metric: node.info![props.metric] as number,
+    }))
+    .sort((a, b) => b.metric - a.metric),
+);
+
+const series = computed(() => {
+  // Start with cluster average series
+  const allSeries = [
+    {
+      name: 'Cluster',
+      data: props.data.map((d) => ({
+        x: d.date,
+        y: d.value,
+      })),
+    },
+  ];
+
+  // Add selected nodes series
+  selectedNodes.value.forEach((opt) => {
+    const node = props.clusterNodes.find((n) => n.id === opt.id);
+    if (node?.series) {
+      allSeries.push({
+        name: `Node ${node.id}`,
+        data: Object.entries(node.series).map(([date, metrics]) => ({
+          x: new Date(date),
+          y: metrics[props.metric] as number,
+        })),
+      });
+    }
+  });
+
+  return allSeries;
+});
+
+const chartOptions: ComputedRef<ApexOptions> = computed(() => ({
+  chart: {
+    type: 'line',
+    zoom: {
+      enabled: true,
+    },
+  },
+  markers: {
+    size: 4,
+    hover: {
+      size: 6,
+    },
+  },
+  stroke: {
+    curve: 'smooth',
+    width: 2,
+  },
+  tooltip: {
+    x: {
+      format: 'yyyy-MM-dd',
+    },
+    y: {
+      formatter: (value) => value.toFixed(2),
+    },
+  },
+  xaxis: {
+    type: 'datetime',
+    title: {
+      text: 'Date',
+    },
+  },
+  yaxis: {
+    title: {
+      text: props.metric,
+    },
+    labels: {
+      formatter: (val) => val.toFixed(2),
+    },
+  },
+}));
+
+function getNode(nodeId: number) {
+  return props.clusterNodes.find((node) => node.id === nodeId)!;
+}
+
+function removeNode(nodeId: number) {
+  selectedNodes.value = selectedNodes.value.filter(
+    (node) => node.id !== nodeId,
+  );
+}
 </script>
 
 <style scoped>
