@@ -57,7 +57,7 @@
                   <q-card class="col">
                     <q-card-section>
                       <div class="text-subtitle2">Total Clusters</div>
-                      <div class="text-h4">{{ clusterIds.length }}</div>
+                      <div class="text-h4">{{ clusters.length }}</div>
                     </q-card-section>
                   </q-card>
 
@@ -97,7 +97,7 @@
                     <q-item-section>
                       <q-item-label>Nodes</q-item-label>
                       <q-item-label caption>{{
-                        selectedCluster.nodeCount
+                        selectedCluster.nodes.length
                       }}</q-item-label>
                     </q-item-section>
                   </q-item>
@@ -222,11 +222,10 @@
               transition-show="slide-up"
               transition-hide="slide-down"
             >
-              <cluster-comparison
-                :vertices="vertices"
-                :clusterIds="clusterIds"
+              <ClusterComparison
+                :clusters="clusters"
                 @select-cluster="selectCluster"
-              ></cluster-comparison>
+              ></ClusterComparison>
             </q-dialog>
           </q-card>
         </div>
@@ -268,12 +267,14 @@ import {
   AbstractNode,
 } from 'components/models';
 import { formatMetricValue } from 'src/helpers/utils';
+import { initClusters } from 'src/helpers/graph';
 
 const d3GraphRef = ref<InstanceType<typeof D3Graph> | null>(null);
 const showLoadDataDialog = ref(false);
 const dataSourceDescription = ref('');
 const vertices = ref([] as Node[]);
 const edges = ref([] as Edge[]);
+const clusters = ref<ClusterInfo[]>([]);
 const selectedCluster = ref(null as ClusterInfo | null);
 const selectedNode = ref(null as Node | null);
 const activeTab = ref('info');
@@ -281,7 +282,6 @@ const showClusterComparison = ref(false);
 const showTimeSeriesDialog = ref(false);
 const showTagsDashboardDialog = ref(false);
 const selectedMetric = ref('');
-const clusterIds = ref([] as string[]);
 
 const sortedTags = computed(() => {
   if (!selectedCluster.value) {
@@ -318,20 +318,18 @@ const timeSeriesData = computed(() => {
 });
 
 async function onDataLoaded(args: { data: GraphData; origin: string }) {
-  const jsonData: GraphData = args.data;
-  vertices.value = jsonData.nodes;
-  edges.value = jsonData.edges;
-  clusterIds.value = Array.from(
-    new Set(vertices.value.map((node) => node.cluster)),
-  ).sort();
   showLoadDataDialog.value = false;
   dataSourceDescription.value = args.origin || 'Custom data';
+  const jsonData: GraphData = args.data;
+  clusters.value = initClusters(jsonData.nodes, jsonData.edges);
+  vertices.value = jsonData.nodes;
+  edges.value = jsonData.edges;
 }
 
 function unloadData() {
   vertices.value = [];
   edges.value = [];
-  clusterIds.value = [];
+  clusters.value = [];
   dataSourceDescription.value = '';
 }
 
@@ -372,15 +370,13 @@ function onTagDashboardSelect(tagStat: TagStats) {
   d3GraphRef.value?.setCurrentCluster(tagStat.nodes);
 }
 
-function onNodeSelected(node: Node) {
+function onNodeSelected(node: Node | null) {
   selectedNode.value = node;
 }
 
-function onClusterSelected(cluster: ClusterInfo) {
-  if (cluster) {
-    selectedCluster.value = cluster;
-  } else {
-    selectedCluster.value = null;
+function onClusterSelected(cluster: ClusterInfo | null) {
+  selectedCluster.value = cluster;
+  if (!cluster) {
     if (activeTab.value !== 'tags' && activeTab.value !== 'info') {
       activeTab.value = 'tags';
     }

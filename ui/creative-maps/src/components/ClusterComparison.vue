@@ -29,7 +29,7 @@
           </div>
           <div class="col-grow">
             <q-select
-              v-model="selectedClusters"
+              v-model="selectedClusterIds"
               :disable="!selectedMetric"
               :options="sortedClusterOptions"
               multiple
@@ -49,10 +49,9 @@
         <!-- Cluster cards -->
         <div class="row q-gutter-md q-mt-lg">
           <ClusterCard
-            v-for="clusterId in selectedClusters"
+            v-for="clusterId in selectedClusterIds"
             :key="clusterId"
-            :cluster-id="clusterId"
-            :nodes="getClusterNodes(clusterId)"
+            :cluster="getClusterById(clusterId)"
             @remove="removeCluster(clusterId)"
             @click="selectCluster(clusterId)"
           />
@@ -83,190 +82,170 @@
   </q-card>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, computed, ComputedRef } from 'vue';
+<script setup lang="ts">
+import { ref, computed, ComputedRef } from 'vue';
 import ClusterCard from './ClusterCard.vue';
-import { Node } from './models';
-import {
-  aggregateNodesMetrics,
-  capitalize,
-  formatMetricValue,
-} from 'src/helpers/utils';
+import { ClusterInfo } from './models';
+import { capitalize, formatMetricValue } from 'src/helpers/utils';
 import { QTableColumn } from 'quasar';
 import { isNumber } from 'lodash';
 
-export default defineComponent({
-  props: {
-    vertices: Array<Node>,
-    clusterIds: Array<string>,
-  },
-  components: { ClusterCard },
-  emits: ['select-cluster'],
-  setup(props, { emit }) {
-    const isDynamicView = ref(false);
-    const selectedClusters = ref<string[]>([]);
-    const selectedMetric = ref('');
+interface Props {
+  clusters: Array<ClusterInfo>;
+}
+const props = defineProps<Props>();
 
-    // Get all available metrics
-    const metrics = computed(() => {
-      const metricSet = new Set<string>();
-      props.vertices?.forEach((node) => {
-        if (node.info) {
-          Object.keys(node.info).forEach((metric) => metricSet.add(metric));
-        }
-      });
-      return Array.from(metricSet);
-    });
+const emit = defineEmits<{
+  (e: 'select-cluster', clusterId: string): void;
+}>();
 
-    // Get clusters metrics for static view
-    const clustersMetrics: ComputedRef<Record<string, number | string>[]> =
-      computed(() => {
-        if (!props.clusterIds) return [];
-        return props.clusterIds.map((clusterId) => {
-          const nodes = props.vertices!.filter((n) => n.cluster === clusterId);
-          const metricValues = aggregateNodesMetrics(nodes);
+const isDynamicView = ref(false);
+const selectedClusterIds = ref<string[]>([]);
+const selectedMetric = ref('');
 
-          return {
-            cluster: clusterId,
-            size: nodes.length,
-            ...metricValues,
-          };
-        });
-      });
-
-    // Define columns dynamically based on metrics
-    const clustersListColumns = computed<QTableColumn[]>(() => {
-      const baseColumns: QTableColumn[] = [
-        {
-          name: 'cluster',
-          label: 'Cluster',
-          field: 'cluster',
-          align: 'left',
-          sortable: true,
-        },
-        {
-          name: 'size',
-          label: 'Size',
-          field: 'size',
-          align: 'right',
-          sortable: true,
-          format: (val) => val.toLocaleString(),
-        },
-      ];
-
-      // Add a column for each metric
-      const metricColumns = metrics.value.map(
-        (metric) =>
-          ({
-            name: metric,
-            label: capitalize(metric),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            field: (row: any) => row[metric],
-            format: (value: number) => formatMetricValue(value, metric),
-            align: 'right',
-            sortable: true,
-            //classes: 'text-right'
-          }) as QTableColumn,
-      );
-
-      return [...baseColumns, ...metricColumns];
-    });
-
-    // Sorted cluster options for dynamic view
-    const sortedClusterOptions = computed(() => {
-      if (!props.clusterIds) return [];
-      const metric = selectedMetric.value;
-      if (!metric) return props.clusterIds;
-      // return clusters ids sorted accordingly to currently selected metric
-      return [...props.clusterIds].sort((a, b) => {
-        const aValue =
-          clustersMetrics.value.find((cm) => cm.cluster === a)?.[metric] || 0;
-        const bValue =
-          clustersMetrics.value.find((cm) => cm.cluster === b)?.[metric] || 0;
-        if (isNumber(bValue) && isNumber(aValue)) {
-          return bValue - aValue;
-        } else {
-          return (bValue as string).length - (aValue as string).length;
-        }
-      });
-    });
-
-    // Time series data for dynamic view
-    const chartSeries = computed(() => {
-      return selectedClusters.value.map((clusterId) => {
-        const nodes = props.vertices!.filter((n) => n.cluster === clusterId);
-        const dateValues = new Map<string, number>();
-
-        nodes.forEach((node) => {
-          if (!node.series) return;
-
-          Object.entries(node.series).forEach(([date, metrics]) => {
-            const value = (metrics[selectedMetric.value] as number) || 0;
-            dateValues.set(date, (dateValues.get(date) || 0) + value);
-          });
-        });
-
-        const data = Array.from(dateValues.entries())
-          .map(([date, value]) => ({
-            x: new Date(date).getTime(),
-            y: value,
-          }))
-          .sort((a, b) => a.x - b.x);
-
-        return {
-          name: `Cluster ${clusterId}`,
-          data,
-        };
-      });
-    });
-
-    const chartOptions = computed(() => ({
-      chart: {
-        type: 'line',
-        zoom: { enabled: true },
-      },
-      xaxis: {
-        type: 'datetime',
-      },
-      yaxis: {
-        title: {
-          text: selectedMetric.value,
-        },
-        labels: {
-          formatter: (val: number) => val.toFixed(2),
-        },
-      },
-    }));
-
-    const getClusterNodes = (clusterId: string): Node[] => {
-      if (!props.vertices) return [];
-      return props.vertices.filter((node) => node.cluster === clusterId) || [];
-    };
-
-    const removeCluster = (clusterId: string) => {
-      console.log('remove cluster ' + clusterId);
-      selectedClusters.value = selectedClusters.value.filter(
-        (id) => id !== clusterId,
-      );
-    };
-    const selectCluster = (clusterId: string) => {
-      console.log('select-cluster ' + clusterId);
-      emit('select-cluster', clusterId);
-    };
-    return {
-      selectedMetric,
-      selectedClusters,
-      isDynamicView,
-      metrics,
-      clustersMetrics,
-      clustersListColumns,
-      sortedClusterOptions,
-      chartOptions,
-      chartSeries,
-      getClusterNodes,
-      removeCluster,
-      selectCluster,
-    };
-  },
+// Get all available metrics
+const metrics = computed(() => {
+  const metricSet = new Set<string>();
+  props.clusters?.forEach((cluster) => {
+    if (cluster.metrics) {
+      Object.keys(cluster.metrics).forEach((metric) => metricSet.add(metric));
+    }
+  });
+  return Array.from(metricSet);
 });
+
+// Get clusters metrics for static view
+const clustersMetrics: ComputedRef<Record<string, number | string>[]> =
+  computed(() => {
+    if (!props.clusters) return [];
+    return props.clusters.map((cluster) => {
+      return {
+        cluster: cluster.id,
+        size: cluster.nodes.length,
+        ...cluster.metrics,
+      };
+    });
+  });
+
+// Define columns dynamically based on metrics
+const clustersListColumns = computed<QTableColumn[]>(() => {
+  const baseColumns: QTableColumn[] = [
+    {
+      name: 'cluster',
+      label: 'Cluster',
+      field: 'cluster',
+      align: 'left',
+      sortable: true,
+    },
+    {
+      name: 'size',
+      label: 'Size',
+      field: 'size',
+      align: 'right',
+      sortable: true,
+      format: (val) => val.toLocaleString(),
+    },
+  ];
+
+  // Add a column for each metric
+  const metricColumns = metrics.value.map(
+    (metric) =>
+      ({
+        name: metric,
+        label: capitalize(metric),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        field: (row: any) => row[metric],
+        format: (value: number) => formatMetricValue(value, metric),
+        align: 'right',
+        sortable: true,
+        //classes: 'text-right'
+      }) as QTableColumn,
+  );
+
+  return [...baseColumns, ...metricColumns];
+});
+
+// Return cluster ids as options for dynamic dropdown list
+const sortedClusterOptions = computed(() => {
+  if (!props.clusters) return [];
+  const metric = selectedMetric.value;
+  if (!metric) return props.clusters.map((c) => c.id);
+  // return clusters ids sorted accordingly to currently selected metric
+  return props.clusters
+    .map((c) => c.id)
+    .sort((a, b) => {
+      const aValue =
+        props.clusters!.find((cm) => cm.id === a)?.metrics[metric] || 0;
+      const bValue =
+        props.clusters!.find((cm) => cm.id === b)?.metrics[metric] || 0;
+      if (isNumber(bValue) && isNumber(aValue)) {
+        return bValue - aValue;
+      } else {
+        return (bValue as string).length - (aValue as string).length;
+      }
+    });
+});
+
+// Time series data for dynamic view
+const chartSeries = computed(() => {
+  return selectedClusterIds.value.map((clusterId) => {
+    const nodes = props.clusters!.find((n) => n.id === clusterId)?.nodes;
+    const dateValues = new Map<string, number>();
+    if (!nodes) return {};
+
+    nodes.forEach((node) => {
+      if (!node.series) return;
+
+      Object.entries(node.series).forEach(([date, metrics]) => {
+        const value = (metrics[selectedMetric.value] as number) || 0;
+        dateValues.set(date, (dateValues.get(date) || 0) + value);
+      });
+    });
+
+    const data = Array.from(dateValues.entries())
+      .map(([date, value]) => ({
+        x: new Date(date).getTime(),
+        y: value,
+      }))
+      .sort((a, b) => a.x - b.x);
+
+    return {
+      name: `Cluster ${clusterId}`,
+      data,
+    };
+  });
+});
+
+const chartOptions = computed(() => ({
+  chart: {
+    type: 'line',
+    zoom: { enabled: true },
+  },
+  xaxis: {
+    type: 'datetime',
+  },
+  yaxis: {
+    title: {
+      text: selectedMetric.value,
+    },
+    labels: {
+      formatter: (val: number) => val.toFixed(2),
+    },
+  },
+}));
+
+function getClusterById(clusterId: string): ClusterInfo {
+  return props.clusters.find((c) => c.id === clusterId)!;
+}
+
+function removeCluster(clusterId: string) {
+  console.log('remove cluster ' + clusterId);
+  selectedClusterIds.value = selectedClusterIds.value.filter(
+    (id) => id !== clusterId,
+  );
+}
+function selectCluster(clusterId: string) {
+  console.log('select-cluster ' + clusterId);
+  emit('select-cluster', clusterId);
+}
 </script>
