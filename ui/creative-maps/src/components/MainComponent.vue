@@ -92,10 +92,20 @@
               </q-tab-panel>
 
               <q-tab-panel v-if="selectedCluster" name="metrics">
-                <div class="text-h6">Cluster Metrics</div>
+                <div class="text-h6">
+                  {{ selectedCluster.id ? 'Cluster' : 'Selection' }} Metrics
+                </div>
                 <q-list separator>
                   <q-item>
                     <q-item-section>
+                      <q-item-label v-if="selectedCluster.id">Id</q-item-label>
+                      <q-item-label v-if="selectedCluster.id" caption>{{
+                        selectedCluster.id
+                      }}</q-item-label>
+                      <q-item-label v-if="selectedCluster.description">Selected nodes</q-item-label>
+                      <q-item-label v-if="selectedCluster.description" caption>{{
+                        selectedCluster.description
+                      }}</q-item-label>
                       <q-item-label>Nodes</q-item-label>
                       <q-item-label caption>{{
                         selectedCluster.nodes.length
@@ -442,12 +452,20 @@ function createHistogramData(
   }));
 }
 
+/**
+ * Handle of click on a metric's histogram.
+ * Clicking on a bar selects nodes having the metric's value range.
+ */
 function onClusterHistogramMetricClicked(args: {
   metric: string;
-  nodes: Node[];
+  nodes: AbstractNode[];
+  range: number[];
 }) {
   if (d3GraphRef.value) {
-    d3GraphRef.value.highlightNodes(args.nodes);
+    d3GraphRef.value.selectNodes(
+      args.nodes as Node[],
+      `Nodes with '${args.metric}' metric values in [${args.range[0]}, ${args.range[1]}]`,
+    );
   }
 }
 
