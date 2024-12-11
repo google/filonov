@@ -80,8 +80,8 @@
   </q-card>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, computed, ComputedRef, onMounted } from 'vue';
+<script setup lang="ts">
+import { ref, computed, ComputedRef, onMounted } from 'vue';
 import { useQuasar, QTableColumn } from 'quasar';
 import _ from 'lodash';
 import { TagStats } from './models';
@@ -92,219 +92,202 @@ import {
 } from 'src/helpers/utils';
 import { exportTable } from 'src/helpers/export';
 
+interface Props {
+  tagsStats: TagStats[];
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<{
+  (e: 'select-tag', tagData: TagStats): void;
+}>();
+
 const $q = useQuasar();
 
-export default defineComponent({
-  name: 'TagsDashboard',
-  props: {
-    tagsStats: {
-      type: Array<TagStats>,
-      required: true,
+const isDynamicView = ref(false);
+const selectedTags = ref<string[]>([]);
+const selectedMetric = ref('');
+
+const sortedTagOptions = computed(() => {
+  if (!selectedMetric.value) return props.tagsStats.map((t) => t.tag);
+  return [...props.tagsStats]
+    .sort((a, b) => {
+      const aValue = a.nodes.reduce(
+        (sum, node) =>
+          sum + ((node.info?.[selectedMetric.value] as number) || 0),
+        0,
+      );
+      const bValue = b.nodes.reduce(
+        (sum, node) =>
+          sum + ((node.info?.[selectedMetric.value] as number) || 0),
+        0,
+      );
+      return bValue - aValue;
+    })
+    .map((t) => t.tag);
+});
+
+// Get unique metrics from all nodes
+const metrics: ComputedRef<string[]> = computed(() => {
+  const metricSet = new Set<string>();
+  props.tagsStats.forEach((tagStat) => {
+    tagStat.nodes.forEach((node) => {
+      if (node.info) {
+        Object.keys(node.info).forEach((metric) => metricSet.add(metric));
+      }
+    });
+  });
+  return Array.from(metricSet);
+});
+
+// Initialize with first metric and tag
+onMounted(() => {
+  if (metrics.value.length) {
+    selectedMetric.value = metrics.value[0];
+  }
+  if (props.tagsStats.length) {
+    selectedTags.value = [props.tagsStats[0].tag];
+  }
+});
+
+// Calculate metrics for each tag
+const tagsMetrics = computed(() => {
+  return props.tagsStats.map((tagStat) => {
+    const metricValues: Record<string, number> = {};
+    metrics.value.forEach((metric) => {
+      let isSum = true;
+      if (tagStat.nodes && tagStat.nodes.length) {
+        let firstNode = tagStat.nodes[0];
+        if (!_.isNumber(firstNode.info?.[metric])) {
+          isSum = false;
+        }
+      }
+      if (isSum) {
+        metricValues[metric] = tagStat.nodes.reduce(
+          (sum, node) => sum + ((node.info?.[metric] as number) || 0),
+          0,
+        );
+      }
+    });
+
+    return {
+      tag: tagStat.tag,
+      freq: tagStat.freq,
+      metrics: metricValues,
+      nodes: tagStat.nodes,
+    };
+  });
+});
+
+// Define columns dynamically based on metrics
+const columns = computed<QTableColumn[]>(() => {
+  const baseColumns: QTableColumn[] = [
+    {
+      name: 'tag',
+      label: 'Tag',
+      field: 'tag',
+      align: 'left',
+      sortable: true,
+    },
+    {
+      name: 'freq',
+      label: 'Frequency',
+      field: 'freq',
+      align: 'right',
+      sortable: true,
+      format: (val) => val.toLocaleString(),
+    },
+  ];
+
+  // Add a column for each metric
+  const metricColumns = metrics.value.map(
+    (metric) =>
+      ({
+        name: metric,
+        label: capitalize(metric),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        field: (row: any) => row.metrics[metric],
+        format: (value: number) => formatMetricValue(value, metric),
+        align: 'right',
+        sortable: true,
+        //classes: 'text-right'
+      }) as QTableColumn,
+  );
+
+  return [...baseColumns, ...metricColumns];
+});
+
+const onTagClick = (tagData: TagStats) => {
+  console.log(tagData);
+  emit('select-tag', tagData);
+};
+
+const chartSeries = computed(() => {
+  return selectedTags.value.map((tag) => {
+    console.log('selected: ' + JSON.stringify(tag));
+    const tagData = props.tagsStats.find((t) => t.tag === tag);
+    if (!tagData) return { name: tag, data: [] };
+
+    // Collect all dates from nodes
+    const dateValues = new Map<string, number>();
+
+    tagData.nodes.forEach((node) => {
+      if (!node.series) return;
+
+      Object.entries(node.series).forEach(([date, metrics]) => {
+        const value = (metrics[selectedMetric.value] as number) || 0;
+        dateValues.set(date, (dateValues.get(date) || 0) + value);
+      });
+    });
+
+    // Convert to sorted array
+    const data = Array.from(dateValues.entries())
+      .map(([date, value]) => ({
+        x: new Date(date).getTime(),
+        y: value,
+      }))
+      .sort((a, b) => a.x - b.x);
+
+    return {
+      name: tag,
+      data,
+    };
+  });
+});
+
+const chartOptions = computed(() => ({
+  chart: {
+    type: 'line',
+    zoom: { enabled: true },
+  },
+  xaxis: {
+    type: 'datetime',
+  },
+  yaxis: {
+    title: {
+      text: selectedMetric.value,
+    },
+    labels: {
+      formatter: (val: number) => val.toFixed(2),
     },
   },
-  emits: ['select-tag'],
-  setup(props, { emit }) {
-    const isDynamicView = ref(false);
-    const selectedTags = ref<string[]>([]);
-    const selectedMetric = ref('');
+}));
 
-    const sortedTagOptions = computed(() => {
-      if (!selectedMetric.value) return props.tagsStats.map((t) => t.tag);
-      return [...props.tagsStats]
-        .sort((a, b) => {
-          const aValue = a.nodes.reduce(
-            (sum, node) =>
-              sum + ((node.info?.[selectedMetric.value] as number) || 0),
-            0,
-          );
-          const bValue = b.nodes.reduce(
-            (sum, node) =>
-              sum + ((node.info?.[selectedMetric.value] as number) || 0),
-            0,
-          );
-          return bValue - aValue;
-        })
-        .map((t) => t.tag);
-    });
-
-    // Get unique metrics from all nodes
-    const metrics: ComputedRef<string[]> = computed(() => {
-      const metricSet = new Set<string>();
-      props.tagsStats.forEach((tagStat) => {
-        tagStat.nodes.forEach((node) => {
-          if (node.info) {
-            Object.keys(node.info).forEach((metric) => metricSet.add(metric));
-          }
-        });
-      });
-      return Array.from(metricSet);
-    });
-
-    // Initialize with first metric and tag
-    onMounted(() => {
-      if (metrics.value.length) {
-        selectedMetric.value = metrics.value[0];
-      }
-      if (props.tagsStats.length) {
-        selectedTags.value = [props.tagsStats[0].tag];
-      }
-    });
-
-    // Calculate metrics for each tag
-    const tagsMetrics = computed(() => {
-      return props.tagsStats.map((tagStat) => {
-        const metricValues: Record<string, number> = {};
-        metrics.value.forEach((metric) => {
-          let isSum = true;
-          if (tagStat.nodes && tagStat.nodes.length) {
-            let firstNode = tagStat.nodes[0];
-            if (!_.isNumber(firstNode.info?.[metric])) {
-              isSum = false;
-            }
-          }
-          if (isSum) {
-            metricValues[metric] = tagStat.nodes.reduce(
-              (sum, node) => sum + ((node.info?.[metric] as number) || 0),
-              0,
-            );
-          }
-        });
-
-        return {
-          tag: tagStat.tag,
-          freq: tagStat.freq,
-          metrics: metricValues,
-          nodes: tagStat.nodes,
-        };
-      });
-    });
-
-    // Define columns dynamically based on metrics
-    const columns = computed<QTableColumn[]>(() => {
-      const baseColumns: QTableColumn[] = [
-        {
-          name: 'tag',
-          label: 'Tag',
-          field: 'tag',
-          align: 'left',
-          sortable: true,
-        },
-        {
-          name: 'freq',
-          label: 'Frequency',
-          field: 'freq',
-          align: 'right',
-          sortable: true,
-          format: (val) => val.toLocaleString(),
-        },
-      ];
-
-      // Add a column for each metric
-      const metricColumns = metrics.value.map(
-        (metric) =>
-          ({
-            name: metric,
-            label: capitalize(metric),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            field: (row: any) => row.metrics[metric],
-            format: (value: number) => formatMetricValue(value, metric),
-            align: 'right',
-            sortable: true,
-            //classes: 'text-right'
-          }) as QTableColumn,
-      );
-
-      return [...baseColumns, ...metricColumns];
-    });
-
-    const onTagClick = (tagData: TagStats) => {
-      console.log(tagData);
-      emit('select-tag', tagData);
-    };
-
-    const chartSeries = computed(() => {
-      return selectedTags.value.map((tag) => {
-        console.log('selected: ' + JSON.stringify(tag));
-        const tagData = props.tagsStats.find((t) => t.tag === tag);
-        if (!tagData) return { name: tag, data: [] };
-
-        // Collect all dates from nodes
-        const dateValues = new Map<string, number>();
-
-        tagData.nodes.forEach((node) => {
-          if (!node.series) return;
-
-          Object.entries(node.series).forEach(([date, metrics]) => {
-            const value = (metrics[selectedMetric.value] as number) || 0;
-            dateValues.set(date, (dateValues.get(date) || 0) + value);
-          });
-        });
-
-        // Convert to sorted array
-        const data = Array.from(dateValues.entries())
-          .map(([date, value]) => ({
-            x: new Date(date).getTime(),
-            y: value,
-          }))
-          .sort((a, b) => a.x - b.x);
-
-        return {
-          name: tag,
-          data,
-        };
-      });
-    });
-
-    const chartOptions = computed(() => ({
-      chart: {
-        type: 'line',
-        zoom: { enabled: true },
+function handleExport() {
+  try {
+    exportTable(columns.value, tagsMetrics.value, 'tags');
+  } catch (error) {
+    console.error('Export failed:', error);
+    assertIsError(error);
+    $q.dialog({
+      title: 'Export Error',
+      message: `Failed to export table: ${error.message}`,
+      color: 'negative',
+      persistent: true,
+      ok: {
+        color: 'primary',
+        label: 'Close',
       },
-      xaxis: {
-        type: 'datetime',
-      },
-      yaxis: {
-        title: {
-          text: selectedMetric.value,
-        },
-        labels: {
-          formatter: (val: number) => val.toFixed(2),
-        },
-      },
-    }));
-
-    const handleExport = () => {
-      try {
-        exportTable(columns.value, tagsMetrics.value, 'tags');
-      } catch (error) {
-        console.error('Export failed:', error);
-        assertIsError(error);
-        $q.dialog({
-          title: 'Export Error',
-          message: `Failed to export table: ${error.message}`,
-          color: 'negative',
-          persistent: true,
-          ok: {
-            color: 'primary',
-            label: 'Close',
-          },
-        });
-      }
-    };
-    return {
-      isDynamicView,
-      metrics,
-      tagsMetrics,
-      columns,
-      onTagClick,
-      selectedTags,
-      sortedTagOptions,
-      selectedMetric,
-      chartSeries,
-      chartOptions,
-      formatMetricValue,
-      handleExport,
-    };
-  },
-});
+    });
+  }
+}
 </script>
