@@ -56,6 +56,7 @@
       v-if="currentNode"
     >
       <div class="text-body2">
+        <div class="q-mb-xs">Name: {{ currentNode.label }}</div>
         <div class="text-weight-bold q-mb-sm">Metrics:</div>
         <div
           v-for="(value, metric) in currentNode.info"
@@ -243,7 +244,7 @@ function highlightNodes(nodes: Node[]) {
       const element = d3.select(this);
       const node = element.datum() as Node;
       const isConnected = connectedIds.has(node.id.toString());
-
+      const isCurrent = node.id === currentNode.value?.id;
       if (showImages.value && element.select('image').size() > 0) {
         // For image nodes, ONLY modify the image border
         element
@@ -257,7 +258,7 @@ function highlightNodes(nodes: Node[]) {
           .style('stroke-width', isConnected ? '3px' : '1px')
           .style(
             'filter',
-            isConnected ? 'drop-shadow(0 0 3px rgba(255,0,0,0.5))' : 'none',
+            isCurrent ? 'drop-shadow(0 0 3px rgba(255,0,0,0.8))' : 'none',
           );
       } else {
         // For regular circle nodes, keep the current highlighting
