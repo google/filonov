@@ -321,7 +321,7 @@ class ExtraInfoFetcher:
       results[media.convert_path_to_media_name(media_url)] = (
         interfaces.MediaInfo(
           **interfaces.create_node_links(media_url, media_type),
-          media_name=values[0].get('asset_id'),
+          media_name=values[0].get('media_name'),
           info=info,
           series=series,
         )

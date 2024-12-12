@@ -44,6 +44,7 @@ class PerformanceQuery(base_query.BaseQuery):
   required_fields = (
     'date',
     'campaign_type',
+    'media_name',
     'media_url',
     'aspect_ratio',
     'media_size',
@@ -88,6 +89,7 @@ class DisplayAssetPerformance(PerformanceQuery):
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
     campaign.advertising_channel_type AS channel_type,
+    ad_group_ad.ad.name AS media_name,
     ad_group_ad.ad.id AS asset_id,
     ad_group_ad.ad.image_ad.image_url AS media_url,
     ad_group_ad.ad.image_ad.pixel_width / ad_group_ad.ad.image_ad.pixel_height
@@ -127,7 +129,7 @@ class VideoPerformance(PerformanceQuery):
     campaign.advertising_channel_type AS channel_type,
     ad_group_ad.ad.type AS ad_type,
     video.id AS media_url,
-    video.title AS asset_name,
+    video.title AS media_name,
     0 AS aspect_ratio,
     video.duration_millis / 1000 AS media_size,
     metrics.cost_micros / 1e6 AS cost,
@@ -162,7 +164,7 @@ class PmaxAssetInfo(PerformanceQuery):
     '' AS date,
     campaign.advertising_channel_type AS channel_type,
     asset.id AS asset_id,
-    asset.name AS asset_name,
+    {media_name} AS media_name,
     {media_url} AS media_url,
     {aspect_ratio} AS aspect_ratio,
     {size} AS media_size,
@@ -191,10 +193,12 @@ class PmaxAssetInfo(PerformanceQuery):
         'asset.image_asset.full_size.height_pixels'
       )
       self.size = 'asset.image_asset.file_size / 1024'
+      self.media_name = 'asset.name'
     else:
       self.media_url = 'asset.youtube_video_asset.youtube_video_id'
       self.aspect_ratio = 0.0
       self.size = 0.0
+      self.media_name = 'asset.youtube_video_asset.youtube_video_title'
 
 
 @dataclasses.dataclass
@@ -206,6 +210,7 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
     campaign.advertising_channel_type AS channel_type,
+    asset.name AS media_name,
     asset.id AS asset_id,
     asset.image_asset.full_size.url AS media_url,
     asset.image_asset.full_size.width_pixels /
@@ -245,7 +250,7 @@ class DemandGenVideoAssetPerformance(PerformanceQuery):
     segments.date AS date,
     campaign.advertising_channel_type AS channel_type,
     video.id AS media_url,
-    video.title AS asset_name,
+    video.title AS media_name,
     0 AS aspect_ratio,
     video.duration_millis / 1000 AS media_size,
     metrics.cost_micros / 1e6 AS cost,
@@ -279,7 +284,7 @@ class AppAssetPerformance(PerformanceQuery):
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
     asset.id AS asset_id,
-    asset.name AS asset_name,
+    {media_name} AS media_name,
     {media_url} AS media_url,
     {aspect_ratio} AS aspect_ratio,
     {size} AS media_size,
@@ -313,10 +318,12 @@ class AppAssetPerformance(PerformanceQuery):
         'asset.image_asset.full_size.height_pixels'
       )
       self.size = 'asset.image_asset.file_size / 1024'
+      self.media_name = 'asset.name'
     else:
       self.media_url = 'asset.youtube_video_asset.youtube_video_id'
       self.aspect_ratio = 0.0
       self.size = 0.0
+      self.media_name = 'asset.youtube_video_asset.youtube_video_title'
 
 
 YOUTUBE_VIDEO_ORIENTATIONS_QUERY: Final[str] = """
