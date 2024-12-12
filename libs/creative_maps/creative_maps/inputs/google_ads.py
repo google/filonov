@@ -18,6 +18,7 @@
 
 import dataclasses
 import functools
+import logging
 import operator
 import os
 from collections import defaultdict
@@ -25,6 +26,7 @@ from collections.abc import Sequence
 from typing import Literal
 
 import garf_youtube_data_api
+import numpy as np
 import pandas as pd
 from creative_maps.inputs import interfaces, queries
 from gaarf import api_clients, report, report_fetcher
@@ -109,8 +111,7 @@ class ExtraInfoFetcher:
     self.ads_config = ads_config
 
   def generate_extra_info(
-    self,
-    fetching_request: FetchingRequest,
+    self, fetching_request: FetchingRequest, with_size_base: str | None = None
   ) -> dict[str, interfaces.MediaInfo]:
     """Extracts data from Ads API and converts to MediaInfo objects."""
     fetcher = report_fetcher.AdsReportFetcher(
@@ -134,7 +135,9 @@ class ExtraInfoFetcher:
       video_extra_info,
       columns=('media_size', 'aspect_ratio'),
     )
-    return self._convert_to_media_info(performance, fetching_request.media_type)
+    return self._convert_to_media_info(
+      performance, fetching_request.media_type, with_size_base
+    )
 
   def _define_performance_queries(
     self, fetching_request: FetchingRequest
@@ -292,8 +295,19 @@ class ExtraInfoFetcher:
     self,
     performance: report.GaarfReport,
     media_type: queries.SupportedMediaTypes,
+    with_size_base: str | None,
   ) -> dict[str, interfaces.MediaInfo]:
     """Convert report to MediaInfo mappings."""
+    if with_size_base and with_size_base not in performance.column_names:
+      logging.warning('Failed to set MediaInfo size to {with_size_base}')
+      with_size_base = None
+    if with_size_base:
+      try:
+        float(performance[0][with_size_base])
+      except TypeError:
+        logging.warning('MediaInfo size attribute should be numeric')
+        with_size_base = None
+
     performance = performance.to_dict(key_column='media_url')
     results = {}
     core_metrics = [
@@ -318,12 +332,18 @@ class ExtraInfoFetcher:
         }
       else:
         series = {}
+      media_size = (
+        np.log(info.get(with_size_base)) * np.log10(info.get(with_size_base))
+        if with_size_base
+        else None
+      )
       results[media.convert_path_to_media_name(media_url)] = (
         interfaces.MediaInfo(
           **interfaces.create_node_links(media_url, media_type),
           media_name=values[0].get('media_name'),
           info=info,
           series=series,
+          size=media_size,
         )
       )
     return results

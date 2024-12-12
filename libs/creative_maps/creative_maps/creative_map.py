@@ -97,7 +97,8 @@ class CreativeMap:
       node_name = node.get('name', '')
       if node_extra_info := extra_info.get(node_name):
         node['id'] = node_name
-        node['size'] = 10
+        if size := node_extra_info.size:
+          node['size'] = size
         node['type'] = 'image'
         node['image'] = node_extra_info.media_preview
         node['media_path'] = node_extra_info.media_path
