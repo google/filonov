@@ -53,6 +53,11 @@ def main():  # noqa: D103
     help='Type of campaign',
   )
   parser.add_argument(
+    '--size-base',
+    dest='size_base',
+    help='Metric to base node sizes on',
+  )
+  parser.add_argument(
     '--db-uri',
     dest='db_uri',
     help='Database connection string to store and retrieve results',
@@ -135,7 +140,7 @@ def main():  # noqa: D103
     extra_info = google_ads.ExtraInfoFetcher(
       accounts=request.account,
       ads_config=request.ads_config_path,
-    ).generate_extra_info(fetching_request)
+    ).generate_extra_info(fetching_request, args.size_base)
     media_tagger = tagger.create_tagger(request.tagger)
     media_paths = [info.media_path for info in extra_info.values()]
     tagging_results = media_tagger.tag_media(
