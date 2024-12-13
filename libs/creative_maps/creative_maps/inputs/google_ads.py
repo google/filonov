@@ -21,9 +21,8 @@ import functools
 import logging
 import operator
 import os
-from collections import defaultdict
 from collections.abc import Sequence
-from typing import Literal
+from typing import Final, Literal
 
 import garf_youtube_data_api
 import numpy as np
@@ -52,52 +51,39 @@ class MediaInfoFileInput:
   metric_names: Sequence[str]
 
 
+_CORE_METRICS: Final[tuple[str, ...]] = (
+  'cost',
+  'impressions',
+  'clicks',
+  'conversions',
+  'conversions_value',
+)
+
+
 def from_file(
   path: os.PathLike[str],
-  file_column_input: MediaInfoFileInput,
   media_type: Literal['image', 'youtube_video'],
+  with_size_base: str | None = None,
 ) -> dict[str, interfaces.MediaInfo]:
   """Generates MediaInfo from a file.
 
   Args:
     path: Path to files with Google Ads performance data.
-    file_column_input: Identifiers for MediaInfo results.
     media_type: Type of media found in a file.
+    with_size_base: Optional metric to calculate size of media in the output.
 
   Returns:
     File content converted to MediaInfo mapping.
 
   Raises:
-    ValueError: If file doesn't have all required input columns.
+    ValueError: If files doesn't have all required input columns.
   """
-  media_identifier, media_name, metrics = (
-    file_column_input.media_identifier,
-    file_column_input.media_name,
-    file_column_input.metric_names,
-  )
-  data = pd.read_csv(path)
-  if missing_columns := {media_name, *metrics}.difference(set(data.columns)):
+  performance = report.GaarfReport.from_pandas(pd.read_csv(path))
+  if missing_columns := {'media_url', 'media_name', *_CORE_METRICS}.difference(
+    set(performance.column_names)
+  ):
     raise ValueError(f'Missing column(s) in {path}: {missing_columns}')
-  data['info'] = data.apply(
-    lambda row: {metric: row[metric] for metric in metrics},
-    axis=1,
-  )
-  grouped = (
-    data.groupby([media_name, media_identifier]).info.apply(list).reset_index()
-  )
-  results = {}
-  for _, row in grouped.iterrows():
-    info = defaultdict(float)
-    for element in row['info']:
-      for metric in metrics:
-        info[metric] += element.get(metric)
-    results[row[media_identifier]] = interfaces.MediaInfo(
-      **interfaces.create_node_links(row[media_identifier], media_type),
-      media_name=row[media_name],
-      info=info,
-      series={},
-    )
-  return results
+  return _convert_to_media_info(performance, media_type, with_size_base)
 
 
 class ExtraInfoFetcher:
@@ -135,7 +121,7 @@ class ExtraInfoFetcher:
       video_extra_info,
       columns=('media_size', 'aspect_ratio'),
     )
-    return self._convert_to_media_info(
+    return _convert_to_media_info(
       performance, fetching_request.media_type, with_size_base
     )
 
@@ -291,59 +277,50 @@ class ExtraInfoFetcher:
       else:
         row['orientation'] = 'Square'
 
-  def _convert_to_media_info(
-    self,
-    performance: report.GaarfReport,
-    media_type: queries.SupportedMediaTypes,
-    with_size_base: str | None,
-  ) -> dict[str, interfaces.MediaInfo]:
-    """Convert report to MediaInfo mappings."""
-    if with_size_base and with_size_base not in performance.column_names:
-      logging.warning('Failed to set MediaInfo size to {with_size_base}')
-      with_size_base = None
-    if with_size_base:
-      try:
-        float(performance[0][with_size_base])
-      except TypeError:
-        logging.warning('MediaInfo size attribute should be numeric')
-        with_size_base = None
 
-    performance = performance.to_dict(key_column='media_url')
-    results = {}
-    core_metrics = [
-      'cost',
-      'impressions',
-      'clicks',
-      'conversions',
-      'conversions_value',
-    ]
-    for media_url, values in performance.items():
-      info = interfaces.build_info(values, core_metrics)
-      info.update(
-        {
-          'orientation': values[0].get('orientation'),
-          'media_size': values[0].get('media_size'),
-        }
-      )
-      if values[0].get('date'):
-        series = {
-          entry.get('date'): interfaces.build_info(entry, core_metrics)
-          for entry in values
-        }
-      else:
-        series = {}
-      media_size = (
-        np.log(info.get(with_size_base)) * np.log10(info.get(with_size_base))
-        if with_size_base
-        else None
-      )
-      results[media.convert_path_to_media_name(media_url)] = (
-        interfaces.MediaInfo(
-          **interfaces.create_node_links(media_url, media_type),
-          media_name=values[0].get('media_name'),
-          info=info,
-          series=series,
-          size=media_size,
-        )
-      )
-    return results
+def _convert_to_media_info(
+  performance: report.GaarfReport,
+  media_type: queries.SupportedMediaTypes,
+  with_size_base: str | None,
+) -> dict[str, interfaces.MediaInfo]:
+  """Convert report to MediaInfo mappings."""
+  if with_size_base and with_size_base not in performance.column_names:
+    logging.warning('Failed to set MediaInfo size to {with_size_base}')
+    with_size_base = None
+  if with_size_base:
+    try:
+      float(performance[0][with_size_base])
+    except TypeError:
+      logging.warning('MediaInfo size attribute should be numeric')
+      with_size_base = None
+
+  performance = performance.to_dict(key_column='media_url')
+  results = {}
+  for media_url, values in performance.items():
+    info = interfaces.build_info(values, _CORE_METRICS)
+    info.update(
+      {
+        'orientation': values[0].get('orientation'),
+        'media_size': values[0].get('media_size'),
+      }
+    )
+    if values[0].get('date'):
+      series = {
+        entry.get('date'): interfaces.build_info(entry, _CORE_METRICS)
+        for entry in values
+      }
+    else:
+      series = {}
+    media_size = (
+      np.log(info.get(with_size_base)) * np.log10(info.get(with_size_base))
+      if with_size_base
+      else None
+    )
+    results[media.convert_path_to_media_name(media_url)] = interfaces.MediaInfo(
+      **interfaces.create_node_links(media_url, media_type),
+      media_name=values[0].get('media_name'),
+      info=info,
+      series=series,
+      size=media_size,
+    )
+  return results

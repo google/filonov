@@ -125,9 +125,8 @@ def main():  # noqa: D103
     )
     extra_info = google_ads.from_file(
       path=request.performance_results_path,
-      file_column_input=request.performance_columns,
       media_type=media_type.lower(),
-      campaign_type=args.campaign_type,
+      with_size_base=args.size_base,
     )
   elif args.source == 'googleads':
     request = utils.GoogleAdsApiInputRequest(**source_parameters)

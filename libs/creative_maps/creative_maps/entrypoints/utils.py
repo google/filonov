@@ -21,8 +21,6 @@ from typing import Any
 
 from media_tagging import tagging_result
 
-from creative_maps.inputs import google_ads
-
 
 @dataclasses.dataclass
 class BaseInputRequest:
@@ -41,15 +39,8 @@ class FileInputRequest(BaseInputRequest):
   performance_results_path: os.PathLike[str]
   tagging_columns: tagging_result.TaggingResultsFileInput = dataclasses.field(
     default_factory=lambda: tagging_result.TaggingResultsFileInput(
-      identifier_name='ytid', tag_name='id', score_name='value'
+      identifier_name='media_url', tag_name='tag', score_name='score'
     )
-  )
-  performance_columns: google_ads.MediaInfoFileInput = dataclasses.field(
-    default_factory=lambda: google_ads.MediaInfoFileInput(
-      media_identifier='url',
-      media_name='title',
-      metric_names=['clicks', 'impressions'],
-    ),
   )
 
 
