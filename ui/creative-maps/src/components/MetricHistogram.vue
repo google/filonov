@@ -27,7 +27,8 @@ const emit = defineEmits<{
     args: {
       metric: string;
       nodes: AbstractNode[];
-      range: number[];
+      scalar: boolean;
+      range: number[] | string[];
     },
   ): void;
 }>();
@@ -48,15 +49,12 @@ watch(
   { deep: true },
 );
 
-// const totalHeight = computed(() => {
-//   return props.height + 30;
-// });
-
 function drawHistogram() {
   if (!svgRef.value) {
     console.log('empty this.$refs.svgRef');
     return;
   }
+
   const svg = d3.select(svgRef.value);
   svg.selectAll('*').remove();
 
@@ -67,14 +65,22 @@ function drawHistogram() {
   const height = props.height;
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
+  const isStringData = typeof props.data[0].x0 === 'string';
 
-  const x = d3
-    .scaleLinear()
-    .domain([
-      d3.min(props.data, (d: HistogramData) => d.x0) ?? 0,
-      d3.max(props.data, (d: HistogramData) => d.x1) ?? 0,
-    ])
-    .range([0, innerWidth]);
+  // Create appropriate scales based on data type
+  const x = isStringData
+    ? d3
+        .scaleBand()
+        .domain(props.data.map((d) => d.x0 as string))
+        .range([0, innerWidth])
+        .padding(0.1)
+    : d3
+        .scaleLinear()
+        .domain([
+          d3.min(props.data, (d: HistogramData) => d.x0 as number) ?? 0,
+          d3.max(props.data, (d: HistogramData) => d.x1) ?? 0,
+        ])
+        .range([0, innerWidth]);
 
   const y = d3
     .scaleLinear()
@@ -89,18 +95,34 @@ function drawHistogram() {
   g.selectAll('rect')
     .data<HistogramData>(props.data)
     .join('rect')
-    .attr('x', (d) => x(d.x0))
+    .attr('x', (d) =>
+      isStringData
+        ? ((x as d3.ScaleBand<string>)(d.x0 as string) ?? 0)
+        : (x as d3.ScaleLinear<number, number>)(d.x0 as number),
+    )
     .attr('y', (d) => y(d.count))
-    .attr('width', (d) => Math.max(1, x(d.x1) - x(d.x0) - 1))
+    .attr('width', (d) =>
+      isStringData
+        ? (x as d3.ScaleBand<string>).bandwidth()
+        : Math.max(
+            1,
+            (x as d3.ScaleLinear<number, number>)(d.x1 as number) -
+              (x as d3.ScaleLinear<number, number>)(d.x0 as number) -
+              1,
+          ),
+    )
     .attr('height', (d) => Math.max(1, innerHeight - y(d.count)))
     .attr('fill', '#69b3a2')
     .attr('opacity', 0.8)
-    .attr('cursor', 'pointer') // Show pointer cursor
+    .attr('cursor', 'pointer')
     .on('click', (event, d) => {
       emit('metric-clicked', {
         metric: props.metric,
         nodes: d.nodes,
-        range: [d.x0 || 0, d.x1 || 0],
+        scalar: isStringData,
+        range: isStringData
+          ? ([d.x0, d.x0] as string[])
+          : ([d.x0 || 0, d.x1 || 0] as number[]),
       });
     })
     .on('mouseover', (event, d) => {
@@ -110,7 +132,10 @@ function drawHistogram() {
         .style('opacity', 1)
         .style('left', `${event.offsetX + 10}px`)
         .style('top', `${event.offsetY - 10}px`);
-      tooltip.html(`${d.x0.toFixed(1)}-${d.x1.toFixed(1)}: ${d.count}`);
+      const tooltipText = isStringData
+        ? `${d.x0}: ${d.count}`
+        : `${(d.x0 as number).toFixed(1)}-${(d.x1 as number).toFixed(1)}: ${d.count}`;
+      tooltip.html(tooltipText);
     })
     .on('mouseout', () => {
       d3.select(rootEl.value).select('.tooltip').style('opacity', 0);
@@ -127,7 +152,13 @@ function drawHistogram() {
   // Add axes
   g.append('g')
     .attr('transform', `translate(0,${innerHeight})`)
-    .call(d3.axisBottom(x).ticks(5));
+    .call(
+      isStringData
+        ? d3.axisBottom(x as d3.ScaleBand<string>).tickSizeOuter(0)
+        : d3.axisBottom(x as d3.ScaleLinear<number, number>).ticks(5),
+    )
+    .selectAll('text')
+    .style('text-anchor', 'end');
 
   g.append('g').call(d3.axisLeft(y).ticks(5));
 

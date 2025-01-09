@@ -137,8 +137,8 @@ export interface AbstractNode {
  * Model for histograms.
  */
 export interface HistogramData {
-  x0: number;
-  x1: number;
+  x0: number | string;
+  x1?: number;
   count: number;
   nodes: AbstractNode[];
 }

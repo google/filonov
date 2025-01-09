@@ -315,7 +315,7 @@ import {
   HistogramData,
 } from 'components/models';
 import { formatMetricValue } from 'src/helpers/utils';
-import { initClusters } from 'src/helpers/graph';
+import { aggregateNodesMetrics, initClusters } from 'src/helpers/graph';
 
 const d3GraphRef = ref<InstanceType<typeof D3Graph> | null>(null);
 const showLoadDataDialog = ref(false);
@@ -479,15 +479,44 @@ function createHistogramData(
     .filter((v) => v.value !== undefined && v.value !== null);
 
   if (!values || values.length === 0) return [];
+  // Check if the values are strings
+  const isStringData = typeof values[0].value === 'string';
 
-  // Create bin generator
-  const binner = d3
-    .bin<{ value: number; node: AbstractNode }, number>()
-    .value((d) => d.value)
-    .domain([d3.min(values, (d) => d.value)!, d3.max(values, (d) => d.value)!])
-    .thresholds(10); // number of bins
+  if (isStringData) {
+    // Count frequencies of each unique value
+    const frequencies = d3.rollup(
+      values,
+      (v) => v.length,
+      (d) => d.value,
+    );
 
-  // Generate bins
+    // Convert to array and sort by frequency
+    const sortedData = Array.from(frequencies, ([value, count]) => ({
+      value,
+      count,
+      nodes: values.filter((v) => v.value === value).map((v) => v.node),
+    }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Limit to top 10
+
+    // Convert to HistogramData format
+    return sortedData.map((d) => ({
+      x0: d.value,
+      count: d.count,
+      nodes: d.nodes,
+    }));
+  } else {
+    // Create bin generator
+    const binner = d3
+      .bin<{ value: number; node: AbstractNode }, number>()
+      .value((d) => d.value)
+      .domain([
+        d3.min(values, (d) => d.value)!,
+        d3.max(values, (d) => d.value)!,
+      ])
+      .thresholds(10); // number of bins
+
+    // Generate bins
   const bins = binner(values);
 
   return bins.map((bin) => ({
@@ -495,7 +524,8 @@ function createHistogramData(
     x1: bin.x1 || 0,
     count: bin.length,
     nodes: bin.map((d) => d.node),
-  }));
+    }));
+  }
 }
 
 /**
@@ -505,13 +535,14 @@ function createHistogramData(
 function onClusterHistogramMetricClicked(args: {
   metric: string;
   nodes: AbstractNode[];
-  range: number[];
+  scalar: boolean;
+  range: number[] | string[];
 }) {
   if (d3GraphRef.value) {
-    d3GraphRef.value.selectNodes(
-      args.nodes as Node[],
-      `Nodes with '${args.metric}' metric values in [${args.range[0]}, ${args.range[1]}]`,
-    );
+    const msg = args.scalar
+      ? `Nodes with '${args.metric}' metric equals to '${args.range[0]}'`
+      : `Nodes with '${args.metric}' metric values in [${args.range[0]}, ${args.range[1]}] range`;
+    d3GraphRef.value.selectNodes(args.nodes as Node[], msg);
   }
 }
 
