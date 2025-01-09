@@ -153,6 +153,7 @@ interface Props {
   clusters: ClusterInfo[];
   debug?: boolean;
   labelField?: string;
+  sizeField?: string;
 }
 const props = withDefaults(defineProps<Props>(), { labelField: 'label' });
 
@@ -177,6 +178,9 @@ const selectedClusterId = ref<string | null>(null);
 const currentNode = ref<Node | null>(null);
 const currentEdge = ref<Edge | null>(null);
 const currentCluster = ref<ClusterInfo | null>(null);
+let circleBaseSize: number;
+let imageBaseSize: number;
+
 const imageLoading = ref({
   total: 0,
   current: 0,
@@ -215,11 +219,9 @@ function highlightNode(event: Event, d: Node) {
   tooltipTarget.value = event.currentTarget as HTMLElement;
   tooltipVisible.value = true;
   currentNode.value = d;
-  console.log(currentCluster.value);
   if (!currentCluster.value) {
     // if there's not selected cluster, highlight the cluster that the node belongs to
     const connectedNodes = getCluster(d.cluster)?.nodes || [];
-    //console.log('highlightNodes', connectedNodes);
     highlightNodes(connectedNodes);
   }
   return false;
@@ -275,17 +277,8 @@ function highlightNodes(nodes: Node[]) {
     .transition()
     .duration(200)
     .style('opacity', (link: D3Edge) => {
-      const sourceConnected = connectedIds.has(
-        link.from.toString(),
-        //link.source.id ? link.source.id : link.source.toString(),
-      );
-      const targetConnected = connectedIds.has(
-        link.to.toString(),
-        //link.target.id ? link.target.id : link.target.toString(),
-      );
-      if (sourceConnected && targetConnected) {
-        console.log('highlighting ', link);
-      }
+      const sourceConnected = connectedIds.has(link.from.toString());
+      const targetConnected = connectedIds.has(link.to.toString());
       return sourceConnected && targetConnected ? 0.6 : 0.1;
     });
 }
@@ -430,13 +423,10 @@ function calculateNodeSizes(nodesCount: number) {
   };
 }
 
-const updateNodeSizes = (restartSimulation = false) => {
+function updateNodeSizes(restartSimulation = false) {
   if (!simulation.value || !chartContainer.value) return;
 
-  const { circleBaseSize, imageBaseSize } = calculateNodeSizes(
-    props.nodes.length,
-  );
-
+  ({ circleBaseSize, imageBaseSize } = calculateNodeSizes(props.nodes.length));
   // console.log('updateNodeSizes:', {
   //   multiplier: nodeSizeMultiplier.value,
   //   circleBaseSize,
@@ -612,6 +602,14 @@ async function drawGraph() {
   );
 
   props.nodes.forEach((node: Node) => {
+    if (!node.size && node.info) {
+      const sizeField = props.sizeField || 'cost';
+      if (node.info[sizeField]) {
+        node.size =
+          Math.log(Number(node.info[sizeField])) *
+          Math.log10(Number(node.info[sizeField]));
+      }
+    }
     node.size = node.size || 10;
   });
 
@@ -858,25 +856,6 @@ async function drawGraph() {
     nodeGroup.attr('transform', (d: D3Node) => `translate(${d.x},${d.y})`);
   });
 
-  function dragStarted(event: DragEvent, d: D3Node) {
-    if (!event.active) simulation.value?.alphaTarget(0.3).restart();
-    d.fx = d.x;
-    d.fy = d.y;
-    tooltipVisible.value = false;
-  }
-
-  function dragged(event: DragEvent, d: D3Node) {
-    d.fx = event.x;
-    d.fy = event.y;
-    tooltipVisible.value = false;
-  }
-
-  function dragEnded(event: DragEvent, d: D3Node) {
-    if (!event.active) simulation.value?.alphaTarget(0);
-    d.fx = null;
-    d.fy = null;
-  }
-
   zoomBehavior.value = zoom<SVGSVGElement, unknown>()
     .scaleExtent([0.05, 4])
     .on('zoom', (event) => {
@@ -929,6 +908,24 @@ async function drawGraph() {
   console.log('drawGraph completed');
 }
 
+function dragStarted(event: DragEvent, d: D3Node) {
+  if (!event.active) simulation.value?.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+  tooltipVisible.value = false;
+}
+
+function dragged(event: DragEvent, d: D3Node) {
+  d.fx = event.x;
+  d.fy = event.y;
+  tooltipVisible.value = false;
+}
+
+function dragEnded(event: DragEvent, d: D3Node) {
+  if (!event.active) simulation.value?.alphaTarget(0);
+  d.fx = undefined;
+  d.fy = undefined;
+}
 function fitGraph() {
   if (!chartContainer.value || !simulation.value) return;
 
