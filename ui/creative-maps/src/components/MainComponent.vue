@@ -42,8 +42,8 @@
               narrow-indicator
             >
               <q-tab v-if="nodes" name="info" label="Info" />
-              <q-tab v-if="selectedCluster" name="metrics" label="Metrics" />
-              <q-tab v-if="nodes" name="tags" label="Tags" />
+              <q-tab v-if="nodes.length" name="metrics" label="Metrics" />
+              <q-tab v-if="nodes.length" name="tags" label="Tags" />
               <q-tab v-if="selectedNode" name="node" label="Node" />
             </q-tabs>
 
@@ -82,7 +82,7 @@
                 </q-card>
 
                 <!-- Compare clusters button -->
-                <div class="row q-gutter-md ">
+                <div class="row q-gutter-md">
                   <div class="col">
                     <q-btn
                       v-if="clusters.length"
@@ -91,11 +91,11 @@
                       icon="compare"
                       class="q-mt-md"
                       @click="showClusterComparison = true"
-                      style="width: 100%;"
+                      style="width: 100%"
                     />
                   </div>
                 </div>
-                <div class="row q-gutter-md ">
+                <div class="row q-gutter-md">
                   <div class="col">
                     <q-btn
                       v-if="nodes.length"
@@ -104,42 +104,30 @@
                       icon="compare_arrows"
                       class="q-mt-md"
                       @click="showNodeComparison = true"
-                      style="width: 100%;"
+                      style="width: 100%"
                     />
                   </div>
                 </div>
               </q-tab-panel>
 
-              <q-tab-panel v-if="selectedCluster" name="metrics">
+              <q-tab-panel name="metrics">
                 <div class="text-h6">
-                  {{ selectedCluster.id ? 'Cluster' : 'Selection' }} Metrics
+                  {{ getSelectionDescription() }}
                 </div>
                 <q-list separator>
                   <q-item>
                     <q-item-section>
-                      <q-item-label v-if="selectedCluster.id">Id</q-item-label>
-                      <q-item-label v-if="selectedCluster.id" caption>{{
-                        selectedCluster.id
-                      }}</q-item-label>
-                      <q-item-label v-if="selectedCluster.description"
-                        >Selected nodes</q-item-label
-                      >
-                      <q-item-label
-                        v-if="selectedCluster.description"
-                        caption
-                        >{{ selectedCluster.description }}</q-item-label
-                      >
-                      <q-item-label>Nodes</q-item-label>
+                      <q-item-label>Node count</q-item-label>
                       <q-item-label caption>{{
-                        selectedCluster.nodes.length
+                        selectedCluster?.nodes.length || nodes.length
                       }}</q-item-label>
                     </q-item-section>
                   </q-item>
                   <q-separator spaced />
                 </q-list>
-                <q-list separator>
+                <q-list separator v-if="selectedCluster">
                   <q-item
-                    v-for="(value, metric) in selectedCluster.metrics"
+                    v-for="(value, metric) in selectedCluster?.metrics"
                     :key="metric"
                   >
                     <q-item-section>
@@ -210,7 +198,11 @@
               </q-tab-panel>
 
               <q-tab-panel name="node" v-if="selectedNode">
-                <NodeCard :node="selectedNode" :noClose="true" :showDrillDown="true" />
+                <NodeCard
+                  :node="selectedNode"
+                  :noClose="true"
+                  :showDrillDown="true"
+                />
               </q-tab-panel>
             </q-tab-panels>
             <!-- Time Series Dialog -->
@@ -228,7 +220,7 @@
                 </q-card-section>
 
                 <q-card-section>
-                  <time-series-chart
+                  <TimeSeriesChart
                     :data="timeSeriesData"
                     :metric="selectedMetric"
                     :cluster-nodes="selectedCluster!.nodes"
@@ -313,6 +305,7 @@ import {
   TagStats,
   AbstractNode,
   HistogramData,
+  MetricValue,
 } from 'components/models';
 import { formatMetricValue } from 'src/helpers/utils';
 import { aggregateNodesMetrics, initClusters } from 'src/helpers/graph';
@@ -331,6 +324,7 @@ const showNodeComparison = ref(false);
 const showTimeSeriesDialog = ref(false);
 const showTagsDashboardDialog = ref(false);
 const selectedMetric = ref('');
+let clusterForAllNodes: ClusterInfo | undefined;
 
 const sortedTags = computed(() => {
   if (!selectedCluster.value) {
@@ -373,6 +367,14 @@ async function onDataLoaded(args: { data: GraphData; origin: string }) {
   clusters.value = initClusters(jsonData.nodes, jsonData.edges);
   nodes.value = jsonData.nodes;
   edges.value = jsonData.edges;
+  clusterForAllNodes = {
+    id: '',
+    nodes: nodes.value,
+    description: 'All nodes',
+    metrics: aggregateNodesMetrics(nodes.value),
+  };
+  selectedCluster.value = clusterForAllNodes;
+  selectedNode.value = null;
 }
 
 function unloadData() {
@@ -413,7 +415,10 @@ function selectNodesByTag(tagStat: TagStats) {
   const nodesWithTag = tagStat.nodes;
 
   // Use the D3Graph method to highlight these nodes
-  d3GraphRef.value?.selectNodes(nodesWithTag, 'Nodes with tag ' + tagStat.tag);
+  d3GraphRef.value?.selectNodes(
+    nodesWithTag,
+    `Nodes with tag '${tagStat.tag}''`,
+  );
 }
 
 /**
@@ -422,7 +427,10 @@ function selectNodesByTag(tagStat: TagStats) {
  */
 function onTagDashboardSelect(tagStat: TagStats) {
   showTagsDashboardDialog.value = false;
-  d3GraphRef.value?.selectNodes(tagStat.nodes, 'Nodes with tag ' + tagStat.tag);
+  d3GraphRef.value?.selectNodes(
+    tagStat.nodes,
+    `Nodes with tag '${tagStat.tag}'`,
+  );
 }
 
 function onNodeSelected(node: Node | null) {
@@ -430,12 +438,16 @@ function onNodeSelected(node: Node | null) {
 }
 
 function onClusterSelected(cluster: ClusterInfo | null) {
-  selectedCluster.value = cluster;
   if (!cluster) {
-    if (activeTab.value !== 'tags' && activeTab.value !== 'info') {
-      activeTab.value = 'tags';
-    }
+    selectedCluster.value = clusterForAllNodes!;
+  } else {
+    selectedCluster.value = cluster;
   }
+  // if (!cluster) {
+  //   if (activeTab.value !== 'tags' && activeTab.value !== 'info') {
+  //     activeTab.value = 'tags';
+  //   }
+  // }
 }
 
 function selectCluster(clusterId: string) {
@@ -475,7 +487,7 @@ function createHistogramData(
 
   // Get all values of the metric
   const values = nodes
-    .map((node) => ({ value: node.info?.[metric] as number, node }))
+    .map((node) => ({ value: node.info?.[metric] as MetricValue, node }))
     .filter((v) => v.value !== undefined && v.value !== null);
 
   if (!values || values.length === 0) return [];
@@ -501,29 +513,29 @@ function createHistogramData(
 
     // Convert to HistogramData format
     return sortedData.map((d) => ({
-      x0: d.value,
+      x0: d.value as string,
       count: d.count,
       nodes: d.nodes,
     }));
   } else {
     // Create bin generator
     const binner = d3
-      .bin<{ value: number; node: AbstractNode }, number>()
-      .value((d) => d.value)
+      .bin<{ value: MetricValue; node: AbstractNode }, number>()
+      .value((d) => d.value as number)
       .domain([
-        d3.min(values, (d) => d.value)!,
-        d3.max(values, (d) => d.value)!,
+        d3.min(values, (d) => d.value as number)!,
+        d3.max(values, (d) => d.value as number)!,
       ])
       .thresholds(10); // number of bins
 
     // Generate bins
-  const bins = binner(values);
+    const bins = binner(values);
 
-  return bins.map((bin) => ({
-    x0: bin.x0 || 0,
-    x1: bin.x1 || 0,
-    count: bin.length,
-    nodes: bin.map((d) => d.node),
+    return bins.map((bin) => ({
+      x0: bin.x0 || 0,
+      x1: bin.x1 || 0,
+      count: bin.length,
+      nodes: bin.map((d) => d.node),
     }));
   }
 }
@@ -549,6 +561,16 @@ function onClusterHistogramMetricClicked(args: {
 function doShowTimeSeriesDialog(metric: string) {
   selectedMetric.value = metric;
   showTimeSeriesDialog.value = true;
+}
+
+function getSelectionDescription() {
+  if (selectedCluster.value?.description) {
+    return selectedCluster.value?.description;
+  }
+  if (selectedCluster.value?.id) {
+    return 'Cluster #' + selectedCluster.value?.id;
+  }
+  return '';
 }
 </script>
 <style scoped>
