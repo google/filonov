@@ -31,6 +31,14 @@
         @click="fitGraph"
         color="primary"
       />
+      <q-btn
+        flat
+        dense
+        round
+        icon="route"
+        @click="relayoutGraph"
+        color="primary"
+      />
       <q-select
         style="max-width: 300px"
         v-model="selectedClusterId"
@@ -968,6 +976,10 @@ function fitGraph() {
   (svg.transition() as SVGTransition)
     .duration(750)
     .call(zoomBehavior.value!.transform, transform);
+}
+
+function relayoutGraph() {
+  prepositionNodes();
 }
 
 function handleResize() {
