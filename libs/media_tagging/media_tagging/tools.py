@@ -42,9 +42,7 @@ class MediaTaggingResults(langchain_core.tools.BaseTool):
 
   name: str = 'media_tagger'
   description: str = tagger.MEDIA_TAGGER_DESCRIPTION
-  persist_repository: repositories.BaseTaggingResultsRepository = (
-    'repository to persist tagging results'
-  )
+  persist_repository: repositories.BaseTaggingResultsRepository = 'sqlite://'
   args_schema: type[langchain_core.pydantic_v1.BaseModel] = MediaTaggingInput
 
   def _run(
