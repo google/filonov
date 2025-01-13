@@ -311,11 +311,10 @@ def _convert_to_media_info(
       }
     else:
       series = {}
-    media_size = (
-      np.log(info.get(with_size_base)) * np.log10(info.get(with_size_base))
-      if with_size_base
-      else None
-    )
+    if with_size_base and (size_base := info.get(with_size_base)):
+      media_size = np.log(size_base) * np.log10(size_base)
+    else:
+      media_size = None
     results[media.convert_path_to_media_name(media_url)] = interfaces.MediaInfo(
       **interfaces.create_node_links(media_url, media_type),
       media_name=values[0].get('media_name'),
