@@ -4,6 +4,7 @@
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js
 
 import { configure } from 'quasar/wrappers';
+import { execSync } from 'child_process';
 
 export default configure((/* ctx */) => {
   return {
@@ -48,7 +49,10 @@ export default configure((/* ctx */) => {
 
       // publicPath: '/',
       // analyze: true,
-      // env: {},
+      env: {
+        BUILD_TIMESTAMP: new Date().toISOString(),
+        GIT_HASH: execSync('git rev-parse --short HEAD').toString().trim(),
+      },
       // rawDefine: {}
       // ignorePublicFolder: true,
       // minify: false,

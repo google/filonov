@@ -1161,7 +1161,7 @@ defineExpose({
 }
 
 .graph-content {
-  height: calc(100vh - 240px);
+  height: calc(100vh - 280px);
   width: 100%;
 }
 

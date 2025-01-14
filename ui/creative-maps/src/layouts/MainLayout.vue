@@ -22,13 +22,19 @@
     </q-page-container>
 
     <div class="text-body1 text-center q-ma-sm">
-      &copy;&nbsp;Google gTech Ads, 2024.
+      &copy;&nbsp;Google gTech Ads, 2024. Built
+      {{ formattedBuildTime }} (git#{{ GIT_HASH }})
     </div>
   </q-layout>
 </template>
 
 <script setup lang="ts">
 import Logo from 'components/Logo.vue';
+
+const BUILD_TIMESTAMP = process.env.BUILD_TIMESTAMP;
+const GIT_HASH = process.env.GIT_HASH;
+
+const formattedBuildTime = BUILD_TIMESTAMP ? new Date(BUILD_TIMESTAMP).toLocaleString() : '';
 
 defineOptions({
   name: 'MainLayout',
