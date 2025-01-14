@@ -148,7 +148,14 @@ import { Transition } from 'd3-transition';
 import { Selection } from 'd3-selection';
 
 type D3Node = Node &
-  SimulationNodeDatum & { initialX?: number; initialY?: number };
+  SimulationNodeDatum & {
+    initialX?: number;
+    initialY?: number;
+    relativeX?: number;
+    relativeY?: number;
+    x?: number | undefined | null;
+    y?: number | undefined | null;
+  };
 type D3Edge = Edge & SimulationLinkDatum<D3Node>;
 
 type SVGSelection = Selection<SVGSVGElement, unknown, null, undefined>;
@@ -203,8 +210,6 @@ const formatMetricName = (metric: string) => {
 };
 
 function handleNodeClick(event: Event, node: D3Node) {
-  node.fx = node.x;
-  node.fy = node.y;
   // Stop simulation on click
   if (simulation.value) {
     simulation.value.alpha(0);
@@ -494,7 +499,7 @@ function updateNodeSizes(restartSimulation = false) {
   if (restartSimulation) {
     simulation.value.alpha(0.3).restart();
   }
-};
+}
 
 function prepositionNodes() {
   if (!chartContainer.value) return;
@@ -917,7 +922,41 @@ async function drawGraph() {
 }
 
 function dragStarted(event: DragEvent, d: D3Node) {
-  if (!event.active) simulation.value?.alphaTarget(0.3).restart();
+  if (!event.active) {
+    if (
+      currentCluster.value &&
+      currentCluster.value.nodes.find((n) => n.id === d.id)
+    ) {
+      // For cluster drag
+      simulation.value?.alphaTarget(0.3).restart();
+
+      currentCluster.value.nodes.forEach((node) => {
+        const n = simulation.value?.nodes().find((n) => n.id === node.id) as
+          | D3Node
+          | undefined;
+        if (n && n !== d) {
+          n.relativeX = n.x! - d.x!;
+          n.relativeY = n.y! - d.y!;
+          n.fx = n.x;
+          n.fy = n.y;
+        }
+      });
+    } else {
+      // For single node - gentle forces
+      simulation.value
+        ?.force('charge', forceManyBody().strength(-10))
+        .force(
+          'link',
+          forceLink<D3Node, D3Edge>(props.edges as D3Edge[])
+            .id((d) => d.id)
+            .strength(0.01)
+            .distance(50),
+        )
+        .alphaTarget(0.05)
+        .restart();
+    }
+  }
+
   d.fx = d.x;
   d.fy = d.y;
   tooltipVisible.value = false;
@@ -926,14 +965,80 @@ function dragStarted(event: DragEvent, d: D3Node) {
 function dragged(event: DragEvent, d: D3Node) {
   d.fx = event.x;
   d.fy = event.y;
+
+  if (
+    currentCluster.value &&
+    currentCluster.value.nodes.find((n) => n.id === d.id)
+  ) {
+    currentCluster.value.nodes.forEach((node) => {
+      const n = simulation.value?.nodes().find((n) => n.id === node.id) as
+        | D3Node
+        | undefined;
+      if (
+        n &&
+        n !== d &&
+        n.relativeX !== undefined &&
+        n.relativeY !== undefined
+      ) {
+        n.fx = event.x + n.relativeX;
+        n.fy = event.y + n.relativeY;
+      }
+    });
+  } else {
+    // Single node drag - just update position and tick
+    d.x = event.x;
+    d.y = event.y;
+    simulation.value?.tick(); // Update visual without forces
+  }
+
   tooltipVisible.value = false;
 }
 
 function dragEnded(event: DragEvent, d: D3Node) {
-  if (!event.active) simulation.value?.alphaTarget(0);
+  if (!event.active) {
+    if (
+      currentCluster.value &&
+      currentCluster.value.nodes.find((n) => n.id === d.id)
+    ) {
+      // For cluster drag - completely stop forces and fix final positions
+      simulation.value?.stop();
+
+      currentCluster.value.nodes.forEach((node) => {
+        const n = simulation.value?.nodes().find((n) => n.id === node.id) as
+          | D3Node
+          | undefined;
+        if (n) {
+          // Keep the final positions
+          n.x = n.fx || n.x;
+          n.y = n.fy || n.y;
+          delete n.relativeX;
+          delete n.relativeY;
+          n.fx = undefined;
+          n.fy = undefined;
+        }
+      });
+
+      // Restore original forces but don't restart simulation
+      simulation.value?.force('charge', forceManyBody().strength(-100)).force(
+        'link',
+        forceLink<D3Node, D3Edge>(props.edges as D3Edge[])
+          .id((d) => d.id)
+          .strength(0.2)
+          .distance(50),
+      );
+    } else {
+      // For single node - gentle release
+      simulation.value?.alphaTarget(0).alpha(0.1);
+    }
+  }
+
+  // Keep final position of dragged node
+  d.x = d.fx || d.x;
+  d.y = d.fy || d.y;
   d.fx = undefined;
   d.fy = undefined;
 }
+
 function fitGraph() {
   if (!chartContainer.value || !simulation.value) return;
 
