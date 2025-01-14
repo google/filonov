@@ -308,7 +308,7 @@ import {
   MetricValue,
 } from 'components/models';
 import { formatMetricValue } from 'src/helpers/utils';
-import { aggregateNodesMetrics, initClusters } from 'src/helpers/graph';
+import { aggregateNodesMetrics, initClusters, sortTags } from 'src/helpers/graph';
 
 const d3GraphRef = ref<InstanceType<typeof D3Graph> | null>(null);
 const showLoadDataDialog = ref(false);
@@ -364,6 +364,7 @@ async function onDataLoaded(args: { data: GraphData; origin: string }) {
   showLoadDataDialog.value = false;
   dataSourceDescription.value = args.origin || 'Custom data';
   const jsonData: GraphData = args.data;
+  sortTags(jsonData.nodes);
   clusters.value = initClusters(jsonData.nodes, jsonData.edges);
   nodes.value = jsonData.nodes;
   edges.value = jsonData.edges;

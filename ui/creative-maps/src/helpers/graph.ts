@@ -2,6 +2,20 @@ import { isNumber, isString } from 'lodash';
 import { ClusterInfo, Edge, MetricsObject, Node } from 'src/components/models';
 
 /**
+ * Sort tags in nodes in order of score decreasing.
+ * @param nodes all graph node
+ */
+export function sortTags(nodes: Node[]) {
+  nodes.forEach((node) => {
+    if (!node.tags) {
+      node.tags = [];
+    } else {
+      node.tags.sort((a, b) => b.score - a.score);
+    }
+  });
+}
+
+/**
  * Group connected nodes in clusters and calculate aggregated metrics for clusters.
  * @param nodes all graph nodes
  * @param edges all graph edges (links)

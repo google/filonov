@@ -73,10 +73,12 @@
         >
           {{ formatMetricName(metric) }}: {{ formatMetricValue(value, metric) }}
         </div>
-        <div class="text-weight-bold q-mb-sm">Tags:</div>
+        <div v-if="currentNode.tags?.length" class="text-weight-bold q-mb-sm">
+          Tags (up to top 5 of {{ currentNode.tags.length }}):
+        </div>
         <div
           class="q-mb-xs"
-          v-for="(tag, idx) of currentNode.tags"
+          v-for="(tag, idx) of currentNode.tags?.slice(0, 5)"
           :key="tag.tag"
         >
           {{ idx + 1 }}. {{ tag.tag }} ({{ tag.score.toFixed(3) }})
