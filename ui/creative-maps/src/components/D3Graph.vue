@@ -631,7 +631,6 @@ async function drawGraph() {
   props.edges.forEach((edge: Edge) => {
     (edge as D3Edge).source = edge.from; // D3 will resolve this to the actual node
     (edge as D3Edge).target = edge.to; // D3 will resolve this to the actual node
-    edge.width = edge.width || 1;
   });
 
   // Wait for images to load
@@ -650,6 +649,7 @@ async function drawGraph() {
   );
 
   console.log('Creating links');
+  const edgeWidth = 8;
   const link = g
     .append('g')
     .selectAll<SVGLineElement, D3Edge>('line')
@@ -657,6 +657,7 @@ async function drawGraph() {
     .join('line')
     .attr('stroke', '#999')
     .attr('stroke-opacity', 0.6)
+    .attr('stroke-width', edgeWidth)
     .attr('cursor', 'pointer')
     .on('mouseenter', (event: Event, d: Edge) => {
       edgeTooltipTarget.value = event.currentTarget as HTMLElement;
@@ -669,7 +670,7 @@ async function drawGraph() {
         .duration(200)
         .attr('stroke', '#ff0000')
         .attr('stroke-opacity', 1)
-        .attr('stroke-width', 3);
+        .attr('stroke-width', edgeWidth + 2);
     })
     .on('mouseleave', (event) => {
       edgeTooltipVisible.value = false;
@@ -681,7 +682,7 @@ async function drawGraph() {
         .duration(200)
         .attr('stroke', '#999')
         .attr('stroke-opacity', 0.6)
-        .attr('stroke-width', 1);
+        .attr('stroke-width', edgeWidth);
     });
 
   console.log('Creating nodes');
