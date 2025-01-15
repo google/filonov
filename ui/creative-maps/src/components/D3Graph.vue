@@ -236,6 +236,7 @@ let imageBaseSize: number;
 const imageLoading = ref({
   total: 0,
   current: 0,
+  failed: 0,
   inProgress: false,
 });
 let resizeObserver: ResizeObserver;
@@ -411,9 +412,11 @@ function resetHighlight() {
 async function preloadImages(nodes: Node[]) {
   const imagesToLoad = nodes.filter((n) => n.image);
   let loadedCount = 0;
+  let failedCount = 0;
   imageLoading.value = {
     total: imagesToLoad.length,
     current: 0,
+    failed: 0,
     inProgress: true,
   };
 
@@ -422,20 +425,15 @@ async function preloadImages(nodes: Node[]) {
       const img = new Image();
       img.onload = () => {
         loadedCount++;
-        imageLoading.value = {
-          total: imagesToLoad.length,
-          current: loadedCount,
-          inProgress: true,
-        };
+        loadedCount++;
+        imageLoading.value.current = loadedCount;
+        imageLoading.value.failed = failedCount;
         resolve(node.image);
       };
       img.onerror = () => {
-        loadedCount++;
-        imageLoading.value = {
-          total: imagesToLoad.length,
-          current: loadedCount,
-          inProgress: false,
-        };
+        failedCount++;
+        imageLoading.value.failed = failedCount;
+        imageLoading.value.current = loadedCount;
         reject(node.image);
       };
       img.src = node.image;
@@ -443,20 +441,20 @@ async function preloadImages(nodes: Node[]) {
   });
 
   try {
-    await Promise.all(imagePromises);
-    imageLoading.value = {
-      total: imagesToLoad.length,
-      current: loadedCount,
-      inProgress: false,
-    };
-    return true;
+    const results = await Promise.allSettled(imagePromises);
+    const failedResults = results.filter(
+      (result) => result.status === 'rejected',
+    );
+
+    if (failedResults.length > 0) {
+      console.error('Failed to load some images:', failedResults);
+    }
+    imageLoading.value.inProgress = false;
+
+    return failedResults.length === 0;
   } catch (error) {
-    console.error('Failed to load some images:', error);
-    imageLoading.value = {
-      total: imagesToLoad.length,
-      current: loadedCount,
-      inProgress: false,
-    };
+    console.error('Unexpected error:', error);
+    imageLoading.value.inProgress = false;
     return false;
   }
 }
