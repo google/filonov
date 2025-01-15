@@ -46,6 +46,7 @@ class NodeInfo(TypedDict):
   info: interfaces.Info
   series: dict[str, interfaces.MetricInfo]
   tags: list[dict[str, float]]
+  segments: dict[str, str]
 
 
 class CreativeMapJson(TypedDict):
@@ -110,6 +111,7 @@ class CreativeMap:
           {'tag': tag.name.replace("'", ''), 'score': tag.score}
           for tag in tagging_mapping.get(node_name, [])
         ]
+        node['segments'] = node_extra_info.segments
     clusters = {
       cluster_id: f'Cluster: {cluster_id}'
       for cluster_id in set(clustering_results.clusters.values())

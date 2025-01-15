@@ -221,13 +221,18 @@ class ExtraInfoFetcher:
     Returns:
       Mapping between video id and its information.
     """
-    video_durations = fetcher.fetch(
-      queries.YouTubeVideoDurations(), customer_ids
-    ).to_dict(
-      key_column='video_id',
-      value_column='video_duration',
-      value_column_output='scalar',
-    )
+    video_durations = {
+      video_id: video_lengths[0]
+      for video_id, video_lengths in fetcher.fetch(
+        queries.YouTubeVideoDurations(), customer_ids
+      )
+      .to_dict(
+        key_column='video_id',
+        value_column='video_duration',
+      )
+      .items()
+    }
+
     youtube_api_fetcher = garf_youtube_data_api.YouTubeDataApiReportFetcher()
     video_orientations = youtube_api_fetcher.fetch(
       queries.YOUTUBE_VIDEO_ORIENTATIONS_QUERY,
@@ -298,6 +303,7 @@ def _convert_to_media_info(
   results = {}
   for media_url, values in performance.items():
     info = interfaces.build_info(values, _CORE_METRICS)
+    segments = interfaces.build_info(values, ('campaign_type',))
     info.update(
       {
         'orientation': values[0].get('orientation'),
@@ -311,16 +317,16 @@ def _convert_to_media_info(
       }
     else:
       series = {}
-    media_size = (
-      np.log(info.get(with_size_base)) * np.log10(info.get(with_size_base))
-      if with_size_base
-      else None
-    )
+    if with_size_base and (size_base := info.get(with_size_base)):
+      media_size = np.log(size_base) * np.log10(size_base)
+    else:
+      media_size = None
     results[media.convert_path_to_media_name(media_url)] = interfaces.MediaInfo(
       **interfaces.create_node_links(media_url, media_type),
       media_name=values[0].get('media_name'),
       info=info,
       series=series,
       size=media_size,
+      segments=segments,
     )
   return results

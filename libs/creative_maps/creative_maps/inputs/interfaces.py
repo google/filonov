@@ -34,6 +34,7 @@ class MediaInfo:
   series: dict[str, MetricInfo]
   media_preview: str | None = None
   size: float | None = None
+  segments: dict[str, Info] | None = None
 
   def __post_init__(self) -> None:  # noqa: D105
     if not self.media_preview:
