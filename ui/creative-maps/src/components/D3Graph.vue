@@ -311,7 +311,7 @@ function highlightNodes(nodes: Node[]) {
           .style('stroke-width', isConnected ? '3px' : '1px')
           .style(
             'filter',
-            isCurrent ? 'drop-shadow(0 0 3px rgba(255,0,0,0.8))' : 'none',
+            isCurrent ? 'drop-shadow(0 0 30px rgba(255,0,0,0.8))' : 'none',
           );
       } else {
         // For regular circle nodes, keep the current highlighting
