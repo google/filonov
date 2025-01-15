@@ -19,11 +19,11 @@ import argparse
 import pprint
 
 import gaarf.cli.utils as gaarf_utils
-from media_tagging import tagger
+import media_tagging
 
-from media_similarity import media_similarity_service
+import media_similarity
 
-AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
+AVAILABLE_TAGGERS = list(media_tagging.TAGGERS.keys())
 
 
 def main():  # noqa: D103
@@ -56,17 +56,21 @@ def main():  # noqa: D103
   args, kwargs = parser.parse_known_args()
 
   gaarf_utils.init_logging(logger_type='rich')
-  similarity_service = (
-    media_similarity_service.MediaSimilarityService.from_connection_string(
-      args.db_uri
-    )
+  tagging_service = media_tagging.MediaTaggingService(
+    tagging_results_repository=(
+      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
+    ),
+  )
+  similarity_service = media_similarity.MediaSimilarityService(
+    media_similarity_repository=(
+      media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
+        args.db_uri
+      )
+    ),
   )
   if args.action == 'cluster':
-    media_tagger = tagger.create_tagger(args.tagger_type)
-    tagging_results = media_tagger.tag_media(
-      media_paths=args.media_paths,
-      parallel_threshold=args.parallel_threshold,
-      persist_repository=args.db_uri,
+    tagging_results = tagging_service.tag_media(
+      tagger_type=args.tagger_type, media_paths=args.media_paths
     )
     clustering_results = similarity_service.cluster_media(
       tagging_results, normalize=args.normalize
