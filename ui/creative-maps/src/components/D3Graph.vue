@@ -39,17 +39,32 @@
         @click="relayoutGraph"
         color="primary"
       />
-      <q-select
-        style="max-width: 300px"
-        v-model="selectedClusterId"
-        :options="clusterIds"
+      <div class="row">
+        <q-select
+          class="col-2 q-mx-md"
+          style="max-width: 300px"
+          v-model="selectedClusterId"
+          :options="clusterIds"
         label="Select Cluster"
         emit-value
         outlined
         map-options
         @update:model-value="setCurrentCluster"
-        clearable
-      />
+          clearable
+        />
+        <q-select
+          class="col-2"
+          style="max-width: 300px"
+          v-model="selectedSizeField"
+          :options="metricNames"
+          label="Select metric for size"
+          @update:model-value="setSizeField"
+          emit-value
+          outlined
+          map-options
+          clearable
+        />
+      </div>
     </div>
     <div ref="chartContainer" class="graph-content"></div>
     <!-- <div v-if="debug" style="font-size: 12px; margin-top: 10px">
@@ -126,7 +141,15 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch, ref, markRaw, defineExpose } from 'vue';
+import {
+  onMounted,
+  onUnmounted,
+  watch,
+  ref,
+  markRaw,
+  defineExpose,
+  computed,
+} from 'vue';
 import * as d3 from 'd3';
 import { ClusterInfo, Edge, Node } from 'components/models';
 import { aggregateNodesMetrics } from 'src/helpers/graph';
@@ -195,6 +218,18 @@ const selectedClusterId = ref<string | null>(null);
 const currentNode = ref<Node | null>(null);
 const currentEdge = ref<Edge | null>(null);
 const currentCluster = ref<ClusterInfo | null>(null);
+const selectedSizeField = ref<string | null | undefined>(props.sizeField);
+const metricNames = computed(() => {
+  let keys = props.nodes?.length
+    ? props.nodes[0].info
+      ? Object.keys(props.nodes[0].info)
+      : []
+    : [];
+  if (keys.length) {
+    keys = keys.filter((name) => Number.isFinite(props.nodes[0].info?.[name]));
+  }
+  return keys;
+});
 let circleBaseSize: number;
 let imageBaseSize: number;
 
@@ -575,6 +610,30 @@ function prepositionNodes() {
   }
 }
 
+function getNodeSize(metricValue: number) {
+  return Math.log(metricValue) * Math.log10(metricValue);
+}
+/**
+ * Handled of selecting field to use as node size.
+ * @param sizeField field name
+ */
+function setSizeField(sizeField: string) {
+  selectedSizeField.value = sizeField;
+  props.nodes.forEach((node: Node) => {
+    if (sizeField && node.info) {
+      if (node.info[sizeField]) {
+        node.size = getNodeSize(Number(node.info[sizeField]));
+      } else {
+        node.size = 10;
+      }
+    } else {
+      node.size = 10;
+    }
+    node.size = node.size || 10;
+  });
+  updateNodeSizes(true);
+}
+
 async function drawGraph() {
   if (!chartContainer.value) return;
   if (simulation.value) {
@@ -616,13 +675,11 @@ async function drawGraph() {
     `rendering graph with ${props.nodes.length} nodes and ${props.edges.length} edges`,
   );
 
+  const sizeField = selectedSizeField.value;
   props.nodes.forEach((node: Node) => {
-    if (!node.size && node.info) {
-      const sizeField = props.sizeField || 'cost';
+    if (sizeField && !node.size && node.info) {
       if (node.info[sizeField]) {
-        node.size =
-          Math.log(Number(node.info[sizeField])) *
-          Math.log10(Number(node.info[sizeField]));
+        node.size = getNodeSize(Number(node.info[sizeField]));
       }
     }
     node.size = node.size || 10;
