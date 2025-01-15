@@ -58,8 +58,10 @@ def main():  # noqa: D103
     parallel_threshold=args.parallel_threshold,
     persist_repository=args.db_uri,
   )
-  clustering_results = media_similarity_service.cluster_media(
-    tagging_results, normalize=args.normalize, persist_repository=args.db_uri
+  clustering_results = (
+    media_similarity_service.MediaSimilarityService.from_connection_string(
+      args.db_uri
+    ).cluster_media(tagging_results, normalize=args.normalize)
   )
   print(clustering_results.clusters)
 

@@ -148,13 +148,16 @@ def main():  # noqa: D103
       parallel_threshold=args.parallel_threshold,
       persist_repository=args.db_uri,
     )
-  clustering_results = media_similarity_service.cluster_media(
-    tagging_results,
-    normalize=args.normalize,
-    custom_threshold=args.custom_threshold,
-    parallel=args.parallel_threshold > 1,
-    parallel_threshold=args.parallel_threshold,
-    persist_repository=args.db_uri,
+  clustering_results = (
+    media_similarity_service.MediaSimilarityService.from_connection_string(
+      args.db_uri
+    ).cluster_media(
+      tagging_results,
+      normalize=args.normalize,
+      custom_threshold=args.custom_threshold,
+      parallel=args.parallel_threshold > 1,
+      parallel_threshold=args.parallel_threshold,
+    )
   )
   generated_map = creative_map.CreativeMap.from_clustering(
     clustering_results, tagging_results, extra_info, request.to_dict()
