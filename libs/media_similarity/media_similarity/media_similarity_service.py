@@ -20,11 +20,13 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import logging
+import os
 from collections.abc import Iterable, Sequence
 from concurrent import futures
 from typing import Final
 
 import igraph
+import media_tagging
 import pandas as pd
 from media_tagging.taggers import base as base_tagger
 
@@ -63,6 +65,19 @@ class ClusteringResults:
   clusters: dict[str, int]
   adaptive_threshold: float
   graph: GraphInfo
+
+
+@dataclasses.dataclass
+class SimilaritySearchResults:
+  """Contains results of similarity search.
+
+  Attributes:
+    seed_media_identifier: Media identifier used to perform a search.
+    results: Identifiers of the most similar media with their similarity scores.
+  """
+
+  seed_media_identifier: str
+  results: dict[str, float]
 
 
 def _create_similarity_pairs(
@@ -208,6 +223,25 @@ class MediaSimilarityService:
     logging.info('threshold is %.2f', threshold.threshold)
     logging.info('assigning clusters...')
     return _calculate_cluster_assignments(pairs2, threshold)
+
+  def find_similar_media(
+    self, seed_media_identifier: os.PathLike[str] | str, n_results: int = 10
+  ) -> SimilaritySearchResults:
+    """Finds top similar media for a given seed media identifier."""
+    seed_media_identifier = media_tagging.media.convert_path_to_media_name(
+      seed_media_identifier
+    )
+    similar_media = self.repo.get_similar_media(
+      identifier=seed_media_identifier, n_results=n_results
+    )
+    media_identifiers = {}
+    for pair in similar_media:
+      for medium in pair.media:
+        if medium != seed_media_identifier:
+          media_identifiers[medium] = pair.similarity_score
+    return SimilaritySearchResults(
+      seed_media_identifier=seed_media_identifier, results=media_identifiers
+    )
 
 
 def _calculate_cluster_assignments(

@@ -148,6 +148,19 @@ class SqlAlchemySimilarityPairsRepository(BaseSimilarityPairsRepository):
         .all()
       ]
 
+  def get_similar_media(
+    self, identifier: str, n_results: int = 10
+  ) -> list[media_pair.SimilarityPair]:
+    with self.session() as session:
+      return [
+        res.to_model()
+        for res in session.query(SimilarityPairs)
+        .where(SimilarityPairs.identifier.like(f'%{identifier}%'))
+        .order_by(SimilarityPairs.score.desc())
+        .limit(n_results)
+        .all()
+      ]
+
   @override
   def _add(
     self,

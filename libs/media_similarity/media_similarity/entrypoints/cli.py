@@ -16,6 +16,7 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import argparse
+import pprint
 
 import gaarf.cli.utils as gaarf_utils
 from media_tagging import tagger
@@ -27,6 +28,9 @@ AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
 
 def main():  # noqa: D103
   parser = argparse.ArgumentParser()
+  parser.add_argument(
+    'action', nargs='?', choices=['cluster', 'search'], help='Action to perform'
+  )
   parser.add_argument(
     'media_paths', nargs='*', help='Paths to local/remote files or URLs'
   )
@@ -52,18 +56,27 @@ def main():  # noqa: D103
   args, kwargs = parser.parse_known_args()
 
   gaarf_utils.init_logging(logger_type='rich')
-  media_tagger = tagger.create_tagger(args.tagger_type)
-  tagging_results = media_tagger.tag_media(
-    media_paths=args.media_paths,
-    parallel_threshold=args.parallel_threshold,
-    persist_repository=args.db_uri,
-  )
-  clustering_results = (
+  similarity_service = (
     media_similarity_service.MediaSimilarityService.from_connection_string(
       args.db_uri
-    ).cluster_media(tagging_results, normalize=args.normalize)
+    )
   )
-  print(clustering_results.clusters)
+  if args.action == 'cluster':
+    media_tagger = tagger.create_tagger(args.tagger_type)
+    tagging_results = media_tagger.tag_media(
+      media_paths=args.media_paths,
+      parallel_threshold=args.parallel_threshold,
+      persist_repository=args.db_uri,
+    )
+    clustering_results = similarity_service.cluster_media(
+      tagging_results, normalize=args.normalize
+    )
+    pprint.pprint(clustering_results.clusters)
+  elif args.action == 'search':
+    similarity_search_results = similarity_service.find_similar_media(
+      args.media_paths[0]
+    )
+    pprint.pprint(similarity_search_results)
 
 
 if __name__ == '__main__':
