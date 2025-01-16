@@ -833,13 +833,9 @@ async function drawGraph() {
   // Add mouse events to nodeGroup after node creation
   nodeGroup
     .on('mouseenter', (event: Event, d: Node) => {
-      tooltipTarget.value = event.currentTarget as HTMLElement;
-      tooltipVisible.value = true;
       highlightNode(event, d);
     })
     .on('mouseleave', () => {
-      tooltipVisible.value = false;
-      tooltipTarget.value = undefined;
       resetHighlight();
     })
     .on('click', (event: Event, d: Node) => {
@@ -989,6 +985,7 @@ async function drawGraph() {
 
 function dragStarted(event: DragEvent, d: D3Node) {
   if (!event.active) {
+    tooltipVisible.value = false;
     if (
       currentCluster.value &&
       currentCluster.value.nodes.find((n) => n.id === d.id)
@@ -1010,28 +1007,32 @@ function dragStarted(event: DragEvent, d: D3Node) {
     } else {
       // For single node - gentle forces
       simulation.value
-        ?.force('charge', forceManyBody().strength(-10))
-        .force(
-          'link',
-          forceLink<D3Node, D3Edge>(props.edges as D3Edge[])
-            .id((d) => d.id)
-            .strength(0.01)
-            .distance(50),
-        )
-        .alphaTarget(0.05)
+        ?.alphaTarget(0.1)
+        .velocityDecay(0.7)
+        .alpha(0.1)
         .restart();
+      // Alternative: reduced forced between nodes in cluster
+      // simulation.value
+      //   ?.force('charge', forceManyBody().strength(-10))
+      //   .force(
+      //     'link',
+      //     forceLink<D3Node, D3Edge>(props.edges as D3Edge[])
+      //       .id((d) => d.id)
+      //       .strength(0.01)
+      //       .distance(50),
+      //   )
+      //   .alphaTarget(0.05)
+      //   .restart();
     }
   }
 
   d.fx = d.x;
   d.fy = d.y;
-  tooltipVisible.value = false;
 }
 
 function dragged(event: DragEvent, d: D3Node) {
   d.fx = event.x;
   d.fy = event.y;
-
   if (
     currentCluster.value &&
     currentCluster.value.nodes.find((n) => n.id === d.id)
