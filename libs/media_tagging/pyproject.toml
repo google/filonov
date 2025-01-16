@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "media-tagging"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
     "pillow",
     "smart_open",
     "jq",
-    "garf-executors==0.0.1",
+    "garf-executors",
     "pandas",
     "pydantic",
     "SQLalchemy",
