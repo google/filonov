@@ -27,16 +27,25 @@
         flat
         dense
         round
-        icon="fit_screen"
-        @click="fitGraph"
+        icon="route"
+        @click="relayoutGraph"
         color="primary"
       />
       <q-btn
         flat
         dense
         round
-        icon="route"
-        @click="relayoutGraph"
+        icon="fit_screen"
+        @click="fitGraph"
+        color="primary"
+      />
+      <q-btn flat dense round icon="zoom_in" @click="zoomIn" color="primary" />
+      <q-btn
+        flat
+        dense
+        round
+        icon="zoom_out"
+        @click="zoomOut"
         color="primary"
       />
       <div class="row">
@@ -168,7 +177,7 @@ import {
   forceSimulation,
 } from 'd3-force';
 import { D3DragEvent, drag } from 'd3-drag';
-import { zoom, ZoomBehavior, zoomIdentity } from 'd3-zoom';
+import { zoom, ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom';
 import { Transition } from 'd3-transition';
 import { Selection } from 'd3-selection';
 
@@ -927,7 +936,7 @@ async function drawGraph() {
   });
 
   zoomBehavior.value = zoom<SVGSVGElement, unknown>()
-    .scaleExtent([0.05, 4])
+    .scaleExtent([0.001, 10])
     .on('zoom', (event) => {
       g.attr('transform', event.transform);
     });
@@ -1138,6 +1147,36 @@ function fitGraph() {
   (svg.transition() as SVGTransition)
     .duration(750)
     .call(zoomBehavior.value!.transform, transform);
+}
+
+function zoomIn() {
+  if (!chartContainer.value || !zoomBehavior.value) return;
+
+  const svg = d3.select(chartContainer.value).select('svg') as SVGSelection;
+  const svgNode = svg.node();
+  if (!svgNode) return;
+
+  const currentTransform = zoomTransform(svgNode as Element);
+  const newTransform = currentTransform.scale(1.5);
+
+  (svg.transition() as SVGTransition)
+    .duration(300)
+    .call(zoomBehavior.value!.transform, newTransform);
+}
+
+function zoomOut() {
+  if (!chartContainer.value || !zoomBehavior.value) return;
+
+  const svg = d3.select(chartContainer.value).select('svg') as SVGSelection;
+  const svgNode = svg.node();
+  if (!svgNode) return;
+
+  const currentTransform = zoomTransform(svgNode as Element);
+  const newTransform = currentTransform.scale(1 / 1.5);
+
+  (svg.transition() as SVGTransition)
+    .duration(300)
+    .call(zoomBehavior.value!.transform, newTransform);
 }
 
 function relayoutGraph() {
