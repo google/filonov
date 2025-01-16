@@ -5,7 +5,7 @@
 1. Install
 
 ```
-pip install -e .
+pip install media-similarity
 ```
 
 2. Run `media-similarity` with one of two currently supported actions: `cluster` and `search`:

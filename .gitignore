@@ -18,3 +18,4 @@ dist
 .coverage
 .python-version
 work/
+target

@@ -12,17 +12,15 @@ run_file() {
     --parallel-threshold 10
 }
 run_googleads() {
-  echo "Running in googleads mode"
   filonov --source googleads --media-type IMAGE \
-    --campaign-type demandgen app \
+    --campaign-type $campaign_type \
     --db-uri=$FILONOV_DB_URI \
-    --api.account=$FILONOV_ACCOUNT_ID \
-    --api.start-date=$FILONOV_START_DATE --api.end-date=$FILONOV_END_DATE \
-    --api.tagger=vision-api \
-    --api.ads-config_path=$FILONOV_ADS_CONFIG \
+    --googleads.account=$FILONOV_ACCOUNT_ID \
+    --googleads.start-date=$FILONOV_START_DATE --googleads.end-date=$FILONOV_END_DATE \
+    --googleads.tagger=vision-api \
+    --googleads.ads-config_path=$FILONOV_ADS_CONFIG \
     --parallel-threshold 10 \
     --output-name $output_name
-    # --no-normalize
 }
 run_youtube() {
   echo "Running in youtube mode"
