@@ -15,7 +15,7 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import, missing-module-docstring, missing-class-docstring, missing-function-docstring
 
 import pytest
-from media_tagging import repositories, tagger, tagging_result
+from media_tagging import tagger
 from media_tagging.taggers import api, llm
 
 
@@ -75,27 +75,3 @@ def test_create_tagger_raises_error_on_incorrect_tagger():
     ValueError, match='Incorrect tagger "unknown-tagger" is provided*'
   ):
     tagger.create_tagger('unknown-tagger')
-
-
-def test_tag_media_saves_tagging_results_to_repository(mocker, tmp_path):
-  expected_result = tagging_result.TaggingResult(
-    identifier='test',
-    type='image',
-    content=tagging_result.Description(text='Test description.'),
-  )
-  mocker.patch(
-    'media_tagging.taggers.api.GoogleVisionAPITagger.tag',
-    return_value=expected_result,
-  )
-  persist_repository_path = f'sqlite:///{tmp_path}.db'
-  persist_repository = repositories.SqlAlchemyTaggingResultsRepository(
-    persist_repository_path
-  )
-  test_tagger = api.GoogleVisionAPITagger()
-  test_tagging_result = test_tagger.tag_media(
-    media_paths=['test'],
-    persist_repository=persist_repository_path,
-  )
-
-  assert test_tagging_result == [expected_result]
-  assert persist_repository.list() == [expected_result]

@@ -17,22 +17,20 @@
 import os
 
 import fastapi
-from typing_extensions import TypedDict
+import pydantic
 
-from media_tagging import repository, tagger
-from media_tagging.tagger import base as base_tagger
+from media_tagging import media_tagging_service, repositories
 
-taggers: dict[str, base_tagger.BaseTagger] = {}
 app = fastapi.FastAPI()
 
-if db_url := os.getenv('MEDIA_TAGGING_DB_URL'):
-  persist_repository = repository.SqlAlchemyTaggingResultsRepository(db_url)
-  persist_repository.initialize()
-else:
-  persist_repository = None
+tagging_service = media_tagging_service.MediaTaggingService(
+  repositories.SqlAlchemyTaggingResultsRepository(
+    os.getenv('MEDIA_TAGGING_DB_URL')
+  )
+)
 
 
-class MediaPostRequest(TypedDict):
+class MediaTaggingPostRequest(pydantic.BaseModel):
   """Specifies structure of request for tagging media.
 
   Attributes:
@@ -40,63 +38,28 @@ class MediaPostRequest(TypedDict):
     media_url: Local or remote URL of media.
   """
 
-  media_url: str
+  media_paths: list[str]
   tagger_type: str
-  tagging_parameters: dict[str, int | list[str]]
+  tagging_parameters: dict[str, int | list[str]] | None = None
 
 
-@app.post('/tagger/llm')
-async def tag_with_llm(
-  data: MediaPostRequest = fastapi.Body(embed=True),
+@app.post('/tag')
+async def tag(
+  request: MediaTaggingPostRequest,
 ) -> dict[str, str]:
-  """Performs media tagging via LLMs.
+  """Performs media tagging.
 
   Args:
-    data: Post request for media tagging.
+    request: Post request for media tagging.
 
   Returns:
     Json results of tagging.
   """
-  return process_post_request(data)
-
-
-@app.post('/tagger/api')
-async def tag_with_api(
-  data: MediaPostRequest = fastapi.Body(embed=True),
-) -> dict[str, str]:
-  """Performs media tagging via Google Cloud APIs.
-
-  Args:
-    data: Post request for media tagging.
-
-  Returns:
-    Json results of tagging.
-  """
-  return process_post_request(data)
-
-
-def process_post_request(
-  data: MediaPostRequest,
-) -> fastapi.responses.JSONResponse:
-  """Helper method for performing tagging.
-
-  Args:
-    data: Post request for media tagging.
-
-  Returns:
-    Json results of tagging.
-  """
-  tagger_type = data.get('tagger_type')
-  if not (concrete_tagger := taggers.get(tagger_type)):
-    concrete_tagger = tagger.create_tagger(tagger_type)
-    taggers[tagger_type] = concrete_tagger
-  if media_url := data.get('media_url'):
-    tagging_results = concrete_tagger.tag_media(
-      media_paths=[media_url],
-      tagging_parameters=data.get('tagging_parameters'),
-      persist_repository=persist_repository,
-    )
-    return fastapi.responses.JSONResponse(
-      content=fastapi.encoders.jsonable_encoder(tagging_results[0].dict())
-    )
-  raise ValueError('No path to media is provided.')
+  tagging_results = tagging_service.tag_media(
+    tagger_type=request.tagger_type,
+    media_paths=request.media_paths,
+    tagging_parameters=request.tagging_parameters,
+  )
+  return fastapi.responses.JSONResponse(
+    content=fastapi.encoders.jsonable_encoder(tagging_results)
+  )
