@@ -466,6 +466,8 @@ function selectNode(nodeId: number) {
   const node = nodes.value.find((n) => n.id === nodeId);
   if (node) {
     d3GraphRef.value?.selectNodes([node]);
+    // NOTE: selectNodes won't trigger 'select-node' event
+    selectedNode.value = node;
   }
 }
 
