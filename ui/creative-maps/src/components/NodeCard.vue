@@ -27,7 +27,8 @@
         </div>
       </div>
       <div class="q-mt-sm" align="right">
-        <q-btn v-if="showDrillDown"
+        <q-btn
+          v-if="showDrillDown"
           flat
           color="primary"
           @click="showMetrics = true"
@@ -48,7 +49,6 @@
     </q-card-section>
 
     <q-card-actions align="right">
-
       <q-btn
         v-if="node.media_path"
         flat
@@ -64,40 +64,24 @@
     </q-dialog>
     <!-- Creative Dialog -->
     <q-dialog v-model="showCreative" maximized>
-      <q-card class="creative-dialog">
-        <q-card-section class="row items-center">
-          <q-btn icon="close" flat round dense v-close-popup />
-        </q-card-section>
-
-        <q-card-section class="q-pa-none content-section">
-          <template v-if="isVideo">
-            <iframe
-              :src="getEmbedUrl(node.media_path)"
-              class="creative-preview video"
-              allowfullscreen
-            ></iframe>
-          </template>
-          <template v-else>
-            <img :src="node.image" class="creative-preview image" />
-          </template>
-        </q-card-section>
-      </q-card>
+      <CreativePreview :image="node.image" :media_path="node.media_path" />
     </q-dialog>
   </q-card>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { Node } from 'components/models';
 import { formatMetricValue } from 'src/helpers/utils';
 import NodeMetricsDialog from './NodeMetricsDialog.vue';
+import CreativePreview from './CreativePreview.vue';
 
 interface Props {
   node: Node;
   noClose?: boolean;
   showDrillDown?: boolean;
 }
-const props = defineProps<Props>();
+defineProps<Props>();
 
 defineEmits<{
   (e: 'remove'): void;
@@ -105,21 +89,6 @@ defineEmits<{
 
 const showCreative = ref(false);
 const showMetrics = ref(false);
-
-const isVideo = computed(() => {
-  return props.node.media_path?.includes('youtube.com');
-});
-
-const getEmbedUrl = (url: string) => {
-  if (!url) return '';
-
-  // Convert YouTube watch URLs to embed URLs
-  if (url.includes('youtube.com/watch')) {
-    const videoId = new URL(url).searchParams.get('v');
-    return `https://www.youtube.com/embed/${videoId}`;
-  }
-  return url;
-};
 </script>
 
 <style scoped>
@@ -127,16 +96,5 @@ const getEmbedUrl = (url: string) => {
   height: 200px;
   object-fit: contain;
 }
-.content-section {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 60vh;
-}
-.creative-preview.video {
-  width: 100%;
-  height: 80vh; /* Set explicit height */
-  max-width: 1280px; /* Optional: limit max width */
-  border: none;
-}
+
 </style>

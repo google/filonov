@@ -1,4 +1,3 @@
-//NodeComparison.vue
 <template>
   <q-card>
     <q-card-section class="row items-center">
@@ -82,6 +81,34 @@
           row-key="id"
           :pagination="{ rowsPerPage: 0 }"
         >
+          <template #top-left>
+            <div class="row items-center q-mb-md">
+              <q-toggle
+                v-model="showImages"
+                label="Show previews"
+                color="primary"
+              />
+            </div>
+          </template>
+          <template v-if="showImages" #body-cell-image="props">
+            <q-td :props="props">
+              <q-img
+                :src="props.value"
+                spinner-color="primary"
+                style="height: 50px; width: 50px; cursor: pointer"
+                @click="openPreview(props.row)"
+                fit="contain"
+              >
+                <template #error>
+                  <div
+                    class="absolute-full flex flex-center bg-negative text-white"
+                  >
+                    Error
+                  </div>
+                </template>
+              </q-img>
+            </q-td>
+          </template>
           <template #body-cell-name="props">
             <q-td :props="props">
               <a
@@ -104,6 +131,13 @@
         </q-table>
       </template>
     </q-card-section>
+    <q-dialog v-model="showPreview" maximized>
+      <CreativePreview
+        v-if="previewData"
+        :image="previewData.image"
+        :media_path="previewData.media_path"
+      />
+    </q-dialog>
   </q-card>
 </template>
 
@@ -112,6 +146,7 @@ import { ref, computed } from 'vue';
 import { useQuasar, QTableColumn } from 'quasar';
 import type { ApexOptions } from 'apexcharts';
 import NodeCard from './NodeCard.vue';
+import CreativePreview from './CreativePreview.vue';
 import { Node } from './models';
 import {
   assertIsError,
@@ -148,6 +183,9 @@ const $q = useQuasar();
 const isDynamicView = ref(false);
 const selectedNodeIds = ref<NodeOption[]>([]);
 const selectedMetric = ref('');
+const showImages = ref(false);
+const showPreview = ref(false);
+const previewData = ref<{ image: string; media_path: string } | null>(null);
 
 const metrics = computed((): string[] => {
   const metricSet = new Set<string>();
@@ -163,13 +201,34 @@ const nodesMetrics = computed((): NodeMetrics[] => {
   return props.nodes.map((node) => ({
     id: node.id,
     name: node.label,
+    image: node.image,
+    media_path: node.media_path,
     assetId: node.name,
     ...node.info,
   }));
 });
 
+function openPreview(row: NodeMetrics) {
+  previewData.value = {
+    image: row.image as string,
+    media_path: row.media_path as string,
+  };
+  showPreview.value = true;
+}
+
 const nodesListColumns = computed((): QTableColumn[] => {
   const baseColumns: QTableColumn[] = [
+    ...(showImages.value
+      ? [
+          {
+            name: 'image',
+            label: 'Preview',
+            field: 'image',
+            align: 'center',
+            sortable: false,
+          } as QTableColumn,
+        ]
+      : []),
     {
       name: 'name',
       label: 'Name',
