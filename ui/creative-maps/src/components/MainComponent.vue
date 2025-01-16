@@ -77,6 +77,7 @@
                     <MetricHistogram
                       :data="getClusterSizesHistogramData"
                       metric="Cluster Size"
+                      @metric-clicked="onClusterHistogramMetricClicked"
                     />
                   </q-card-section>
                 </q-card>
@@ -308,7 +309,11 @@ import {
   MetricValue,
 } from 'components/models';
 import { formatMetricValue } from 'src/helpers/utils';
-import { aggregateNodesMetrics, initClusters, sortTags } from 'src/helpers/graph';
+import {
+  aggregateNodesMetrics,
+  initClusters,
+  sortTags,
+} from 'src/helpers/graph';
 
 const d3GraphRef = ref<InstanceType<typeof D3Graph> | null>(null);
 const showLoadDataDialog = ref(false);
@@ -473,11 +478,11 @@ function getHistogramData(metric: string) {
 
 const getClusterSizesHistogramData = computed(() => {
   const clusterSizeNodes = clusters.value.map((cluster) => ({
-    info: { size: cluster.nodes.length },
+    info: { clusterSize: cluster.nodes.length },
     id: cluster.id.toString(),
   }));
 
-  return createHistogramData(clusterSizeNodes, 'size');
+  return createHistogramData(clusterSizeNodes, 'clusterSize');
 });
 
 function createHistogramData(
@@ -555,7 +560,15 @@ function onClusterHistogramMetricClicked(args: {
     const msg = args.scalar
       ? `Nodes with '${args.metric}' metric equals to '${args.range[0]}'`
       : `Nodes with '${args.metric}' metric values in [${args.range[0]}, ${args.range[1]}] range`;
-    d3GraphRef.value.selectNodes(args.nodes as Node[], msg);
+    if (args.metric === 'Cluster Size' && args.nodes?.length) {
+      // special case - nodes are actually clusters
+      const nodes = args.nodes.flatMap((n) =>
+        clusters.value.filter((c) => c.id === n.id).flatMap((c) => c.nodes),
+      );
+      d3GraphRef.value.selectNodes(nodes, msg);
+    } else {
+      d3GraphRef.value.selectNodes(args.nodes as Node[], msg);
+    }
   }
 }
 
