@@ -1054,7 +1054,6 @@ function dragged(event: DragEvent, d: D3Node) {
     // Single node drag - just update position and tick
     d.x = event.x;
     d.y = event.y;
-    simulation.value?.tick(); // Update visual without forces
   }
 
   tooltipVisible.value = false;
