@@ -45,11 +45,11 @@
           style="max-width: 300px"
           v-model="selectedClusterId"
           :options="clusterIds"
-        label="Select Cluster"
-        emit-value
-        outlined
-        map-options
-        @update:model-value="setCurrentCluster"
+          label="Select Cluster"
+          emit-value
+          outlined
+          map-options
+          @update:model-value="setCurrentCluster"
           clearable
         />
         <q-select
@@ -425,9 +425,8 @@ async function preloadImages(nodes: Node[]) {
       const img = new Image();
       img.onload = () => {
         loadedCount++;
-        loadedCount++;
-        imageLoading.value.current = loadedCount;
         imageLoading.value.failed = failedCount;
+        imageLoading.value.current = loadedCount;
         resolve(node.image);
       };
       img.onerror = () => {

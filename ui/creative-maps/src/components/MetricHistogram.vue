@@ -83,7 +83,7 @@ function drawHistogram() {
         .range([0, innerWidth]);
 
   const y = d3
-    .scaleLinear()
+    .scaleSymlog()
     .domain([0, d3.max(props.data, (d: HistogramData) => d.count) ?? 0])
     .range([innerHeight, 0]);
 
