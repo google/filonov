@@ -130,6 +130,31 @@ export function aggregateNodesMetrics(nodes: Node[]): MetricsObject {
         }
       }
     });
+    // calculate some computed metrics
+    if (sampleNode.info['clicks'] && sampleNode.info['impressions']) {
+      // ctr
+      let clicks = 0;
+      let impressions = 0;
+      nodes.map((n) => {
+        if (
+          n.info &&
+          n.info['clicks'] !== undefined &&
+          n.info['impressions'] !== undefined
+        ) {
+          clicks += Number(n.info['clicks']);
+          impressions += Number(n.info['impressions']);
+          n.info['ctr'] =
+            Number(n.info['clicks']) / Number(n.info['impressions']);
+          if (n.series) {
+            Object.values(n.series).forEach((item) => {
+              item['ctr'] =
+                Number(item['clicks']) / Number(item['impressions']);
+            });
+          }
+        }
+      });
+      metrics['ctr'] = clicks / impressions;
+    }
   }
   return metrics;
 }
