@@ -28,7 +28,7 @@ from typing import Final
 import igraph
 import media_tagging
 import pandas as pd
-from media_tagging.taggers import base as base_tagger
+from media_tagging import tagging_result
 
 from media_similarity import (
   adaptive_threshold,
@@ -99,8 +99,7 @@ class MediaSimilarityService:
 
   def __init__(
     self,
-    media_similarity_repository: repositories.BaseSimilarityPairsRepository
-    | None = None,
+    media_similarity_repository: repositories.BaseSimilarityPairsRepository,
   ) -> None:
     """Initializes MediaSimilarityService."""
     self.repo = media_similarity_repository
@@ -114,7 +113,7 @@ class MediaSimilarityService:
 
   def cluster_media(
     self,
-    tagging_results: Iterable[base_tagger.TaggingResult],
+    tagging_results: Sequence[tagging_result.TaggingResult],
     normalize: bool = True,
     custom_threshold: float | None = None,
     parallel: bool = False,

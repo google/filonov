@@ -18,13 +18,9 @@ from __future__ import annotations
 
 import abc
 import dataclasses
-import itertools
-import logging
-import os
 from collections.abc import MutableSequence, Sequence
-from concurrent import futures
 
-from media_tagging import media, repositories, tagging_result
+from media_tagging import media, tagging_result
 
 
 @dataclasses.dataclass
@@ -84,105 +80,3 @@ class BaseTagger(abc.ABC):
     """
     sorted_tags = sorted(tags, key=lambda x: x.score, reverse=True)
     return sorted_tags[:n_tags]
-
-  def tag_media_sequentially(
-    self,
-    media_paths: Sequence[str | os.PathLike[str]],
-    tagging_parameters: dict[str, str] | None = None,
-    persist_repository: repositories.BaseTaggingResultsRepository | None = None,
-  ) -> list[tagging_result.TaggingResult]:
-    """Runs media tagging algorithm.
-
-    Args:
-      media_paths: Local or remote path to media file.
-      tagging_parameters: Optional keywords arguments to be sent for tagging.
-      persist_repository: Repository to store tagging results.
-
-    Returns:
-      Results of tagging for all media.
-    """
-    if not tagging_parameters:
-      tagging_parameters = {}
-    results = []
-    for path in media_paths:
-      medium = media.Medium(path)
-      if persist_repository and (
-        tagging_results := persist_repository.get([medium.name])
-      ):
-        logging.info('Getting media from repository: %s', path)
-        results.extend(tagging_results)
-        continue
-      logging.info('Processing media: %s', path)
-      tagging_results = self.tag(
-        medium,
-        tagging_options=TaggingOptions(**tagging_parameters),
-      )
-      if tagging_results is None:
-        continue
-      if persist_repository:
-        persist_repository.add([tagging_results])
-      results.append(tagging_results)
-    return results
-
-  def tag_media(
-    self,
-    media_paths: Sequence[str | os.PathLike[str]],
-    tagging_parameters: dict[str, str] | None = None,
-    parallel_threshold: int = 1,
-    persist_repository: str | None = None,
-  ) -> list[tagging_result.TaggingResult]:
-    """Runs media tagging algorithm.
-
-    Args:
-      media_paths: Local or remote path to media file.
-      tagging_parameters: Optional keywords arguments to be sent for tagging.
-      parallel_threshold: Number of threads.
-      persist_repository: Repository to store tagging results.
-
-    Returns:
-      Results of tagging for all media.
-    """
-    if persist_repository:
-      repository = repositories.SqlAlchemyTaggingResultsRepository(
-        persist_repository
-      )
-      repository.initialize()
-    else:
-      repository = None
-    untagged_media = media_paths
-    tagged_media = []
-    if persist_repository and (tagged_media := repository.get(media_paths)):
-      tagged_media_names = {media.identifier for media in tagged_media}
-      untagged_media = {
-        media_path
-        for media_path in media_paths
-        if media.convert_path_to_media_name(media_path)
-        not in tagged_media_names
-      }
-    if not untagged_media:
-      return tagged_media
-
-    if not parallel_threshold:
-      return (
-        self.tag_media_sequentially(
-          untagged_media, tagging_parameters, repository
-        )
-        + tagged_media
-      )
-    with futures.ThreadPoolExecutor(max_workers=parallel_threshold) as executor:
-      future_to_media_path = {
-        executor.submit(
-          self.tag_media_sequentially,
-          [media_path],
-          tagging_parameters,
-          repository,
-        ): media_path
-        for media_path in media_paths
-      }
-      untagged_media = itertools.chain.from_iterable(
-        [
-          future.result()
-          for future in futures.as_completed(future_to_media_path)
-        ]
-      )
-      return list(untagged_media) + tagged_media
