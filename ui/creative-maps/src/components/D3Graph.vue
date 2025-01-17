@@ -48,6 +48,15 @@
         @click="zoomOut"
         color="primary"
       />
+      <q-btn flat dense round icon="search" @click="openSearch" color="primary">
+        <q-tooltip>Search (⌘K)</q-tooltip>
+      </q-btn>
+
+      <NodeSearchDialog
+        ref="searchDialog"
+        :nodes="props.nodes"
+        @node-selected="handleSearchNodeSelect"
+      />
       <div class="row">
         <q-select
           class="col-2 q-mx-md"
@@ -163,6 +172,7 @@ import * as d3 from 'd3';
 import { ClusterInfo, Edge, Node } from 'components/models';
 import { aggregateNodesMetrics } from 'src/helpers/graph';
 import { formatMetricValue } from 'src/helpers/utils';
+import NodeSearchDialog from './NodeSearchDialog.vue';
 import {
   Simulation,
   SimulationNodeDatum,
@@ -228,6 +238,8 @@ const currentNode = ref<Node | null>(null);
 const currentEdge = ref<Edge | null>(null);
 const currentCluster = ref<ClusterInfo | null>(null);
 const selectedSizeField = ref<string | null | undefined>(props.sizeField);
+const searchDialog = ref<InstanceType<typeof NodeSearchDialog> | null>(null);
+
 const metricNames = computed(() => {
   let keys = props.nodes?.length
     ? props.nodes[0].info
@@ -360,6 +372,33 @@ function selectNodes(connectedNodes: Node[] | null, description?: string) {
     highlightNodes(connectedNodes);
   }
   emit('cluster-selected', currentCluster.value);
+}
+
+function centerOnNode(node: D3Node) {
+  if (!chartContainer.value || !zoomBehavior.value) return;
+
+  const svg = d3.select(chartContainer.value).select('svg') as SVGSelection;
+  const svgNode = svg.node();
+  if (!svgNode) return;
+
+  // Get the current viewport dimensions
+  const viewportWidth = chartContainer.value.clientWidth;
+  const viewportHeight = chartContainer.value.clientHeight;
+
+  // Get the current transform
+  const currentTransform = zoomTransform(svgNode as Element);
+
+  // Calculate the new transform to center on the node
+  const scale = currentTransform.k; // Keep the current zoom level
+  const x = -node.x! * scale + viewportWidth / 2;
+  const y = -node.y! * scale + viewportHeight / 2;
+
+  const newTransform = zoomIdentity.translate(x, y).scale(scale);
+
+  // Apply the transform with a smooth transition
+  (svg.transition() as SVGTransition)
+    .duration(750)
+    .call(zoomBehavior.value!.transform, newTransform);
 }
 
 function setCurrentCluster(clusterId: string | null) {
@@ -1203,6 +1242,17 @@ function handleResize() {
   }
 }
 
+function openSearch() {
+  searchDialog.value?.open();
+}
+
+function handleSearchNodeSelect(node: Node) {
+  selectNodes([node]);
+  currentNode.value = node;
+  emit('node-selected', node);
+  centerOnNode(node);
+}
+
 onMounted(() => {
   resizeObserver = new ResizeObserver(handleResize);
   if (chartContainer.value) {
@@ -1211,7 +1261,6 @@ onMounted(() => {
   drawGraph();
 });
 
-// Cleanup
 onUnmounted(() => {
   if (simulation.value) simulation.value.stop();
   resizeObserver.disconnect();
@@ -1240,6 +1289,21 @@ watch(
 );
 
 watch(nodeSizeMultiplier, () => updateNodeSizes(true)); // restart when size changes
+
+onMounted(() => {
+  const handleKeydown = (event: KeyboardEvent) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+      event.preventDefault();
+      openSearch();
+    }
+  };
+
+  window.addEventListener('keydown', handleKeydown);
+
+  onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeydown);
+  });
+});
 
 defineExpose({
   selectNodes,
