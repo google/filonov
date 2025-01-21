@@ -1,0 +1,43 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+version: '3'
+
+services:
+  filonov:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: filonov
+    command: >
+      --campaign-type ${FILONOV_CAMPAIGN_TYPE}
+      --media-type ${FILONOV_MEDIA_TYPE}
+      --db-uri sqlite:////app/filonov.db
+      --googleads.tagger=${FILONOV_TAGGER}
+      --googleads.ads_config_path=/app/google-ads.yaml
+      --googleads.account=${FILONOV_ACCOUNT_ID}
+      --googleads.start-date=${FILONOV_START_DATE}
+      --googleads.end-date=${FILONOV_END_DATE}
+      --parallel-threshold 10
+    environment:
+      FILONOV_ACCOUNT_ID: ${FILONOV_ACCOUNT_ID}
+      FILONOV_START_DATE: ${FILONOV_START_DATE}
+      FILONOV_END_DATE: ${FILONOV_END_DATE}
+      FILONOV_TAGGER: ${FILONOV_TAGGER}
+      FILONOV_CAMPAIGN_TYPE: ${FILONOV_CAMPAIGN_TYPE}
+      FILONOV_MEDIA_TYPE: ${FILONOV_MEDIA_TYPE}
+    volumes:
+      - ${FILONOV_SERVICE_ACCOUNT}/:/app/service_account.json
+      - ${FILONOV_DB_PATH}/:/app/filonov.db
+      - ${FILONOV_OUTPUT_FOLDER}/:/app/data/
+      - ${FILONOV_ADS_CONFIG}/:/app/google-ads.yaml
