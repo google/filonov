@@ -23,9 +23,9 @@ import media_similarity
 import media_tagging
 from garf_executors.entrypoints import utils as gaarf_utils
 
-from creative_maps import creative_map
-from creative_maps.entrypoints import utils
-from creative_maps.inputs import google_ads, queries, youtube
+from filonov import creative_map
+from filonov.entrypoints import utils
+from filonov.inputs import google_ads, queries, youtube
 
 AVAILABLE_TAGGERS = list(media_tagging.TAGGERS.keys())
 

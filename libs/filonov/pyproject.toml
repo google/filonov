@@ -3,7 +3,7 @@ requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "creative-maps"
+name = "filonov"
 version = "0.0.1"
 dependencies = [
   "pyvis",
@@ -32,4 +32,4 @@ test =  [
 ]
 
 [project.scripts]
-filonov="creative_maps.entrypoints.cli:main"
+filonov="filonov.entrypoints.cli:main"

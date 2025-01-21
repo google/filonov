@@ -27,7 +27,7 @@ from typing import Final, Literal
 import garf_youtube_data_api
 import numpy as np
 import pandas as pd
-from creative_maps.inputs import interfaces, queries
+from filonov.inputs import interfaces, queries
 from gaarf import api_clients, report, report_fetcher
 from media_tagging import media
 

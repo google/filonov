@@ -24,7 +24,7 @@ from typing import Any, TypedDict
 from media_similarity import media_similarity_service
 from media_tagging import tagging_result
 
-from creative_maps.inputs import interfaces
+from filonov.inputs import interfaces
 
 
 class GraphInfo(TypedDict):

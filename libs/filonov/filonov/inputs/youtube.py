@@ -17,7 +17,7 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import garf_youtube_data_api
-from creative_maps.inputs import interfaces
+from filonov.inputs import interfaces
 from media_tagging import media
 
 
