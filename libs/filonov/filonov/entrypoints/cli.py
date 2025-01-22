@@ -119,7 +119,6 @@ def main():  # noqa: D103
       media_paths=media_paths,
       tagging_parameters=extra_parameters.get('tagger'),
       parallel_threshold=args.parallel_threshold,
-      persist_repository=args.db_uri,
     )
   elif args.source == 'file':
     request = utils.FileInputRequest(**source_parameters)
