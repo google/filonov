@@ -4,17 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "filonov"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
-  "pyvis",
-  "igraph",
-  "numpy",
-  "pydantic",
-  "networkx",
+  "media-tagging[api,llm]",
   "media-similarity",
-  "pandas",
-  "garf-youtube-data-api",
-  "google-ads-api-report-fetcher",
+  "garf-youtube-data-api==0.0.4",
+  "google-ads-api-report-fetcher==1.15.4",
 ]
 requires-python = ">=3.8"
 description = "description"
@@ -27,8 +22,7 @@ classifiers = [
 
 [options.extras_require]
 test =  [
-  "media_similarity",
-  "pyvis",
+  "pytest",
 ]
 
 [project.scripts]
