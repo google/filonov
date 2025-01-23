@@ -44,9 +44,9 @@ from media_tagging.taggers import base
 _MAX_NUMBER_LLM_TAGS: Final[int] = 10
 _TAG_DESCRIPTION: Final[str] = """
   Tag represents a unique concept (using a singular noun).
-  Each value is between 0 and 1 where 0 is complete absence of concept,
-  1 is complete presence, and everything in between represents a degree of
-  presence. Make sure that tags are lowercase and unique.
+  Each value is between 0 and 100 where 0 is complete absence of a tag,
+  100 is the most important tag being used, and everything in between '
+  represents a degree of presence. Make sure that tags are lowercase and unique.
 """
 
 
@@ -211,6 +211,8 @@ class LLMTagger(base.BaseTagger):
       response.usage_metadata,
     )
     result = self.output_parser.parse(response.content)
+    if 'tags' in result:
+      result = result.get('tags')
     if self.llm_tagger_type == LLMTaggerTypeEnum.DESCRIPTION:
       return tagging_result.TaggingResult(
         identifier=medium.name,
