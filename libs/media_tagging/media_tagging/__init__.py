@@ -23,3 +23,4 @@ __all__ = [
   'MediaTaggingService',
   'TAGGERS',
 ]
+__version__ = '0.7.2'

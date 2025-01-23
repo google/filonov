@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "media-tagging"
-version = "0.7.1"
 dependencies = [
     "pillow",
     "smart_open",
@@ -31,6 +30,11 @@ classifiers = [
     "Operating System :: OS Independent",
     "License :: OSI Approved :: Apache Software License",
 ]
+
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = {attr = "media_tagging.__version__"}
 
 [project.optional-dependencies]
 image-api=[

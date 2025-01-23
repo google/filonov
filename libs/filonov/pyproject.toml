@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "filonov"
-version = "0.0.2"
 dependencies = [
   "media-tagging[api,llm]",
   "media-similarity",
@@ -18,7 +17,10 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python"
 ]
+dynamic = ["version"]
 
+[tool.setuptools.dynamic]
+version = {attr = "filonov.__version__"}
 
 [options.extras_require]
 test =  [

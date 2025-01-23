@@ -17,6 +17,7 @@
 
 import argparse
 import pprint
+import sys
 
 import gaarf.cli.utils as gaarf_utils
 import media_tagging
@@ -52,9 +53,13 @@ def main():  # noqa: D103
     help='Number of parallel processes to perform media tagging',
   )
   parser.add_argument('--no-normalize', dest='normalize', action='store_false')
+  parser.add_argument('-v', '--version', dest='version', action='store_true')
   parser.set_defaults(normalize=True)
   args, kwargs = parser.parse_known_args()
 
+  if args.version:
+    print(f'media-similarity version: {media_similarity.__version__}')
+    sys.exit()
   gaarf_utils.init_logging(logger_type='rich')
   tagging_service = media_tagging.MediaTaggingService(
     tagging_results_repository=(

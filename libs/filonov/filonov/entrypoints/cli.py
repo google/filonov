@@ -17,13 +17,14 @@
 
 import argparse
 import json
+import sys
 from typing import get_args
 
 import media_similarity
 import media_tagging
 from garf_executors.entrypoints import utils as gaarf_utils
 
-from filonov import creative_map
+import filonov
 from filonov.entrypoints import utils
 from filonov.inputs import google_ads, queries, youtube
 
@@ -90,8 +91,13 @@ def main():  # noqa: D103
     help='Number of parallel processes to perform media tagging',
   )
   parser.add_argument('--no-normalize', dest='normalize', action='store_false')
+  parser.add_argument('-v', '--version', dest='version', action='store_true')
   parser.set_defaults(normalize=True)
   args, kwargs = parser.parse_known_args()
+
+  if args.version:
+    print(f'filonov version: {filonov.__version__}')
+    sys.exit()
 
   gaarf_utils.init_logging(loglevel='INFO', logger_type='rich')
   extra_parameters = gaarf_utils.ParamsParser([args.source, 'tagger']).parse(
@@ -162,7 +168,7 @@ def main():  # noqa: D103
     parallel=args.parallel_threshold > 1,
     parallel_threshold=args.parallel_threshold,
   )
-  generated_map = creative_map.CreativeMap.from_clustering(
+  generated_map = filonov.CreativeMap.from_clustering(
     clustering_results, tagging_results, extra_info, request.to_dict()
   )
   output_name = args.output_name

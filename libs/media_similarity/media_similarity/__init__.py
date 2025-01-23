@@ -14,10 +14,12 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-"""Simplifies imports ifrom inner modules."""
+"""Simplifies imports from inner modules."""
 
 from media_similarity.media_similarity_service import MediaSimilarityService
 
 __all__ = [
   'MediaSimilarityService',
 ]
+
+__version__ = '0.0.3'

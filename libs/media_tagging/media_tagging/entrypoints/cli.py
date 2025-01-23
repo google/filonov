@@ -17,9 +17,11 @@
 
 import argparse
 import logging
+import sys
 
 from garf_executors.entrypoints import utils as garf_utils
 
+import media_tagging
 from media_tagging import media_tagging_service, repositories, tagger, writer
 
 AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
@@ -52,9 +54,13 @@ def main():
     type=int,
     help='Number of parallel processes to perform media tagging',
   )
+  parser.add_argument('-v', '--version', dest='version', action='store_true')
   parser.set_defaults(parallel=True)
   args, kwargs = parser.parse_known_args()
 
+  if args.version:
+    print(f'media-tagger version: {media_tagging.__version__}')
+    sys.exit()
   tagging_service = media_tagging_service.MediaTaggingService(
     repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
   )

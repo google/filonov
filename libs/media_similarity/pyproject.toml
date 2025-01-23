@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "media-similarity"
-version = "0.0.2"
 dependencies = [
   "media-tagging[api,llm]",
   "igraph",
@@ -19,6 +18,10 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python"
 ]
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = {attr = "media_similarity.__version__"}
 
 [options.extras_require]
 test =  [
