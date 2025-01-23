@@ -138,14 +138,18 @@ class SqlAlchemyTaggingResultsRepository(BaseTaggingResultsRepository):
   def __init__(self, db_url: str) -> None:
     """Initializes SqlAlchemyTaggingResultsRepository."""
     self.db_url = db_url
+    self.initialized = False
 
   def initialize(self) -> None:
     """Creates all ORM objects."""
     Base.metadata.create_all(self.engine)
+    self.initialized = True
 
   @property
-  def session(self) -> sqlalchemy.orm.Session:
+  def session(self) -> sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session]:
     """Property for initializing session."""
+    if not self.initialized:
+      self.initialize()
     return sqlalchemy.orm.sessionmaker(bind=self.engine)
 
   @property
