@@ -24,11 +24,11 @@ import os
 from collections.abc import Sequence
 from typing import Final, Literal
 
+import gaarf
 import garf_youtube_data_api
 import numpy as np
 import pandas as pd
 from filonov.inputs import interfaces, queries
-from gaarf import api_clients, report, report_fetcher
 from media_tagging import media
 
 
@@ -78,7 +78,7 @@ def from_file(
   Raises:
     ValueError: If files doesn't have all required input columns.
   """
-  performance = report.GaarfReport.from_pandas(pd.read_csv(path))
+  performance = gaarf.GaarfReport.from_pandas(pd.read_csv(path))
   if missing_columns := {'media_url', 'media_name', *_CORE_METRICS}.difference(
     set(performance.column_names)
   ):
@@ -100,8 +100,8 @@ class ExtraInfoFetcher:
     self, fetching_request: FetchingRequest, with_size_base: str | None = None
   ) -> dict[str, interfaces.MediaInfo]:
     """Extracts data from Ads API and converts to MediaInfo objects."""
-    fetcher = report_fetcher.AdsReportFetcher(
-      api_client=api_clients.GoogleAdsApiClient(path_to_config=self.ads_config)
+    fetcher = gaarf.AdsReportFetcher(
+      api_client=gaarf.GoogleAdsApiClient(path_to_config=self.ads_config)
     )
 
     performance_queries = self._define_performance_queries(fetching_request)
@@ -146,7 +146,7 @@ class ExtraInfoFetcher:
 
   def _define_customer_ids(
     self,
-    fetcher: report_fetcher.AdsReportFetcher,
+    fetcher: gaarf.AdsReportFetcher,
     fetching_request: FetchingRequest,
   ) -> list[str]:
     """Identifies all accounts that have campaigns with specified types.
@@ -170,11 +170,11 @@ class ExtraInfoFetcher:
 
   def _execute_performance_queries(
     self,
-    fetcher: report_fetcher.AdsReportFetcher,
+    fetcher: gaarf.AdsReportFetcher,
     performance_queries: Sequence[queries.PerformanceQuery],
     fetching_request: FetchingRequest,
     customer_ids: Sequence[str],
-  ) -> report.GaarfReport:
+  ) -> gaarf.GaarfReport:
     """Executes performance queries for a set of customer ids.
 
     If two or more performance queries are specified only common fields are
@@ -207,7 +207,7 @@ class ExtraInfoFetcher:
 
   def _build_youtube_video_extra_info(
     self,
-    fetcher: report_fetcher.AdsReportFetcher,
+    fetcher: gaarf.AdsReportFetcher,
     customer_ids: Sequence[str],
     video_ids: Sequence[str],
   ) -> dict[str, dict[str, int]]:
@@ -258,7 +258,7 @@ class ExtraInfoFetcher:
 
   def _inject_extra_info_into_reports(
     self,
-    performance_report: report.GaarfReport,
+    performance_report: gaarf.GaarfReport,
     extra_info: dict[str, dict[str, int]],
     columns: Sequence[str],
     base_key: str = 'media_url',
@@ -284,7 +284,7 @@ class ExtraInfoFetcher:
 
 
 def _convert_to_media_info(
-  performance: report.GaarfReport,
+  performance: gaarf.GaarfReport,
   media_type: queries.SupportedMediaTypes,
   with_size_base: str | None,
 ) -> dict[str, interfaces.MediaInfo]:
