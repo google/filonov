@@ -17,12 +17,13 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import dataclasses
+import datetime
 import functools
 import logging
 import operator
 import os
 from collections.abc import Sequence
-from typing import Final, Literal
+from typing import Final, Literal, get_args
 
 import gaarf
 import garf_youtube_data_api
@@ -37,9 +38,26 @@ class FetchingRequest:
   """Specifies parameters of report fetching."""
 
   media_type: queries.SupportedMediaTypes
-  campaign_types: Sequence[queries.SupportedCampaignTypes]
-  start_date: str
-  end_date: str
+  campaign_types: Sequence[queries.SupportedCampaignTypes] | str = ('app',)
+  start_date: str | None = None
+  end_date: str | None = None
+
+  def __post_init__(self) -> None:
+    if self.campaign_types == 'all':
+      self.campaign_types = get_args(queries.SupportedCampaignTypes)
+    if isinstance(self.campaign_types, str):
+      self.campaign_types = self.campaign_types.split(',')
+    if self.end_date is None:
+      self.end_date = (
+        datetime.datetime.today() - datetime.timedelta(days=1)
+      ).strftime('%Y-%m-%d')
+    if self.start_date is None:
+      self.start_date = (
+        datetime.datetime.today() - datetime.timedelta(days=30)
+      ).strftime('%Y-%m-%d')
+
+  def to_dict(self):
+    return dataclasses.asdict(self)
 
 
 @dataclasses.dataclass
@@ -121,6 +139,8 @@ class ExtraInfoFetcher:
       video_extra_info,
       columns=('media_size', 'aspect_ratio'),
     )
+    if not performance:
+      return {}
     return _convert_to_media_info(
       performance, fetching_request.media_type, with_size_base
     )

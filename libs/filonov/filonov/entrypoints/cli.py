@@ -18,15 +18,12 @@
 import argparse
 import json
 import sys
-from typing import get_args
 
 import media_similarity
 import media_tagging
 from garf_executors.entrypoints import utils as gaarf_utils
 
 import filonov
-from filonov.entrypoints import utils
-from filonov.inputs import google_ads, queries, youtube
 
 AVAILABLE_TAGGERS = list(media_tagging.TAGGERS.keys())
 
@@ -47,11 +44,11 @@ def main():  # noqa: D103
     help='Type of media',
   )
   parser.add_argument(
-    '--campaign-type',
-    choices=['all', 'app', 'demandgen', 'pmax', 'video', 'display'],
-    default='app',
-    nargs='*',
-    help='Type of campaign',
+    '--tagger',
+    dest='tagger',
+    choices=AVAILABLE_TAGGERS,
+    default=None,
+    help='Type of tagger',
   )
   parser.add_argument(
     '--size-base',
@@ -68,13 +65,6 @@ def main():  # noqa: D103
     dest='output_name',
     default='creative_map',
     help='Name of creative map (without an .html extension)',
-  )
-  parser.add_argument(
-    '--output',
-    dest='output',
-    choices=['json', 'html'],
-    default='json',
-    help='Result of map generation',
   )
   parser.add_argument(
     '--custom-threshold',
@@ -99,64 +89,36 @@ def main():  # noqa: D103
     print(f'filonov version: {filonov.__version__}')
     sys.exit()
 
-  gaarf_utils.init_logging(loglevel='INFO', logger_type='rich')
+  logger = gaarf_utils.init_logging(loglevel='INFO', logger_type='rich')
   extra_parameters = gaarf_utils.ParamsParser([args.source, 'tagger']).parse(
     kwargs
   )
-  source_parameters = extra_parameters.get(args.source)
+  input_parameters = extra_parameters.get(args.source)
+  media_type = args.media_type
+  media_info, context = filonov.MediaInputService(
+    args.source
+  ).generate_media_info(media_type, input_parameters)
+  if not media_info:
+    logger.error('No performance data found')
+    sys.exit()
+
   tagging_service = media_tagging.MediaTaggingService(
     tagging_results_repository=(
       media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
     )
   )
+  if args.tagger is None:
+    tagger = f'gemini-{media_type.lower()}'
+  else:
+    tagger = args.tagger
 
-  media_type = args.media_type
-  campaign_types = args.campaign_type
-  if campaign_types == ['all']:
-    campaign_types = get_args(queries.SupportedCampaignTypes)
-  if args.source == 'youtube':
-    request = utils.YouTubeChannelInputRequest(**source_parameters)
-    extra_info = youtube.ExtraInfoFetcher(
-      channel=request.channel
-    ).generate_extra_info()
-    media_paths = [info.media_path for info in extra_info.values()]
-    tagging_results = tagging_service.tag_media(
-      tagger_type=request.tagger,
-      media_paths=media_paths,
-      tagging_parameters=extra_parameters.get('tagger'),
-      parallel_threshold=args.parallel_threshold,
-    )
-  elif args.source == 'file':
-    request = utils.FileInputRequest(**source_parameters)
-    tagging_results = media_tagging.tagging_result.from_file(
-      path=request.tagging_results_path,
-      file_column_input=request.tagging_columns,
-      media_type=media_type.lower(),
-    )
-    extra_info = google_ads.from_file(
-      path=request.performance_results_path,
-      media_type=media_type.lower(),
-      with_size_base=args.size_base,
-    )
-  elif args.source == 'googleads':
-    request = utils.GoogleAdsApiInputRequest(**source_parameters)
-    fetching_request = google_ads.FetchingRequest(
-      media_type=media_type,
-      start_date=request.start_date,
-      end_date=request.end_date,
-      campaign_types=campaign_types,
-    )
-    extra_info = google_ads.ExtraInfoFetcher(
-      accounts=request.account,
-      ads_config=request.ads_config_path,
-    ).generate_extra_info(fetching_request, args.size_base)
-    media_paths = [info.media_path for info in extra_info.values()]
-    tagging_results = tagging_service.tag_media(
-      tagger_type=request.tagger,
-      media_paths=media_paths,
-      tagging_parameters=extra_parameters.get('tagger'),
-      parallel_threshold=args.parallel_threshold,
-    )
+  tagging_results = tagging_service.tag_media(
+    tagger_type=tagger,
+    media_paths=media_info.keys(),
+    tagging_parameters=extra_parameters.get('tagger'),
+    parallel_threshold=args.parallel_threshold,
+  )
+
   clustering_results = media_similarity.MediaSimilarityService(
     media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
       args.db_uri
@@ -169,14 +131,10 @@ def main():  # noqa: D103
     parallel_threshold=args.parallel_threshold,
   )
   generated_map = filonov.CreativeMap.from_clustering(
-    clustering_results, tagging_results, extra_info, request.to_dict()
+    clustering_results, tagging_results, media_info, context
   )
-  output_name = args.output_name
-  if args.output == 'json':
-    with open(f'{output_name}.json', 'w', encoding='utf-8') as f:
-      json.dump(generated_map.to_json(), f)
-  elif args.output == 'html':
-    generated_map.export_html(f'{output_name}.html')
+  with open(f'{args.output_name}.json', 'w', encoding='utf-8') as f:
+    json.dump(generated_map.to_json(), f)
 
 
 if __name__ == '__main__':

@@ -17,9 +17,8 @@
 """Simplifies imports from inner modules."""
 
 from filonov.creative_map import CreativeMap
+from filonov.inputs.input_service import MediaInputService
 
-__all__ = [
-  'CreativeMap',
-]
+__all__ = ['MediaInputService', 'CreativeMap']
 
 __version__ = '0.0.3'

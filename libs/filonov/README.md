@@ -39,10 +39,10 @@ Run `filonov` based on one of the following sources:
 * Google Ads API
 ```
 filonov --source googleads --media-type <MEDIA_TYPE> \
-  --campaign-type <CAMPAIGN_TYPE> \
   --db-uri=<CONNECTION_STRING> \
-  --googleads.tagger=<TAGGER_TYPE> \
+  --tagger=<TAGGER_TYPE> \
   --googleads.ads_config_path=<PATH-TO-GOOGLE-ADS-YAML> \
+  --googleads.campaign-types=<CAMPAIGN_TYPE> \
   --googleads.account=<ACCOUNT_ID> \
   --googleads.start-date=YYYY-MM-DD \
   --googleads.end-date=YYYY-MM-DD  \
@@ -52,7 +52,7 @@ filonov --source googleads --media-type <MEDIA_TYPE> \
 where:
 
 - `<MEDIA_TYPE>` - one of `IMAGE` or `YOUBE_VIDEO`
-- `<CAMPAIGN_TYPE>` - one of `app`, `pmax`, `demandgen`, `display`, `video`
+- `<CAMPAIGN_TYPE>` - all possible combinations `app`, `pmax`, `demandgen`, `display`, `video` separated by commas.
 - `<TAGGER_TYPE>` - one of possible media taggers listed [here](../media_tagging/README.md')
 - `<ACCOUNT_ID>` - Google Ads Account Id in 1234567890 format. Can be MCC.
 - `<CONNECTION_STRING>` - Connection string to the database with tagging results
