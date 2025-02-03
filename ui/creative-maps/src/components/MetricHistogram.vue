@@ -46,7 +46,6 @@ watch(
   () => {
     drawHistogram();
   },
-  { deep: true },
 );
 
 function drawHistogram() {
