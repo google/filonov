@@ -200,7 +200,7 @@ export default configure((/* ctx */) => {
       builder: {
         // https://www.electron.build/configuration/configuration
 
-        appId: 'plotly-vue-quasar',
+        appId: 'com.google.filonov',
       },
     },
   };

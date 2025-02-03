@@ -35,6 +35,60 @@
       <div class="col-3 side-menu-container">
         <div class="side-menu">
           <q-card class="menu-card" flat bordered>
+            <q-item>
+              <q-breadcrumbs class="items-center">
+                <template
+                  v-for="(item, index) in history.breadcrumbs.value"
+                  :key="index"
+                >
+                  <!-- Regular breadcrumb item -->
+                  <q-breadcrumbs-el
+                    class="text-h7 text-bold"
+                    v-if="!item.isDropdown"
+                    clickable
+                    @click="item.onClick"
+                    :label="item.description"
+                    :class="[
+                      'text-h7 text-bold',
+                      index !== history.breadcrumbs.value.length - 1
+                        ? 'cursor-pointer'
+                        : '',
+                    ]"
+                  />
+                  <!-- Dropdown for intermediate steps -->
+                  <q-btn-dropdown
+                    v-else
+                    flat
+                    label="..."
+                    class="q-breadcrumbs__el text-h7"
+                  >
+                    <q-list>
+                      <q-item
+                        v-for="subItem in item.items"
+                        :key="subItem.description"
+                        class="text-h7 text-bold"
+                        clickable
+                        v-close-popup
+                        @click="subItem.onClick"
+                      >
+                        <q-item-section>{{
+                          subItem.description
+                        }}</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-btn-dropdown>
+                </template>
+              </q-breadcrumbs>
+            </q-item>
+            <q-item>
+              <q-item-section>
+                <q-item-label>Node count</q-item-label>
+                <q-item-label caption>{{
+                  selectedCluster?.nodes.length || nodes.length
+                }}</q-item-label>
+              </q-item-section>
+            </q-item>
+
             <q-tabs
               v-model="activeTab"
               class="text-primary"
@@ -292,7 +346,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, ComputedRef } from 'vue';
 import * as d3 from 'd3';
 import D3Graph from 'components/D3Graph.vue';
 import JsonFileSelector from 'components/JsonFileSelector.vue';
@@ -394,13 +448,145 @@ async function onDataLoaded(args: { data: GraphData; origin: string }) {
   };
   selectedCluster.value = clusterForAllNodes;
   selectedNode.value = null;
+  history.setRoot(clusterForAllNodes);
 }
+
+interface BreadcrumbBase {
+  description: string;
+  onClick: () => void;
+}
+
+interface RegularBreadcrumb extends BreadcrumbBase {
+  isDropdown: false;
+}
+
+interface DropdownBreadcrumb extends BreadcrumbBase {
+  isDropdown: true;
+  items: BreadcrumbBase[];
+}
+
+type BreadcrumbItem = RegularBreadcrumb | DropdownBreadcrumb;
+
+class ContextHistory {
+  private _history = ref<Array<{ cluster: ClusterInfo; isRoot: boolean }>>([]);
+
+  setRoot(root: ClusterInfo) {
+    this._history.value = [{ cluster: root, isRoot: true }];
+  }
+
+  clear() {
+    this._history.value = [];
+  }
+
+  reset() {
+    d3GraphRef.value?.selectNodes([]);
+  }
+
+  onReset() {
+    while (this._history.value.length !== 1) {
+      this._history.value.pop();
+    }
+    selectedCluster.value = this._history.value[0].cluster;
+    selectedNode.value = null;
+  }
+
+  onPush(cluster: ClusterInfo) {
+    this._history.value.push({ cluster, isRoot: false });
+    selectedCluster.value = cluster;
+  }
+
+  onPop() {
+    if (this._history.value.length > 1) {
+      this._history.value.pop();
+      selectedCluster.value =
+        this._history.value[this._history.value.length - 1].cluster;
+    }
+  }
+
+  private _activate(historyItem: { cluster: ClusterInfo; isRoot: boolean }) {
+    // Find the index of the clicked item
+    const index = this._history.value.findIndex(
+      (item) => item.cluster === historyItem.cluster,
+    );
+
+    if (index === -1) return;
+
+    // Remove all items after this index
+    while (this._history.value.length > index) {
+      this._history.value.pop();
+    }
+
+    // Trigger graph selection
+    if (historyItem.cluster.id) {
+      d3GraphRef.value?.setCurrentCluster(historyItem.cluster.id);
+    } else {
+      d3GraphRef.value?.selectNodes(
+        historyItem.cluster.nodes,
+        historyItem.cluster.description,
+      );
+    }
+  }
+
+  get breadcrumbs(): ComputedRef<BreadcrumbItem[]> {
+    return computed<BreadcrumbItem[]>(() => {
+      const history = this._history.value;
+      if (history.length <= 2) {
+        // If only root or root + one item, show all
+        return history.map((item) => ({
+          description: this.getDescription(item.cluster),
+          onClick: () => (item.isRoot ? this.reset() : this._activate(item)),
+          isDropdown: false as const,
+        }));
+      }
+
+      // Show root, ellipsis with dropdown, and current
+      return [
+        // Root item
+        {
+          description: this.getDescription(history[0].cluster),
+          onClick: () => this.reset(),
+          isDropdown: false as const,
+        },
+        // Ellipsis menu with intermediate items
+        {
+          description: '...',
+          onClick: () => {},
+          isDropdown: true as const,
+          items: history.slice(1, -1).map((item) => ({
+            description: this.getDescription(item.cluster),
+            onClick: () => this._activate(item),
+          })),
+        },
+        // Current item
+        {
+          description: this.getDescription(history[history.length - 1].cluster),
+          onClick: () => {}, // No-op for last item
+          isDropdown: false as const,
+        },
+      ];
+    });
+  }
+
+  private getDescription(cluster: ClusterInfo) {
+    if (cluster.description) {
+      return cluster.description;
+    }
+    if (cluster.id) {
+      return 'Cluster #' + cluster.id;
+    }
+    return '';
+  }
+}
+const history = new ContextHistory();
 
 function unloadData() {
   nodes.value = [];
   edges.value = [];
   clusters.value = [];
   dataSourceDescription.value = '';
+  history.clear();
+  selectedCluster.value = null;
+  selectedNode.value = null;
 }
 
 /**

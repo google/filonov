@@ -278,8 +278,10 @@ function handleNodeClick(event: Event, node: D3Node) {
   tooltipTarget.value = event.currentTarget as HTMLElement;
   tooltipVisible.value = true;
 
-  currentNode.value = node;
-  emit('node-selected', node);
+  if (currentNode.value !== node) {
+    currentNode.value = node;
+    emit('node-selected', node);
+  }
   setCurrentCluster(node.cluster);
 }
 
@@ -357,19 +359,18 @@ function highlightNodes(nodes: Node[]) {
 
 // select arbitrary number of nodes, it's similar to selecting a cluster (in setCurrentCluster),
 // but nodes can be not connected
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function selectNodes(connectedNodes: Node[] | null, description?: string) {
-  if (!connectedNodes || !connectedNodes.length) {
+function selectNodes(nodes: Node[] | null, description?: string) {
+  if (!nodes || !nodes.length) {
     currentCluster.value = null;
     resetHighlight();
   } else {
     currentCluster.value = {
       id: '',
       description,
-      nodes: connectedNodes,
-      metrics: aggregateNodesMetrics(connectedNodes),
+      nodes: nodes,
+      metrics: aggregateNodesMetrics(nodes),
     };
-    highlightNodes(connectedNodes);
+    highlightNodes(nodes);
   }
   emit('cluster-selected', currentCluster.value);
 }
@@ -404,12 +405,18 @@ function centerOnNode(node: D3Node) {
 function setCurrentCluster(clusterId: string | null) {
   selectedClusterId.value = clusterId;
   if (!clusterId) {
+    if (currentCluster.value === null) {
+      return;
+    }
     currentCluster.value = null;
     resetHighlight();
   } else {
-    const clusterNodes = getCluster(clusterId)!.nodes;
-    currentCluster.value = getCluster(clusterId) || null;
-    highlightNodes(clusterNodes);
+    const cluster = getCluster(clusterId);
+    if (currentCluster.value === cluster) {
+      return;
+    }
+    currentCluster.value = cluster || null;
+    highlightNodes(cluster?.nodes || []);
   }
   emit('cluster-selected', currentCluster.value);
 }
