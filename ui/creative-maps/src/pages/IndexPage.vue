@@ -1,5 +1,5 @@
 <template>
-  <q-page>
+  <q-page class="full-height">
     <Suspense>
       <template #default>
         <MainComponent />

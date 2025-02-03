@@ -1,6 +1,6 @@
 <template>
   <div class="main-component q-pa-md">
-    <div class="row items-center q-pa-sm bg-grey-2">
+    <div class="row items-center q-pa-sm bg-grey-2 controls-bar">
       <q-btn
         flat
         icon="upload_file"
@@ -19,8 +19,8 @@
       </div>
       <q-btn v-if="nodes.length" flat @click="unloadData">Unload</q-btn>
     </div>
-    <div class="row">
-      <div class="col-10">
+    <div class="row content-area">
+      <div class="col-9 graph-container">
         <d3-graph
           ref="d3GraphRef"
           :nodes="nodes"
@@ -32,9 +32,9 @@
           @node-selected="onNodeSelected"
         />
       </div>
-      <div class="col-2">
-        <div class="right-side-menu">
-          <q-card>
+      <div class="col-3 side-menu-container">
+        <div class="side-menu">
+          <q-card class="menu-card" flat bordered>
             <q-tabs
               v-model="activeTab"
               class="text-primary"
@@ -112,20 +112,6 @@
               </q-tab-panel>
 
               <q-tab-panel name="metrics">
-                <div class="text-h6">
-                  {{ getSelectionDescription() }}
-                </div>
-                <q-list separator>
-                  <q-item>
-                    <q-item-section>
-                      <q-item-label>Node count</q-item-label>
-                      <q-item-label caption>{{
-                        selectedCluster?.nodes.length || nodes.length
-                      }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-                  <q-separator spaced />
-                </q-list>
                 <q-list separator v-if="selectedCluster">
                   <q-item
                     v-for="(value, metric) in selectedCluster?.metrics"
@@ -578,28 +564,50 @@ function doShowTimeSeriesDialog(metric: string) {
   selectedMetric.value = metric;
   showTimeSeriesDialog.value = true;
 }
-
-function getSelectionDescription() {
-  if (selectedCluster.value?.description) {
-    return selectedCluster.value?.description;
-  }
-  if (selectedCluster.value?.id) {
-    return 'Cluster #' + selectedCluster.value?.id;
-  }
-  return '';
-}
 </script>
+
 <style scoped>
-.right-side-menu {
+.main-component {
+  height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent main component from scrolling */
+}
+
+.controls-bar {
+  flex: 0 0 auto; /* Don't allow controls to grow/shrink */
+}
+
+.content-area {
+  flex: 1;
+  min-height: 0; /* Allow content to shrink */
+  overflow: hidden; /* Prevent content area from causing scroll */
+}
+
+.graph-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.graph-area {
+  height: 100%;
+  width: 100%;
+}
+
+.side-menu-container {
   height: 100%;
 }
 
-.q-card {
+.side-menu {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto; /* Only allow scrolling in the menu card */
 }
 
-.q-tab-panel {
-  padding: 16px;
+/* Make tab panels scrollable while keeping tabs fixed */
+:deep(.q-tab-panels) {
+  overflow-y: auto;
 }
 
 .text-h6 {
