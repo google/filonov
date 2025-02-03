@@ -266,7 +266,7 @@
               transition-hide="slide-down"
             >
               <NodeComparison
-                :nodes="nodes"
+                :nodes="selectedCluster?.nodes || nodes"
                 @select-node="selectNode"
               ></NodeComparison>
             </q-dialog>
@@ -430,18 +430,14 @@ function collectTags(nodes: Node[]): TagStats[] {
 }
 
 function selectNodesByTag(tagStat: TagStats) {
-  // Get nodes that have this tag
-  const nodesWithTag = tagStat.nodes;
-
   // Use the D3Graph method to highlight these nodes
   d3GraphRef.value?.selectNodes(
-    nodesWithTag,
+    tagStat.nodes,
     `Nodes with tag '${tagStat.tag}''`,
   );
 }
 
-/**
- * Handle of click on a tag in Tags Dashboard.
+/** Handler of clicking on a tag in Tags Dashboard.
  * @param tagStat
  */
 function onTagDashboardSelect(tagStat: TagStats) {
@@ -458,22 +454,19 @@ function onNodeSelected(node: Node | null) {
 
 function onClusterSelected(cluster: ClusterInfo | null) {
   if (!cluster) {
-    selectedCluster.value = clusterForAllNodes!;
+    history.onReset();
   } else {
-    selectedCluster.value = cluster;
+    history.onPush(cluster);
   }
-  // if (!cluster) {
-  //   if (activeTab.value !== 'tags' && activeTab.value !== 'info') {
-  //     activeTab.value = 'tags';
-  //   }
-  // }
 }
 
+/** Handler of clicking on a cluster in 'Compare Clusters' dialog. */
 function selectCluster(clusterId: string) {
   showClusterComparison.value = false;
   d3GraphRef.value?.setCurrentCluster(clusterId);
 }
 
+/** Handler of clicking on a node in 'Compare Nodes' dialog. */
 function selectNode(nodeId: number) {
   showNodeComparison.value = false;
   const node = nodes.value.find((n) => n.id === nodeId);
