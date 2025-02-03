@@ -131,18 +131,39 @@ export function aggregateNodesMetrics(nodes: Node[]): MetricsObject {
       }
     });
     // calculate some computed metrics
-    if (sampleNode.info['clicks'] && sampleNode.info['impressions']) {
-      // ctr
+    if (sampleNode.info) {
+      // CTR - clicks / impressions
+      // CR - conversions / clicks
+      // CPA - cost / conversions
+      // ROAS - conversions_value / cost
+      // CPM - (cost / impressions) * 1000
       let clicks = 0;
       let impressions = 0;
-      nodes.map((n) => {
+      let conversions = 0;
+      let cost = 0;
+      let conversions_value = 0;
+      nodes.forEach((n) => {
+        if (!n.info) return;
+        if (n.info['clicks'] !== undefined) {
+          clicks += Number(n.info['clicks']);
+        }
+        if (n.info['impressions'] !== undefined) {
+          impressions += Number(n.info['impressions']);
+        }
+        if (n.info['conversions'] !== undefined) {
+          conversions += Number(n.info['conversions']);
+        }
+        if (n.info['cost'] !== undefined) {
+          cost += Number(n.info['cost']);
+        }
+        if (n.info['conversions_value'] !== undefined) {
+          conversions_value += Number(n.info['conversions_value']);
+        }
+        // CTR - clicks / impressions
         if (
-          n.info &&
           n.info['clicks'] !== undefined &&
           n.info['impressions'] !== undefined
         ) {
-          clicks += Number(n.info['clicks']);
-          impressions += Number(n.info['impressions']);
           n.info['ctr'] =
             Number(n.info['clicks']) / Number(n.info['impressions']);
           if (n.series) {
@@ -152,8 +173,66 @@ export function aggregateNodesMetrics(nodes: Node[]): MetricsObject {
             });
           }
         }
+        // CR - conversions / clicks
+        if (
+          n.info['conversions'] !== undefined &&
+          n.info['clicks'] !== undefined
+        ) {
+          n.info['cr'] =
+            Number(n.info['conversions']) / Number(n.info['clicks']);
+          if (n.series) {
+            Object.values(n.series).forEach((item) => {
+              item['cr'] = Number(item['conversions']) / Number(item['clicks']);
+            });
+          }
+        }
+        // CPA - cost / conversions
+        if (
+          n.info['cost'] !== undefined &&
+          n.info['conversions'] !== undefined
+        ) {
+          n.info['cpa'] =
+            Number(n.info['cost']) / Number(n.info['conversions']);
+          if (n.series) {
+            Object.values(n.series).forEach((item) => {
+              item['cpa'] = Number(item['cost']) / Number(item['conversions']);
+            });
+          }
+        }
+        // ROAS - conversions_value / cost
+        if (
+          n.info['conversions_value'] !== undefined &&
+          n.info['cost'] !== undefined
+        ) {
+          n.info['roas'] =
+            Number(n.info['conversions_value']) / Number(n.info['cost']);
+          if (n.series) {
+            Object.values(n.series).forEach((item) => {
+              item['roas'] =
+                Number(item['conversions_value']) / Number(item['cost']);
+            });
+          }
+        }
+        // CPM - (cost / impressions) * 1000
+        if (
+          n.info['cost'] !== undefined &&
+          n.info['impressions'] !== undefined
+        ) {
+          n.info['cpm'] =
+            (Number(n.info['cost']) / Number(n.info['impressions'])) * 1000;
+          if (n.series) {
+            Object.values(n.series).forEach((item) => {
+              item['cpm'] =
+                (Number(item['cost']) / Number(item['impressions'])) * 1000;
+            });
+          }
+        }
       });
       metrics['ctr'] = clicks / impressions;
+      metrics['cr'] = conversions / clicks;
+      metrics['cpa'] = cost / conversions;
+      metrics['roas'] = conversions_value / cost;
+      metrics['cpm'] = (cost / impressions) * 1000;
     }
   }
   return metrics;
