@@ -149,9 +149,7 @@
               </q-tab-panel>
 
               <q-tab-panel name="tags" v-if="sortedTags.length">
-                <div class="text-h6">
-                  {{ selectedCluster ? 'Cluster Tags' : 'All Tags' }}
-                </div>
+                <div class="text-h6">Tags ({{ sortedTags.length }})</div>
                 <q-space />
                 <q-btn
                   flat
@@ -161,8 +159,28 @@
                 >
                   <q-tooltip>Show metrics by tag</q-tooltip>
                 </q-btn>
+
+                <!-- Search input -->
+                <q-input
+                  v-model="tagSearchQuery"
+                  dense
+                  clearable
+                  placeholder="Search tags"
+                  class="q-mb-md"
+                  @clear="tagSearchQuery = ''"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="search" />
+                  </template>
+                  <template v-slot:append v-if="tagSearchQuery">
+                    <q-badge color="primary" text-color="white">
+                      {{ filteredTags.length }}/{{ sortedTags.length }}
+                    </q-badge>
+                  </template>
+                </q-input>
+
                 <q-list separator>
-                  <q-item v-for="tagInfo in sortedTags" :key="tagInfo.tag">
+                  <q-item v-for="tagInfo in filteredTags" :key="tagInfo.tag">
                     <q-item-section>
                       <q-item-label>
                         <a
@@ -316,6 +334,7 @@ const showTimeSeriesDialog = ref(false);
 const showTagsDashboardDialog = ref(false);
 const selectedMetric = ref('');
 let clusterForAllNodes: ClusterInfo | undefined;
+const tagSearchQuery = ref('');
 
 const sortedTags = computed(() => {
   if (!selectedCluster.value) {
@@ -323,6 +342,14 @@ const sortedTags = computed(() => {
     return collectTags(nodes.value);
   }
   return collectTags(selectedCluster.value.nodes);
+});
+const filteredTags = computed(() => {
+  const query = tagSearchQuery.value.toLowerCase().trim();
+  if (!query) return sortedTags.value;
+
+  return sortedTags.value.filter((tagInfo) =>
+    tagInfo.tag.toLowerCase().includes(query),
+  );
 });
 
 const timeSeriesData = computed(() => {
