@@ -83,7 +83,6 @@
 <script setup lang="ts">
 import { ref, computed, ComputedRef, onMounted } from 'vue';
 import { useQuasar, QTableColumn } from 'quasar';
-import _ from 'lodash';
 import { TagStats } from './models';
 import {
   formatMetricValue,
@@ -91,6 +90,7 @@ import {
   assertIsError,
 } from 'src/helpers/utils';
 import { exportTable } from 'src/helpers/export';
+import { aggregateNodesMetrics } from 'src/helpers/graph';
 
 interface Props {
   tagsStats: TagStats[];
@@ -107,6 +107,7 @@ const isDynamicView = ref(false);
 const selectedTags = ref<string[]>([]);
 const selectedMetric = ref('');
 
+// get a list of tags for dropdown
 const sortedTagOptions = computed(() => {
   if (!selectedMetric.value) return props.tagsStats.map((t) => t.tag);
   return [...props.tagsStats]
@@ -152,22 +153,7 @@ onMounted(() => {
 // Calculate metrics for each tag
 const tagsMetrics = computed(() => {
   return props.tagsStats.map((tagStat) => {
-    const metricValues: Record<string, number> = {};
-    metrics.value.forEach((metric) => {
-      let isSum = true;
-      if (tagStat.nodes && tagStat.nodes.length) {
-        let firstNode = tagStat.nodes[0];
-        if (!_.isNumber(firstNode.info?.[metric])) {
-          isSum = false;
-        }
-      }
-      if (isSum) {
-        metricValues[metric] = tagStat.nodes.reduce(
-          (sum, node) => sum + ((node.info?.[metric] as number) || 0),
-          0,
-        );
-      }
-    });
+    const metricValues = aggregateNodesMetrics(tagStat.nodes);
 
     return {
       tag: tagStat.tag,
