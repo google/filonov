@@ -94,24 +94,27 @@
       anchor="bottom middle"
       self="top middle"
       :offset="[0, 10]"
-      v-if="currentNode"
+      v-if="highlightedNode"
     >
       <div class="text-body2">
-        <div class="q-mb-xs">Name: {{ currentNode.label }}</div>
+        <div class="q-mb-xs">Name: {{ highlightedNode.label }}</div>
         <div class="text-weight-bold q-mb-sm">Metrics:</div>
         <div
-          v-for="(value, metric) in currentNode.info"
+          v-for="(value, metric) in highlightedNode.info"
           :key="metric"
           class="q-mb-xs"
         >
           {{ formatMetricName(metric) }}: {{ formatMetricValue(value, metric) }}
         </div>
-        <div v-if="currentNode.tags?.length" class="text-weight-bold q-mb-sm">
-          Tags (up to top 5 of {{ currentNode.tags.length }}):
+        <div
+          v-if="highlightedNode.tags?.length"
+          class="text-weight-bold q-mb-sm"
+        >
+          Tags (up to top 5 of {{ highlightedNode.tags.length }}):
         </div>
         <div
           class="q-mb-xs"
-          v-for="(tag, idx) of currentNode.tags?.slice(0, 5)"
+          v-for="(tag, idx) of highlightedNode.tags?.slice(0, 5)"
           :key="tag.tag"
         >
           {{ idx + 1 }}. {{ tag.tag }} ({{ tag.score.toFixed(3) }})
@@ -124,11 +127,11 @@
       anchor="bottom middle"
       self="top middle"
       :offset="[0, 10]"
-      v-if="currentEdge"
+      v-if="highlightedEdge"
     >
       <div class="text-body2">
         <div class="text-weight-bold">
-          Similarity: {{ (currentEdge?.similarity || 0).toFixed(3) }}
+          Similarity: {{ (highlightedEdge?.similarity || 0).toFixed(3) }}
         </div>
       </div>
     </q-tooltip>
@@ -235,7 +238,8 @@ const nodeSizeMultiplier = ref(1);
 const clusterIds = ref<string[]>([]);
 const selectedClusterId = ref<string | null>(null);
 const currentNode = ref<Node | null>(null);
-const currentEdge = ref<Edge | null>(null);
+const highlightedNode = ref<Node | null>(null);
+const highlightedEdge = ref<Edge | null>(null);
 const currentCluster = ref<ClusterInfo | null>(null);
 const selectedSizeField = ref<string | null | undefined>(props.sizeField);
 const searchDialog = ref<InstanceType<typeof NodeSearchDialog> | null>(null);
@@ -292,7 +296,7 @@ function getCluster(clusterId: string) {
 function highlightNode(event: Event, d: Node) {
   tooltipTarget.value = event.currentTarget as HTMLElement;
   tooltipVisible.value = true;
-  currentNode.value = d;
+  highlightedNode.value = d;
   if (!currentCluster.value) {
     // if there's not selected cluster, highlight the cluster that the node belongs to
     const connectedNodes = getCluster(d.cluster)?.nodes || [];
@@ -320,7 +324,7 @@ function highlightNodes(nodes: Node[]) {
       const element = d3.select(this);
       const node = element.datum() as Node;
       const isConnected = connectedIds.has(node.id.toString());
-      const isCurrent = node.id === currentNode.value?.id;
+      const isCurrent = node.id === highlightedNode.value?.id;
       if (showImages.value && element.select('image').size() > 0) {
         // For image nodes, ONLY modify the image border
         element
@@ -423,7 +427,7 @@ function setCurrentCluster(clusterId: string | null) {
 
 function resetHighlight() {
   tooltipVisible.value = false;
-  currentNode.value = null;
+  highlightedNode.value = null;
   if (currentCluster.value) {
     return;
   }
@@ -714,6 +718,7 @@ async function drawGraph() {
     .attr('fill', 'transparent')
     .on('click', () => {
       currentNode.value = null;
+      highlightedNode.value = null;
       emit('node-selected', null);
       setCurrentCluster(null);
     });
@@ -771,7 +776,7 @@ async function drawGraph() {
     .on('mouseenter', (event: Event, d: Edge) => {
       edgeTooltipTarget.value = event.currentTarget as HTMLElement;
       edgeTooltipVisible.value = true;
-      currentEdge.value = d;
+      highlightedEdge.value = d;
 
       // Highlight the hovered edge
       d3.select(event.currentTarget as HTMLElement)
@@ -783,7 +788,7 @@ async function drawGraph() {
     })
     .on('mouseleave', (event) => {
       edgeTooltipVisible.value = false;
-      currentEdge.value = null;
+      highlightedEdge.value = null;
 
       // Reset edge style
       d3.select(event.currentTarget)

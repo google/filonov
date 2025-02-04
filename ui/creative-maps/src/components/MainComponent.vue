@@ -82,7 +82,7 @@
             </q-item>
             <q-item>
               <q-item-section>
-                <q-item-label>Node count</q-item-label>
+                <q-item-label>Creative count</q-item-label>
                 <q-item-label caption>{{
                   selectedCluster?.nodes.length || nodes.length
                 }}</q-item-label>
@@ -98,7 +98,7 @@
               <q-tab v-if="nodes" name="info" label="Info" />
               <q-tab v-if="nodes.length" name="metrics" label="Metrics" />
               <q-tab v-if="nodes.length" name="tags" label="Tags" />
-              <q-tab v-if="selectedNode" name="node" label="Node" />
+              <q-tab v-if="selectedNode" name="node" label="Creative" />
             </q-tabs>
 
             <q-separator />
@@ -118,7 +118,7 @@
 
                   <q-card class="col">
                     <q-card-section>
-                      <div class="text-subtitle2">Total Nodes</div>
+                      <div class="text-subtitle2">Total Creatives</div>
                       <div class="text-h4">{{ nodes.length }}</div>
                     </q-card-section>
                   </q-card>
@@ -155,7 +155,7 @@
                     <q-btn
                       v-if="nodes.length"
                       color="primary"
-                      label="Compare Nodes"
+                      label="Compare Creatives"
                       icon="compare_arrows"
                       class="q-mt-md"
                       @click="showNodeComparison = true"
@@ -443,7 +443,7 @@ async function onDataLoaded(args: { data: GraphData; origin: string }) {
   clusterForAllNodes = {
     id: '',
     nodes: nodes.value,
-    description: 'All nodes',
+    description: 'All creatives',
     metrics: aggregateNodesMetrics(nodes.value),
   };
   selectedCluster.value = clusterForAllNodes;
@@ -619,7 +619,7 @@ function selectNodesByTag(tagStat: TagStats) {
   // Use the D3Graph method to highlight these nodes
   d3GraphRef.value?.selectNodes(
     tagStat.nodes,
-    `Nodes with tag '${tagStat.tag}''`,
+    `Creatives with tag '${tagStat.tag}''`,
   );
 }
 
@@ -630,7 +630,7 @@ function onTagDashboardSelect(tagStat: TagStats) {
   showTagsDashboardDialog.value = false;
   d3GraphRef.value?.selectNodes(
     tagStat.nodes,
-    `Nodes with tag '${tagStat.tag}'`,
+    `Creatives with tag '${tagStat.tag}'`,
   );
 }
 
@@ -652,7 +652,7 @@ function selectCluster(clusterId: string) {
   d3GraphRef.value?.setCurrentCluster(clusterId);
 }
 
-/** Handler of clicking on a node in 'Compare Nodes' dialog. */
+/** Handler of clicking on a node in 'Compare Creatives' dialog. */
 function selectNode(nodeId: number) {
   showNodeComparison.value = false;
   const node = nodes.value.find((n) => n.id === nodeId);
@@ -752,8 +752,8 @@ function onClusterHistogramMetricClicked(args: {
 }) {
   if (d3GraphRef.value) {
     const msg = args.scalar
-      ? `Nodes with '${args.metric}' metric equals to '${args.range[0]}'`
-      : `Nodes with '${args.metric}' metric values in [${args.range[0]}, ${args.range[1]}] range`;
+      ? `Creatives with '${args.metric}' metric equals to '${args.range[0]}'`
+      : `Creatives with '${args.metric}' metric values in [${args.range[0]}, ${args.range[1]}] range`;
     if (args.metric === 'Cluster Size' && args.nodes?.length) {
       // special case - nodes are actually clusters
       const nodes = args.nodes.flatMap((n) =>
