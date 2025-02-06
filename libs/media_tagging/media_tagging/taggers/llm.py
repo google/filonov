@@ -42,7 +42,7 @@ from media_tagging import exceptions, media, tagging_result
 from media_tagging.taggers import base
 
 _MAX_NUMBER_LLM_TAGS: Final[int] = 10
-_TAG_DESCRIPTION: Final[str] = """
+TAG_DESCRIPTION: Final[str] = """
   Tag represents a unique concept (using a singular noun).
   Each value is between 0 and 100 where 0 is complete absence of a tag,
   100 is the most important tag being used, and everything in between '
@@ -50,30 +50,33 @@ _TAG_DESCRIPTION: Final[str] = """
 """
 
 
+def _read_prompt_content(prompt_name: str) -> str:
+  with pathlib.Path.open(
+    pathlib.Path(__file__).resolve().parent / prompt_name,
+    'r',
+    encoding='utf-8',
+  ) as f:
+    template = f.readlines()
+  return ' '.join(template)
+
+
 def _build_prompt_template(
-  prompt_name: str,
+  prompt: str,
   include_human_instructions: bool = True,
   include_format_instructions: bool = True,
-) -> str | prompts.ChatPromptTemplate:
+) -> prompts.ChatPromptTemplate | str:
   """Constructs prompt template from file.
 
   Args:
-    prompt_name: File name with extension where prompt template is saved.
+    prompt: Text of a prompt.
     include_human_instructions: Whether to include image_url in a prompt.
     include_format_instructions: Whether to specify output formatting.
 
   Returns:
     Generated prompt template.
   """
-  with open(
-    pathlib.Path(__file__).resolve().parent / prompt_name,
-    'r',
-    encoding='utf-8',
-  ) as f:
-    template = f.readlines()
-  prompt_template = ' '.join(template)
   if include_format_instructions:
-    prompt_template = prompt_template + '{format_instructions}'
+    prompt = prompt + '{format_instructions}'
   if include_human_instructions:
     human_instructions = (
       'human',
@@ -86,11 +89,11 @@ def _build_prompt_template(
     )
     return prompts.ChatPromptTemplate.from_messages(
       [
-        ('system', prompt_template),
+        ('system', prompt),
         human_instructions,
       ]
     )
-  return prompt_template
+  return prompt
 
 
 class LLMTaggerTypeEnum(enum.Enum):
@@ -103,29 +106,29 @@ class LLMTaggerTypeEnum(enum.Enum):
 
 llm_tagger_promps: dict[LLMTaggerTypeEnum, prompts.ChatPromptTemplate] = {
   LLMTaggerTypeEnum.UNSTRUCTURED: _build_prompt_template(
-    'image_unstructured_prompt_template.txt'
+    _read_prompt_content('image_unstructured_prompt_template.txt')
   ),
   LLMTaggerTypeEnum.STRUCTURED: _build_prompt_template(
-    'image_structured_prompt_template.txt'
+    _read_prompt_content('image_structured_prompt_template.txt')
   ),
   LLMTaggerTypeEnum.DESCRIPTION: _build_prompt_template(
-    'image_description_prompt_template.txt'
+    _read_prompt_content('image_description_prompt_template.txt')
   ),
 }
 
 video_llm_tagger_promps: dict[LLMTaggerTypeEnum, str] = {
   LLMTaggerTypeEnum.UNSTRUCTURED: _build_prompt_template(
-    'video_unstructured_prompt_template.txt',
+    _read_prompt_content('video_unstructured_prompt_template.txt'),
     include_human_instructions=False,
     include_format_instructions=False,
   ),
   LLMTaggerTypeEnum.STRUCTURED: _build_prompt_template(
-    'video_structured_prompt_template.txt',
+    _read_prompt_content('video_structured_prompt_template.txt'),
     include_human_instructions=False,
     include_format_instructions=False,
   ),
   LLMTaggerTypeEnum.DESCRIPTION: _build_prompt_template(
-    'video_description_prompt_template.txt',
+    _read_prompt_content('video_description_prompt_template.txt'),
     include_human_instructions=False,
     include_format_instructions=False,
   ),
@@ -148,6 +151,7 @@ class LLMTagger(base.BaseTagger):
       if llm_tagger_type == LLMTaggerTypeEnum.DESCRIPTION
       else tagging_result.Tag
     )
+    self.custom_prompt = ''
 
   @property
   def prompt(self) -> prompts.ChatPromptTemplate:
@@ -155,10 +159,12 @@ class LLMTagger(base.BaseTagger):
 
     Prompt contains format instructions to get output result.
     """
+    if self.custom_prompt:
+      return _build_prompt_template(self.custom_prompt)
     prompt = llm_tagger_promps[self.llm_tagger_type]
     if self.output_object == LLMTaggerTypeEnum.DESCRIPTION:
       return prompt
-    return prompt + _TAG_DESCRIPTION
+    return prompt + TAG_DESCRIPTION
 
   @property
   def output_parser(self) -> output_parsers.BaseOutputParser:
@@ -199,6 +205,8 @@ class LLMTagger(base.BaseTagger):
   ) -> tagging_result.TaggingResult:
     if not tagging_options:
       tagging_options = base.TaggingOptions(n_tags=_MAX_NUMBER_LLM_TAGS)
+    if custom_prompt := tagging_options.custom_prompt:
+      self.custom_prompt = custom_prompt
 
     logging.debug('Tagging image "%s" with LLMTagger', medium.name)
     image_data = base64.b64encode(medium.content).decode('utf-8')
@@ -303,15 +311,13 @@ class GeminiYouTubeVideoTagger(LLMTagger):
     Returns:
       Formatted prompt.
     """
+    if custom_prompt := tagging_options.custom_prompt:
+      return custom_prompt
     base_prompt = video_llm_tagger_promps[self.llm_tagger_type]
-    formatting_instructions = (
-      ' For each tag provide name and a score from 0 to 1 '
-      'where 0 is tag absence and 1 complete tag presence.'
-    )
     prompt = base_prompt.format(**dataclasses.asdict(tagging_options))
     if self.llm_tagger_type == LLMTaggerTypeEnum.DESCRIPTION:
       return prompt
-    return prompt + formatting_instructions
+    return prompt + TAG_DESCRIPTION
 
   @override
   @tenacity.retry(

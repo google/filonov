@@ -61,7 +61,7 @@ class FakeTagsLangchainChain:
       return FakeTagsLangchainChainResponse(
         content=json.dumps(_TAGS_RESPONSE[0:n_tags]), usage_metadata={}
       )
-    if tags := set(parameters.get('tags').split(',')):
+    if tags := set(parameters.get('tags', '').split(',')):
       found_tags = []
       for tag in _TAGS_RESPONSE:
         if tag.get('name') in tags:
@@ -98,6 +98,20 @@ class TestGeminiImageTagger:
       return_value=FakeTagsLangchainChain(),
     )
     return llm.GeminiImageTagger(llm.LLMTaggerTypeEnum.UNSTRUCTURED)
+
+  def test_tag_with_custom_prompt_uses_it(self, mocker):
+    mocker.patch(
+      'media_tagging.taggers.llm.LLMTagger.chain',
+      new_callable=mocker.PropertyMock,
+      return_value=FakeTagsLangchainChain(),
+    )
+    fake_tagger = llm.GeminiImageTagger(llm.LLMTaggerTypeEnum.UNSTRUCTURED)
+    custom_prompt = 'What are the colors in this image'
+    fake_tagger.tag(
+      medium,
+      tagging_options=base.TaggingOptions(custom_prompt=custom_prompt),
+    )
+    assert fake_tagger.prompt == llm._build_prompt_template(custom_prompt)
 
   @pytest.mark.parametrize(
     ('n_tags', 'tags'),
@@ -175,3 +189,30 @@ class TestGeminiImageTagger:
     )
 
     assert result == expected_result
+
+
+class TestGeminiYouTubeTagger:
+  def test_format_prompt_with_custom_prompt_uses_it(self):
+    fake_tagger = llm.GeminiYouTubeVideoTagger(
+      llm.LLMTaggerTypeEnum.UNSTRUCTURED
+    )
+    custom_prompt = 'What are the colors in this video'
+    generated_prompt = fake_tagger.format_prompt(
+      tagging_options=base.TaggingOptions(custom_prompt=custom_prompt)
+    )
+    assert generated_prompt == custom_prompt
+
+  def test_format_prompt_without_custom_prompt_uses_default_prompt(self):
+    fake_tagger = llm.GeminiYouTubeVideoTagger(
+      llm.LLMTaggerTypeEnum.UNSTRUCTURED
+    )
+    generated_prompt = fake_tagger.format_prompt(
+      tagging_options=base.TaggingOptions(n_tags=10)
+    )
+    expected_prompt = (
+      llm.video_llm_tagger_promps[llm.LLMTaggerTypeEnum.UNSTRUCTURED].format(
+        n_tags=10
+      )
+      + llm.TAG_DESCRIPTION
+    )
+    assert generated_prompt == expected_prompt
