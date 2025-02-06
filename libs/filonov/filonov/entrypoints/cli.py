@@ -22,6 +22,7 @@ import sys
 import media_similarity
 import media_tagging
 from garf_executors.entrypoints import utils as gaarf_utils
+from media_tagging import media
 
 import filonov
 
@@ -40,8 +41,8 @@ def main():  # noqa: D103
   parser.add_argument(
     '--media-type',
     dest='media_type',
-    choices=['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO'],
-    help='Type of media',
+    choices=media.MediaTypeEnum.options(),
+    help='Type of media.',
   )
   parser.add_argument(
     '--tagger',
@@ -108,13 +109,16 @@ def main():  # noqa: D103
     )
   )
   if args.tagger is None:
-    tagger = f'gemini-{media_type.lower()}'
+    normalized_media_type = media_type.replace('_', '-').lower()
+    tagger = f'gemini-{normalized_media_type}'
   else:
     tagger = args.tagger
 
+  media_urls = {media.media_path for media in media_info.values()}
   tagging_results = tagging_service.tag_media(
     tagger_type=tagger,
-    media_paths=media_info.keys(),
+    media_type=media_type,
+    media_paths=media_urls,
     tagging_parameters=extra_parameters.get('tagger'),
     parallel_threshold=args.parallel_threshold,
   )
