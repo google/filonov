@@ -16,8 +16,6 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import abc
-import os
-import pickle
 from collections.abc import Sequence
 
 import sqlalchemy
@@ -32,7 +30,7 @@ class BaseTaggingResultsRepository(abc.ABC):
 
   @abc.abstractmethod
   def get(
-    self, media_paths: str | Sequence[str]
+    self, media_paths: str | Sequence[str], media_type: media.MediaTypeEnum
   ) -> list[tagging_result.TaggingResult]:
     """Specifies get operations."""
 
@@ -49,43 +47,6 @@ class BaseTaggingResultsRepository(abc.ABC):
     return self.results
 
 
-class PickleTaggingResultsRepository(BaseTaggingResultsRepository):
-  """Uses pickle files for persisting tagging results."""
-
-  def __init__(
-    self, destination: str | os.PathLike[str] = '/tmp/media_tagging.pickle'
-  ) -> None:
-    """Initializes PickleTaggingResultsRepository."""
-    self.destination = destination
-    try:
-      with open(self.destination, 'rb') as f:
-        self.results = pickle.load(f)
-    except FileNotFoundError:
-      self.results = []
-
-  @override
-  def get(
-    self, media_paths: Sequence[str]
-  ) -> list[tagging_result.TaggingResult]:
-    converted_media_paths = [
-      media.convert_path_to_media_name(media_path) for media_path in media_paths
-    ]
-    return [
-      result
-      for result in self.results
-      if result.identifier in converted_media_paths
-    ]
-
-  @override
-  def add(
-    self, tagging_results: Sequence[tagging_result.TaggingResult]
-  ) -> None:
-    for result in tagging_results:
-      self.results.append(result)
-    with open(self.destination, 'wb') as f:
-      pickle.dump(self.results, f)
-
-
 class InMemoryTaggingResultsRepository(BaseTaggingResultsRepository):
   """Uses pickle files for persisting tagging results."""
 
@@ -95,10 +56,11 @@ class InMemoryTaggingResultsRepository(BaseTaggingResultsRepository):
 
   @override
   def get(
-    self, media_paths: Sequence[str]
+    self, media_paths: Sequence[str], media_type: media.MediaTypeEnum
   ) -> list[tagging_result.TaggingResult]:
     converted_media_paths = [
-      media.convert_path_to_media_name(media_path) for media_path in media_paths
+      media.convert_path_to_media_name(media_path, media_type)
+      for media_path in media_paths
     ]
     return [
       result
@@ -158,11 +120,12 @@ class SqlAlchemyTaggingResultsRepository(BaseTaggingResultsRepository):
     return sqlalchemy.create_engine(self.db_url)
 
   def get(
-    self, media_paths: str | Sequence[str]
+    self, media_paths: str | Sequence[str], media_type: media.MediaTypeEnum
   ) -> list[tagging_result.TaggingResult]:
     """Specifies get operations."""
     converted_media_paths = [
-      media.convert_path_to_media_name(media_path) for media_path in media_paths
+      media.convert_path_to_media_name(media_path, media_type)
+      for media_path in media_paths
     ]
     with self.session() as session:
       return [

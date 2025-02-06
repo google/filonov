@@ -344,6 +344,10 @@ class GeminiYouTubeVideoTagger(LLMTagger):
         ),
       )
     except google_api_exceptions.PermissionDenied:
+      logging.error('Cannot access video %s', medium.media_path)
+      return None
+    except Exception as e:
+      logging.error('Failed to get response from Gemini: %s', e)
       return None
     if self.llm_tagger_type == LLMTaggerTypeEnum.DESCRIPTION:
       return tagging_result.TaggingResult(

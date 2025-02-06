@@ -31,13 +31,14 @@ def test_tag_media_saves_tagging_results_to_repository(mocker, tmp_path):
   persist_repository = repositories.SqlAlchemyTaggingResultsRepository(
     persist_repository_path
   )
-  persist_repository.initialize()
   tagging_service = media_tagging_service.MediaTaggingService(
     repositories.SqlAlchemyTaggingResultsRepository(persist_repository_path)
   )
   test_tagging_result = tagging_service.tag_media(
     tagger_type='vision-api',
+    media_type='IMAGE',
     media_paths=['test'],
+    parallel_threshold=0,
   )
 
   assert test_tagging_result == [expected_result]

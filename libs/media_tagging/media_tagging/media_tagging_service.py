@@ -42,6 +42,7 @@ class MediaTaggingService:
   def tag_media(
     self,
     tagger_type: str,
+    media_type: str,
     media_paths: Sequence[os.PathLike[str] | str],
     tagging_parameters: dict[str, str] | None = None,
     parallel_threshold: int = 10,
@@ -50,22 +51,30 @@ class MediaTaggingService:
 
     Args:
       tagger_type: Type of tagger use.
+      media_type: Type of media.
       media_paths: Path to media.
       tagging_parameters: Additional parameters to use during tagging.
       parallel_threshold: Number of parallel threads to run.
 
     Returns:
       Results of tagging.
+
+    Raises:
+      InvalidMediaTypeError: When incorrect media type is provided.
     """
+    try:
+      media_type_enum = media.MediaTypeEnum[media_type.upper()]
+    except KeyError as e:
+      raise media.InvalidMediaTypeError(media_type) from e
     concrete_tagger = tagger.create_tagger(tagger_type)
     untagged_media = media_paths
     tagged_media = []
-    if self.repo and (tagged_media := self.repo.get(media_paths)):
+    if self.repo and (tagged_media := self.repo.get(media_paths, media_type)):
       tagged_media_names = {media.identifier for media in tagged_media}
       untagged_media = {
         media_path
         for media_path in media_paths
-        if media.convert_path_to_media_name(media_path)
+        if media.convert_path_to_media_name(media_path, media_type)
         not in tagged_media_names
       }
     if not untagged_media:
@@ -74,7 +83,7 @@ class MediaTaggingService:
     if not parallel_threshold:
       return (
         self._tag_media_sequentially(
-          concrete_tagger, untagged_media, tagging_parameters
+          concrete_tagger, media_type_enum, untagged_media, tagging_parameters
         )
         + tagged_media
       )
@@ -83,6 +92,7 @@ class MediaTaggingService:
         executor.submit(
           self._tag_media_sequentially,
           concrete_tagger,
+          media_type_enum,
           [media_path],
           tagging_parameters,
         ): media_path
@@ -99,6 +109,7 @@ class MediaTaggingService:
   def _tag_media_sequentially(
     self,
     concrete_tagger: base_tagger.BaseTagger,
+    media_type: media.MediaTypeEnum,
     media_paths: Sequence[str | os.PathLike[str]],
     tagging_parameters: dict[str, str] | None = None,
   ) -> list[tagging_result.TaggingResult]:
@@ -106,6 +117,7 @@ class MediaTaggingService:
 
     Args:
       concrete_tagger: Instantiated tagger.
+      media_type: Type of media.
       media_paths: Local or remote path to media file.
       tagging_parameters: Optional keywords arguments to be sent for tagging.
 
@@ -116,8 +128,10 @@ class MediaTaggingService:
       tagging_parameters = {}
     results = []
     for path in media_paths:
-      medium = media.Medium(path)
-      if self.repo and (tagging_results := self.repo.get([medium.name])):
+      medium = media.Medium(path, media_type)
+      if self.repo and (
+        tagging_results := self.repo.get([medium.name], media_type)
+      ):
         logging.info('Getting media from repository: %s', path)
         results.extend(tagging_results)
         continue
