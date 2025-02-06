@@ -20,6 +20,15 @@ classifiers = [
 ]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+server = [
+  "media-tagging[server]",
+]
+all = [
+  "media-similarity[server]"
+]
+
+
 [tool.setuptools.dynamic]
 version = {attr = "media_similarity.__version__"}
 
