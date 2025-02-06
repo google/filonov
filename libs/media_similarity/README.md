@@ -14,6 +14,7 @@ pip install media-similarity
 
 ```
 media-similarity cluster <PATH_TO_MEDIA> \
+  --media-type=<MEDIA_TYPE> \
   --tagger=<TAGGER_TYPE> \
   --db-uri=<CONNECTION_STRING>
 ```
@@ -22,5 +23,6 @@ media-similarity cluster <PATH_TO_MEDIA> \
 
 ```
 media-similarity search <SEED_MEDIA_PATH> \
+  --media-type=<MEDIA_TYPE> \
   --db-uri=<CONNECTION_STRING>
 ```

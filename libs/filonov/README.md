@@ -47,11 +47,12 @@ filonov --source googleads --media-type <MEDIA_TYPE> \
   --googleads.start-date=YYYY-MM-DD \
   --googleads.end-date=YYYY-MM-DD  \
   --size-base=cost \
-  --parallel-threshold <N_THREADS>
+  --parallel-threshold <N_THREADS> \
+  --output-name <FILE_NAME>
 ```
 where:
 
-- `<MEDIA_TYPE>` - one of `IMAGE` or `YOUBE_VIDEO`
+- `<MEDIA_TYPE>` - one of `IMAGE` or `YOUTUBE_VIDEO`
 - `<CAMPAIGN_TYPE>` - all possible combinations `app`, `pmax`, `demandgen`, `display`, `video` separated by commas.
 - `<TAGGER_TYPE>` - one of possible media taggers listed [here](../media_tagging/README.md')
 - `<ACCOUNT_ID>` - Google Ads Account Id in 1234567890 format. Can be MCC.
@@ -59,6 +60,13 @@ where:
   (i.e. `sqlite:///tagging.db`). Make sure that DB exists.
   > To create an empty Sqlite DB call `touch database.db`.
 - `<PATH-TO-GOOGLE-ADS-YAML>` - path to `google-ads.yaml`.
+
+> In order to use `filonov` for YOUTUBE_VIDEO you need to be a content owner or
+> request data only for publicly available videos.
+> Alternatively if you have access to video files you can perform media tagging before
+> running `filonov`. Check `media-tagging` [README](../media_tagging/README.md#installation)
+> for more details.
+
 
 * Local files
 
@@ -68,7 +76,8 @@ filonov --source file --media-type YOUTUBE_VIDEO \
   --file.tagging_results_path=<PATH_TO_CSV_WITH_TAGGING_RESULTS> \
   --file.performance_results_path=<PATH_TO_CSV_WITH_PERFORMANCE_RESULTS> \
   --size-base=cost \
-  --parallel-threshold <N_THREADS>
+  --parallel-threshold <N_THREADS> \
+  --output-name <FILE_NAME>
 ```
 
    File with performance results should contains the following columns:
@@ -87,5 +96,9 @@ filonov --source file --media-type YOUTUBE_VIDEO \
 filonov --source youtube --media-type YOUTUBE_VIDEO \
   --db-uri=<CONNECTION_STRING> \
   --youtube.channel=YOUR_CHANNEL_ID \
-  --parallel-threshold 10
+  --parallel-threshold 10 \
+  --output-name <FILE_NAME>
 ```
+
+## Tagging local files
+`media-tagger`
