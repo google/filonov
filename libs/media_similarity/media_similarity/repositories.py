@@ -21,6 +21,7 @@ from collections.abc import MutableSequence, Sequence
 from typing import Any, Final, Iterable
 
 import sqlalchemy
+from media_tagging.repositories import SqlAlchemyRepository
 from sqlalchemy.ext.declarative import declarative_base
 from typing_extensions import override
 
@@ -117,30 +118,15 @@ class SimilarityPairs(Base):
     )
 
 
-class SqlAlchemySimilarityPairsRepository(BaseSimilarityPairsRepository):
+class SqlAlchemySimilarityPairsRepository(
+  BaseSimilarityPairsRepository, SqlAlchemyRepository
+):
   """Uses SqlAlchemy engine for persisting similarity_pairs."""
-
-  def __init__(self, db_url: str) -> None:
-    """Initializes SqlAlchemySimilarityPairsRepository."""
-    self.db_url = db_url
-    self.initialized = False
 
   def initialize(self) -> None:
     """Creates all ORM objects."""
     Base.metadata.create_all(self.engine)
-    self.initialized = True
-
-  @property
-  def session(self) -> sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session]:
-    """Property for initializing session."""
-    if not self.initialized:
-      self.initialize()
-    return sqlalchemy.orm.sessionmaker(bind=self.engine)
-
-  @property
-  def engine(self) -> sqlalchemy.engine.Engine:
-    """Initialized SQLalchemy engine."""
-    return sqlalchemy.create_engine(self.db_url)
+    super().initialize()
 
   @override
   def _get(self, pairs: str | Sequence[str]) -> list[media_pair.SimilarityPair]:
