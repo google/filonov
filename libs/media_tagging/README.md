@@ -64,26 +64,56 @@ media-tagger MEDIA_PATHs \
   --media-type <MEDIA_TYPE> \
   --tagger <TAGGER_TYPE> \
   --db-uri=<CONNECTION_STRING> \
-  --writer <WRITER_TYPE>
+  --writer <WRITER_TYPE> \
+  --output <OUTPUT_FILE_NAME>
 ```
 where:
 * `MEDIA_PATHs` - names of files for tagging (can be urls).
-* `<MEDIA_TYPE>` - type of media (YOUTUBE_VIDEO, VIDEO, IMAGE):
-* `<TAGGER_TYPE>` - name of tagger, supported options:
-* `<CONNECTION_STRING>` - Connection string to the database with tagging results (i.e. sqlite:///tagging.db). Make sure that DB exists.
-> To create an empty Sqlite DB call touch database.db.
-  * `vision-api` - tags images based on [Google Cloud Vision API](https://cloud.google.com/vision/),
-  * `video-api` for videos based on [Google Cloud Video Intelligence API](https://cloud.google.com/video-intelligence/)
-  * `gemini-image` - Uses Gemini to tags images. Add `--tagger.n_tags=<N_TAGS>`
-     parameter to control number of tags returned by tagger.
-  * `gemini-structured-image`  - Uses Gemini to find certain tags in the images.
-    Add `--tagger.tags='tag1, tag2, ..., tagN` parameter to find certain tags
-    in the image.
-  * `gemini-description-image` - Provides brief description of the image,
-* `<WRITER_TYPE>` - name of writer, one of `csv`, `json`
+* `<MEDIA_TYPE>` - type of media (YOUTUBE_VIDEO, VIDEO, IMAGE).
+* `<TAGGER_TYPE>` - name of tagger, [supported options](#supported-taggers).
+> Tagger can be customized via `tagger.option=value` syntax. I.e. if you want to request a specific number of tags you can add `--tagger.n-tags=100` CLI flag.
+* `<CONNECTION_STRING>` - Optional connection string to the database with tagging results (i.e. `sqlite:///tagging.db`). If this parameter is set make sure that DB exists.
+> To create an empty Sqlite DB execute `touch database.db`.
+* `<WRITER_TYPE>` - writer identifier (check available options at [garf-io library](https://github.com/google/garf/tree/main/libs/garf_io#readme)).
+* `<OUTPUT_FILE_NAME>` - name of the file to store results of tagging (by default `tagging_results`).
 
-By default script will create a single file with tagging results for each media_path.
-If you want to combine results into a single file add `--output OUTPUT_NAME` flag (without extension, i.e. `--output tagging_sample`.
+### Supported taggers
+
+#### Google Cloud API Taggers
+
+| identifier | options | description |
+| ---------- | ------- | ----------- |
+| `vision-api` | `n-tags=10` | For tagging images based on [Google Cloud Vision API](https://cloud.google.com/vision/) |
+| `video-api` | `n-tags=10` | For tagging images based on [Google Cloud Video Intelligence API](https://cloud.google.com/video-intelligence/) |
+
+#### LLM Taggers
+
+> Each LLM tagger can use `custom-prompt` parameter to adjust built-in prompt.
+
+##### Image taggers
+
+| identifier | options | description |
+| ---------- | ------- | ----------- |
+| `gemini-image` | `n-tags=10` | Uses Vertex AI to tags images. |
+| `gemini-structured-image` | `tags=tag1,tag2,tag3` | Uses Vertex AI to tags images |
+| `gemini-description-image` |  | Uses Vertex AI to describe image |
+
+##### Video file taggers
+
+| identifier | options | description |
+| ---------- | ------- | ----------- |
+| `gemini-video` | `n-tags=10` | Uses Vertex AI to tags videos. |
+| `gemini-structured-video` | `tags=tag1,tag2,tag3` | Uses Vertex AI to tags videos |
+| `gemini-description-video` |  | Uses Vertex AI to describe |
+
+##### YouTube video taggers
+
+| identifier | options | description |
+| ---------- | ------- | ----------- |
+| `gemini-youtube-video` | `n-tags=10` | Uses Vertex AI to tags YouTube videos. |
+| `gemini-structured-youtube-video` | `tags=tag1,tag2,tag3` | Uses Vertex AI to tags YouTube videos |
+| `gemini-description-youtube-video` | | Uses Vertex AI to describe YouTube Video |
+
 
 ## Disclaimer
 This is not an officially supported Google product.
