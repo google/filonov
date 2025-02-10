@@ -16,7 +16,7 @@
 
 """Module responsible for extracting media dimensions and metrics."""
 
-from typing import Literal
+from typing import Literal, get_args
 
 from filonov.inputs import google_ads, interfaces, youtube
 
@@ -24,11 +24,20 @@ InputSource = Literal['googleads', 'youtube', 'file']
 Context = dict[str, str]
 
 
+class MediaInputServiceError(Exception):
+  """Base exception for MediaInputService."""
+
+
 class MediaInputService:
   """Extracts media information from a specified source."""
 
-  def __init__(self, source: InputSource) -> None:
+  def __init__(self, source: InputSource = 'googleads') -> None:
     """Initializes InputService."""
+    if source not in get_args(InputSource):
+      raise MediaInputServiceError(
+        f'Incorrect source: {source}. Only {get_args(InputSource)} '
+        'are supported.'
+      )
     self.source = source
 
   def generate_media_info(
@@ -46,10 +55,15 @@ class MediaInputService:
 
     Returns:
       Tuple with mapping between media identifiers and media info and a context.
+
+    Raises:
+      MediaInputServiceError: When incomplete input parameters are supplied.
     """
     if self.source == 'youtube':
       if not (channel := input_parameters.get('channel')):
-        raise ValueError
+        raise MediaInputServiceError(
+          'Missing required argument `channel` for source `youtube`'
+        )
       context = {'channel': channel}
       return (
         youtube.ExtraInfoFetcher(channel).generate_extra_info(),
@@ -57,7 +71,10 @@ class MediaInputService:
       )
     if self.source == 'file':
       if 'performance_results_path' not in input_parameters:
-        raise ValueError
+        raise MediaInputServiceError(
+          'Missing required argument `performance_results_path` '
+          'for source `file`'
+        )
       return (
         google_ads.from_file(
           media_type=media_type,
@@ -66,21 +83,19 @@ class MediaInputService:
         ),
         {},
       )
-    if self.source == 'googleads':
-      if 'ads_config_path' in input_parameters:
-        ads_config = input_parameters.pop('ads_config_path')
-      if 'account' in input_parameters:
-        accounts = input_parameters.pop('account')
-      fetcher = google_ads.ExtraInfoFetcher(
-        accounts=accounts, ads_config=ads_config
-      )
-      fetching_request = google_ads.FetchingRequest(
-        media_type=media_type,
-        **input_parameters,
-      )
-      context = {**fetching_request.to_dict(), 'account': accounts}
-      return (
-        fetcher.generate_extra_info(fetching_request, with_size_base),
-        context,
-      )
-    raise ValueError
+    if 'ads_config_path' in input_parameters:
+      ads_config = input_parameters.pop('ads_config_path')
+    if 'account' in input_parameters:
+      accounts = input_parameters.pop('account')
+    fetcher = google_ads.ExtraInfoFetcher(
+      accounts=accounts, ads_config=ads_config
+    )
+    fetching_request = google_ads.FetchingRequest(
+      media_type=media_type,
+      **input_parameters,
+    )
+    context = {**fetching_request.to_dict(), 'account': accounts}
+    return (
+      fetcher.generate_extra_info(fetching_request, with_size_base),
+      context,
+    )
