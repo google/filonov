@@ -36,7 +36,7 @@ Run `filonov` based on one of the following sources:
 * `youtube` - fetch public videos from a YouTube channel.
 
 
-* Google Ads API
+### Google Ads API
 ```
 filonov --source googleads --media-type <MEDIA_TYPE> \
   --db-uri=<CONNECTION_STRING> \
@@ -60,15 +60,47 @@ where:
   (i.e. `sqlite:///tagging.db`). Make sure that DB exists.
   > To create an empty Sqlite DB call `touch database.db`.
 - `<PATH-TO-GOOGLE-ADS-YAML>` - path to `google-ads.yaml`.
+- `<FILE_NAME>` - Path to store results of running `filonov`. By default results are stored in the same folder where `filonov` is run, but you can provide any custom path (including remote one).
 
-> In order to use `filonov` for YOUTUBE_VIDEO you need to be a content owner or
+**Examples**
+
+1. Analyze all images in App campaigns for the last 30 days
+
+```
+filonov --source googleads --media-type IMAGE \
+  --googleads.campaign-types=app \
+  --googleads.account=<ACCOUNT_ID>
+```
+
+2. Analyze all images in DemandGen campaigns for the January 2025
+
+```
+filonov --source googleads --media-type IMAGE \
+  --googleads.campaign-types=demandgen \
+  --googleads.start_date=2025-01-01 \
+  --googleads.end_date=2025-01-31 \
+  --googleads.account=<ACCOUNT_ID>
+```
+
+3. Save results to Google Cloud Storage
+
+```
+filonov --source googleads --media-type IMAGE \
+  --googleads.campaign-types=app \
+  --googleads.account=<ACCOUNT_ID> \
+  --output-name gs://<YOUR_BUCKET>/filonov
+```
+
+> In order to use `filonov` for tagging YOUTUBE_VIDEO in Google Ads account
+> (with parameters `--source googleads --media-type YOUTUBE_VIDEO`)
+> you need to be a content owner or
 > request data only for publicly available videos.
 > Alternatively if you have access to video files you can perform media tagging before
 > running `filonov`. Check `media-tagging` [README](../media_tagging/README.md#installation)
 > for more details.
 
 
-* Local files
+### Local files
 
 ```
 filonov --source file --media-type YOUTUBE_VIDEO \
@@ -90,15 +122,12 @@ filonov --source file --media-type YOUTUBE_VIDEO \
    - tag
    - score
 
-* All public video in YouTube channel
+### YouTube Channel
 
 ```
-filonov --source youtube --media-type YOUTUBE_VIDEO \
+filonov --source youtube \
   --db-uri=<CONNECTION_STRING> \
   --youtube.channel=YOUR_CHANNEL_ID \
   --parallel-threshold 10 \
   --output-name <FILE_NAME>
 ```
-
-## Tagging local files
-`media-tagger`
