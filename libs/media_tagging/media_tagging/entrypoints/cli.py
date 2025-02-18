@@ -27,16 +27,20 @@ from media_tagging import (
   media,
   media_tagging_service,
   repositories,
-  tagger,
   tagging_result,
 )
-
-AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
 
 
 def main():
   """Main entrypoint."""
   parser = argparse.ArgumentParser()
+  parser.add_argument(
+    'action',
+    nargs='?',
+    choices=['tag', 'describe'],
+    help='Action to perform',
+    default='tag',
+  )
   parser.add_argument(
     'media_paths', nargs='*', help='Paths to local/remote files or URLs'
   )
@@ -49,7 +53,7 @@ def main():
   parser.add_argument(
     '--tagger',
     dest='tagger',
-    choices=AVAILABLE_TAGGERS,
+    choices=list(media_tagging_service.TAGGERS.keys()),
     help='Type of tagger',
   )
   parser.add_argument('--writer', dest='writer', default='json')
@@ -95,13 +99,17 @@ def main():
   )
   logging.getLogger(__file__)
 
-  tagging_results = tagging_service.tag_media(
-    tagger_type=args.tagger,
-    media_type=args.media_type,
-    media_paths=args.media_paths,
-    tagging_parameters=extra_parameters.get('tagger'),
-    parallel_threshold=args.parallel_threshold,
-  )
+  parameters = {
+    'tagger_type': args.tagger,
+    'media_type': args.media_type,
+    'media_paths': args.media_paths,
+    'tagging_parameters': extra_parameters.get('tagger'),
+    'parallel_threshold': args.parallel_threshold,
+  }
+  if args.action == 'tag':
+    tagging_results = tagging_service.tag_media(**parameters)
+  else:
+    tagging_results = tagging_service.describe_media(**parameters)
   if args.no_output:
     sys.exit()
   report = tagging_result.convert_tagging_results_to_garf_report(

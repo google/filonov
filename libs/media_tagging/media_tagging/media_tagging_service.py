@@ -15,14 +15,34 @@
 """Responsible for performing media tagging."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
+import inspect
 import itertools
 import logging
 import os
 from collections.abc import Sequence
 from concurrent import futures
+from importlib.metadata import entry_points
+from typing import Literal
 
-from media_tagging import media, repositories, tagger, tagging_result
+from media_tagging import media, repositories, tagging_result
 from media_tagging.taggers import base as base_tagger
+
+
+def _load_taggers():
+  """Loads all taggers exposed as `media_tagger` plugin."""
+  taggers = {}
+  for media_tagger in entry_points(group='media_tagger'):
+    try:
+      tagger_module = media_tagger.load()
+      for name, obj in inspect.getmembers(tagger_module):
+        if inspect.isclass(obj) and issubclass(obj, base_tagger.BaseTagger):
+          taggers[obj.alias] = getattr(tagger_module, name)
+    except ModuleNotFoundError:
+      continue
+  return taggers
+
+
+TAGGERS = _load_taggers()
 
 
 class MediaTaggingService:
@@ -47,9 +67,69 @@ class MediaTaggingService:
     tagging_parameters: dict[str, str] | None = None,
     parallel_threshold: int = 10,
   ) -> list[tagging_result.TaggingResult]:
-    """Tags media using via requested tagger_type.
+    """Tags media based on requested tagger.
 
     Args:
+      tagger_type: Type of tagger use.
+      media_type: Type of media.
+      media_paths: Path to media.
+      tagging_parameters: Additional parameters to use during tagging.
+      parallel_threshold: Number of parallel threads to run.
+
+    Returns:
+      Results of tagging.
+    """
+    return self._process_media(
+      'tag',
+      tagger_type,
+      media_type,
+      media_paths,
+      tagging_parameters,
+      parallel_threshold,
+    )
+
+  def describe_media(
+    self,
+    tagger_type: str,
+    media_type: str,
+    media_paths: Sequence[os.PathLike[str] | str],
+    tagging_parameters: dict[str, str] | None = None,
+    parallel_threshold: int = 10,
+  ) -> list[tagging_result.TaggingResult]:
+    """Describes media based on requested tagger.
+
+    Args:
+      tagger_type: Type of tagger use.
+      media_type: Type of media.
+      media_paths: Path to media.
+      tagging_parameters: Additional parameters to use during tagging.
+      parallel_threshold: Number of parallel threads to run.
+
+    Returns:
+      Results of tagging.
+    """
+    return self._process_media(
+      'describe',
+      tagger_type,
+      media_type,
+      media_paths,
+      tagging_parameters,
+      parallel_threshold,
+    )
+
+  def _process_media(
+    self,
+    action: Literal['tag', 'describe'],
+    tagger_type: str,
+    media_type: str,
+    media_paths: Sequence[os.PathLike[str] | str],
+    tagging_parameters: dict[str, str] | None = None,
+    parallel_threshold: int = 10,
+  ) -> list[tagging_result.TaggingResult]:
+    """Gets media information based on tagger and output type.
+
+    Args:
+      action: Defines output of tagging: tags or description.
       tagger_type: Type of tagger use.
       media_type: Type of media.
       media_paths: Path to media.
@@ -61,12 +141,22 @@ class MediaTaggingService:
 
     Raises:
       InvalidMediaTypeError: When incorrect media type is provided.
+      TaggerError: When incorrect tagger_type is used.
     """
     try:
       media_type_enum = media.MediaTypeEnum[media_type.upper()]
     except KeyError as e:
       raise media.InvalidMediaTypeError(media_type) from e
-    concrete_tagger = tagger.create_tagger(tagger_type)
+    if not (tagger_class := TAGGERS.get(tagger_type)):
+      raise base_tagger.TaggerError(
+        f'Unsupported type of tagger {tagger_type}. '
+        f'Supported taggers: {list(TAGGERS.keys())}'
+      )
+    if not tagging_parameters:
+      tagging_parameters = {}
+    concrete_tagger = tagger_class(
+      **tagging_parameters,
+    )
     untagged_media = media_paths
     tagged_media = []
     if self.repo and (tagged_media := self.repo.get(media_paths, media_type)):
@@ -82,15 +172,20 @@ class MediaTaggingService:
 
     if not parallel_threshold:
       return (
-        self._tag_media_sequentially(
-          concrete_tagger, media_type_enum, untagged_media, tagging_parameters
+        self._process_media_sequentially(
+          action,
+          concrete_tagger,
+          media_type_enum,
+          untagged_media,
+          tagging_parameters,
         )
         + tagged_media
       )
     with futures.ThreadPoolExecutor(max_workers=parallel_threshold) as executor:
       future_to_media_path = {
         executor.submit(
-          self._tag_media_sequentially,
+          self._process_media_sequentially,
+          action,
           concrete_tagger,
           media_type_enum,
           [media_path],
@@ -106,8 +201,9 @@ class MediaTaggingService:
       )
       return list(untagged_media) + tagged_media
 
-  def _tag_media_sequentially(
+  def _process_media_sequentially(
     self,
+    action: Literal['tag', 'describe'],
     concrete_tagger: base_tagger.BaseTagger,
     media_type: media.MediaTypeEnum,
     media_paths: Sequence[str | os.PathLike[str]],
@@ -136,9 +232,11 @@ class MediaTaggingService:
         results.extend(tagging_results)
         continue
       logging.info('Processing media: %s', path)
-      tagging_results = concrete_tagger.tag(
+      tagging_results = getattr(concrete_tagger, action)(
         medium,
-        tagging_options=base_tagger.TaggingOptions(**tagging_parameters),
+        tagging_options=base_tagger.TaggingOptions.from_dict(
+          tagging_parameters
+        ),
       )
       if tagging_results is None:
         continue

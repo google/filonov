@@ -1,6 +1,6 @@
 # Copyright 2024 Google LLC
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
+# Licensed under the Apache License, Version 2.0 (the "License")
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import os
 from collections.abc import Sequence
 from typing import Literal
@@ -26,7 +27,20 @@ import pandas as pd
 import pydantic
 
 
-class Tag(pydantic.BaseModel):
+class TaggingOutput(pydantic.BaseModel):
+  """Base class."""
+
+  @classmethod
+  def field_descriptions(cls) -> dict[str, str]:
+    return {
+      name: content.get('description')
+      for name, content in json.loads(cls.schema_json())
+      .get('properties')
+      .items()
+    }
+
+
+class Tag(TaggingOutput):
   """Represents a single tag.
 
   Attributes:
@@ -46,7 +60,7 @@ class Tag(pydantic.BaseModel):
     return self.name == other.name
 
 
-class Description(pydantic.BaseModel):
+class Description(TaggingOutput):
   """Represents brief description of the media.
 
   Attributes:

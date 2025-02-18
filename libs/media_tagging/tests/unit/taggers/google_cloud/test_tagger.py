@@ -13,43 +13,21 @@
 # limitations under the License.
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import, missing-module-docstring, missing-class-docstring, missing-function-docstring
-
 import dataclasses
 import pathlib
 
+import pytest
 from google.cloud import videointelligence, vision
 from media_tagging import media, tagging_result
-from media_tagging.taggers import api
+from media_tagging.taggers import base
+from media_tagging.taggers.google_cloud import tagger
 
 _SCRIPT_DIR = pathlib.Path(__file__).parent
-
-
-medium = media.Medium('test')
 
 
 @dataclasses.dataclass
 class FakeVisionAPIResponse:
   label_annotations: list[vision.EntityAnnotation]
-
-
-class TestGoogleVisionAPITagger:
-  def test_tag_returns_correct_tagging_result(self, mocker):
-    fake_response = FakeVisionAPIResponse(
-      label_annotations=[vision.EntityAnnotation(description='test', score=0.0)]
-    )
-    mocker.patch(
-      'google.cloud.vision.ImageAnnotatorClient.label_detection',
-      return_value=fake_response,
-    )
-    test_tagger = api.GoogleVisionAPITagger()
-    result = test_tagger.tag(medium)
-    expected_result = tagging_result.TaggingResult(
-      identifier='test',
-      type='image',
-      content=[tagging_result.Tag(name='test', score=0.0)],
-    )
-
-    assert result == expected_result
 
 
 class FakeVideoIntelligenceAPIOperation:
@@ -71,15 +49,45 @@ class FakeVideoIntelligenceAPIOperation:
     )
 
 
-class TestGoogleVideoIntelligenceAPITagger:
-  def test_tag_returns_correct_tagging_result(self, mocker):
+class TestGoogleCloudTagger:
+  def test_tag_returns_correct_tagging_result_for_image(self, mocker):
+    media_type = media.MediaTypeEnum.IMAGE
+    fake_response = FakeVisionAPIResponse(
+      label_annotations=[vision.EntityAnnotation(description='test', score=0.0)]
+    )
+    mocker.patch(
+      'media_tagging.media.Medium.content',
+      new_callable=mocker.PropertyMock,
+      return_value=bytes(),
+    )
+    mocker.patch(
+      'google.cloud.vision.ImageAnnotatorClient.label_detection',
+      return_value=fake_response,
+    )
+    test_tagger = tagger.GoogleCloudTagger()
+    result = test_tagger.tag(media.Medium('test', media_type))
+    expected_result = tagging_result.TaggingResult(
+      identifier='test',
+      type='image',
+      content=[tagging_result.Tag(name='test', score=0.0)],
+    )
+
+    assert result == expected_result
+
+  def test_tag_returns_correct_tagging_result_for_video(self, mocker):
+    media_type = media.MediaTypeEnum.VIDEO
     fake_response = FakeVideoIntelligenceAPIOperation()
+    mocker.patch(
+      'media_tagging.media.Medium.content',
+      new_callable=mocker.PropertyMock,
+      return_value=bytes(),
+    )
     mocker.patch(
       'google.cloud.videointelligence.VideoIntelligenceServiceClient.annotate_video',
       return_value=fake_response,
     )
-    test_tagger = api.GoogleVideoIntelligenceAPITagger()
-    result = test_tagger.tag(medium)
+    test_tagger = tagger.GoogleCloudTagger()
+    result = test_tagger.tag(media.Medium('test', media_type))
     expected_result = tagging_result.TaggingResult(
       identifier='test',
       type='video',
@@ -87,3 +95,14 @@ class TestGoogleVideoIntelligenceAPITagger:
     )
 
     assert result == expected_result
+
+  def test_tag_raises_tagger_error_on_unsupported_media_type(self):
+    media_type = media.MediaTypeEnum.YOUTUBE_VIDEO
+    test_tagger = tagger.GoogleCloudTagger()
+    with pytest.raises(base.TaggerError):
+      test_tagger.tag(media.Medium('test', media_type))
+
+  def test_init_raises_unsupported_method_error_on_describe(self):
+    test_tagger = tagger.GoogleCloudTagger()
+    with pytest.raises(base.UnsupportedMethodError):
+      test_tagger.describe(media.Medium('test', media.MediaTypeEnum.IMAGE))

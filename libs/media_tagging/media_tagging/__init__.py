@@ -16,8 +16,7 @@
 
 """Simplifies imports from inner modules."""
 
-from media_tagging.media_tagging_service import MediaTaggingService
-from media_tagging.tagger import TAGGERS
+from media_tagging.media_tagging_service import TAGGERS, MediaTaggingService
 
 __all__ = [
   'MediaTaggingService',

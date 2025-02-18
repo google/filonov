@@ -24,7 +24,7 @@ def test_tag_media_saves_tagging_results_to_repository(mocker, tmp_path):
     content=tagging_result.Description(text='Test description.'),
   )
   mocker.patch(
-    'media_tagging.taggers.api.GoogleVisionAPITagger.tag',
+    'media_tagging.taggers.google_cloud.tagger.GoogleCloudTagger.tag',
     return_value=expected_result,
   )
   persist_repository_path = f'sqlite:///{tmp_path}.db'
@@ -35,7 +35,7 @@ def test_tag_media_saves_tagging_results_to_repository(mocker, tmp_path):
     repositories.SqlAlchemyTaggingResultsRepository(persist_repository_path)
   )
   test_tagging_result = tagging_service.tag_media(
-    tagger_type='vision-api',
+    tagger_type='google-cloud',
     media_type='IMAGE',
     media_paths=['test'],
     parallel_threshold=0,

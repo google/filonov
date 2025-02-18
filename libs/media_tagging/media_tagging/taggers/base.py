@@ -35,7 +35,7 @@ class TaggingOptions:
 
   n_tags: int | None = None
   tags: Sequence[str] | None = None
-  custom_prompt: [str] | None = None
+  custom_prompt: str | None = None
 
   def __post_init__(self):  # noqa: D105
     if self.tags and not isinstance(self.tags, MutableSequence):
@@ -43,12 +43,31 @@ class TaggingOptions:
     if self.n_tags:
       self.n_tags = int(self.n_tags)
 
+  @classmethod
+  def from_dict(cls, input_dict: dict[str, int | str | Sequence[str]]):
+    """Instantiates TaggingOptions based on an input dict."""
+    valid_kwargs = {}
+    for key, value in input_dict.items():
+      if key in cls.__dataclass_fields__:
+        valid_kwargs[key] = value
+    return cls(**valid_kwargs)
+
+  def dict(self):
+    """Converts TaggingOptions to dict."""
+    return dataclasses.asdict(self)
+
   def __bool__(self) -> bool:  # noqa: D105
     return bool(self.n_tags or self.tags or self.custom_prompt)
 
 
-class BaseTagger(abc.ABC):
-  """Interface to inherit all taggers from."""
+class TaggingStrategy(abc.ABC):
+  """Interface to inherit all tagging strategies from.
+
+  Tagging strategy should have two methods
+
+  * `tag` - to get structured representation of a media (tags).
+  * `describe` - to get unstructured representation (description).
+  """
 
   @abc.abstractmethod
   def tag(
@@ -57,16 +76,62 @@ class BaseTagger(abc.ABC):
     tagging_options: TaggingOptions = TaggingOptions(),
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
-    """Sends media bytes to tagging engine.
+    """Tags media based on specified parameters."""
 
-    Args:
-      medium: Medium to tag.
-      tagging_options: Parameters to refine the tagging results.
-      **kwargs: Optional keywords arguments to be sent for tagging.
+  @abc.abstractmethod
+  def describe(
+    self,
+    medium: media.Medium,
+    tagging_options: TaggingOptions = TaggingOptions(),
+    **kwargs: str,
+  ) -> tagging_result.TaggingResult:
+    """Describes media based on specified parameters."""
 
-    Returns:
-      Results of tagging.
-    """
+
+class BaseTagger(abc.ABC):
+  """Interface to inherit all taggers from.
+
+  BaseTaggger has two main methods:
+
+  * `tag` - to get structured representation of a media (tags).
+  * `describe` - to get unstructured representation (description).
+  """
+
+  def __init__(self) -> None:
+    """Initializes BaseTagger based on type of media and desired output."""
+    self._tagging_strategy = None
+
+  @abc.abstractmethod
+  def create_tagging_strategy(self, media_type: media.MediaTypeEnum):
+    """Creates tagging strategy for the specified media type."""
+
+  def get_tagging_strategy(self, media_type: media.MediaTypeEnum):
+    """Strategy for tagging concrete media_type and output."""
+    if not self._tagging_strategy:
+      self._tagging_strategy = self.create_tagging_strategy(media_type)
+    return self._tagging_strategy
+
+  def tag(
+    self,
+    medium: media.Medium,
+    tagging_options: TaggingOptions = TaggingOptions(),
+    **kwargs: str,
+  ) -> tagging_result.TaggingResult:
+    """Tags media based on specified parameters."""
+    return self.get_tagging_strategy(medium.type).tag(
+      medium, tagging_options, **kwargs
+    )
+
+  def describe(
+    self,
+    medium: media.Medium,
+    tagging_options: TaggingOptions = TaggingOptions(),
+    **kwargs: str,
+  ) -> tagging_result.TaggingResult:
+    """Describes media based on specified parameters."""
+    return self.get_tagging_strategy(medium.type).describe(
+      medium, tagging_options, **kwargs
+    )
 
   def _limit_number_of_tags(
     self, tags: Sequence[tagging_result.Tag], n_tags: int
@@ -82,3 +147,15 @@ class BaseTagger(abc.ABC):
     """
     sorted_tags = sorted(tags, key=lambda x: x.score, reverse=True)
     return sorted_tags[:n_tags]
+
+
+class TaggerError(Exception):
+  """Exception for incorrect taggers."""
+
+
+class UnsupportedMethodError(TaggerError):
+  """Specified unsupported methods for tagging strategies."""
+
+
+class MediaMismatchError(Exception):
+  """Exception for incorrectly selected media for tagger."""

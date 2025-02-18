@@ -60,7 +60,7 @@ Alternatively you can install subsets of `media-tagging` library:
 Once `media-tagger` is installed you can call it:
 
 ```
-media-tagger MEDIA_PATHs \
+media-tagger ACTION MEDIA_PATHs \
   --media-type <MEDIA_TYPE> \
   --tagger <TAGGER_TYPE> \
   --db-uri=<CONNECTION_STRING> \
@@ -68,6 +68,7 @@ media-tagger MEDIA_PATHs \
   --output <OUTPUT_FILE_NAME>
 ```
 where:
+* `ACTION` - either `tag` or `describe`.
 * `MEDIA_PATHs` - names of files for tagging (can be urls).
 * `<MEDIA_TYPE>` - type of media (YOUTUBE_VIDEO, VIDEO, IMAGE).
 * `<TAGGER_TYPE>` - name of tagger, [supported options](#supported-taggers).
@@ -79,41 +80,10 @@ where:
 
 ### Supported taggers
 
-#### Google Cloud API Taggers
+| identifier | supported media types | tagging output | options |
+| ---------- | --------------------- | -------------- | ------ |
+| `google-cloud` | `image`, `video`|  `tag` | `n-tags=10` |
+| `langchain` | `image`, `video`| `tag`, `description` | `n-tags=10`, `tags=tag1,tag2,tag3` |
+| `gemini` | `image`, `video`, `youtube_video`| `tag`, `description`| `n-tags=10` |
 
-| identifier | options | description |
-| ---------- | ------- | ----------- |
-| `vision-api` | `n-tags=10` | For tagging images based on [Google Cloud Vision API](https://cloud.google.com/vision/) |
-| `video-api` | `n-tags=10` | For tagging images based on [Google Cloud Video Intelligence API](https://cloud.google.com/video-intelligence/) |
-
-#### LLM Taggers
-
-> Each LLM tagger can use `custom-prompt` parameter to adjust built-in prompt.
-
-##### Image taggers
-
-| identifier | options | description |
-| ---------- | ------- | ----------- |
-| `gemini-image` | `n-tags=10` | Uses Vertex AI to tags images. |
-| `gemini-structured-image` | `tags=tag1,tag2,tag3` | Uses Vertex AI to tags images |
-| `gemini-description-image` |  | Uses Vertex AI to describe image |
-
-##### Video file taggers
-
-| identifier | options | description |
-| ---------- | ------- | ----------- |
-| `gemini-video` | `n-tags=10` | Uses Vertex AI to tags videos. |
-| `gemini-structured-video` | `tags=tag1,tag2,tag3` | Uses Vertex AI to tags videos |
-| `gemini-description-video` |  | Uses Vertex AI to describe |
-
-##### YouTube video taggers
-
-| identifier | options | description |
-| ---------- | ------- | ----------- |
-| `gemini-youtube-video` | `n-tags=10` | Uses Vertex AI to tags YouTube videos. |
-| `gemini-structured-youtube-video` | `tags=tag1,tag2,tag3` | Uses Vertex AI to tags YouTube videos |
-| `gemini-description-youtube-video` | | Uses Vertex AI to describe YouTube Video |
-
-
-## Disclaimer
-This is not an officially supported Google product.
+> `langchain` and `gemini` taggers can use `custom-prompt` parameter to adjust built-in prompts.

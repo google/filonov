@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """Module for performing media tagging via Google APIs.
 
 Media tagging sends API requests to tagging engine (i.e. Google Vision API)
@@ -18,6 +19,7 @@ and returns tagging results that can be easily written.
 """
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
+from __future__ import annotations
 
 from collections import defaultdict
 
@@ -28,7 +30,7 @@ from media_tagging import media, tagging_result
 from media_tagging.taggers import base
 
 
-class GoogleVisionAPITagger(base.BaseTagger):
+class ImageTaggingStrategy(base.TaggingStrategy):
   """Tagger responsible for getting image tags from Cloud Vision API.
 
   Attributes:
@@ -36,17 +38,20 @@ class GoogleVisionAPITagger(base.BaseTagger):
   """
 
   def __init__(self, project: str | None = None) -> None:
-    """Initializes GoogleVisionAPITagger with a given project.
+    """Initializes ImageTaggingStrategy with a given project.
 
     Args:
       project: Google Cloud project id.
     """
     self._project = project
+    self._client = None
 
   @property
   def client(self) -> vision.ImageAnnotatorClient:
     """Creates ImageAnnotatorClient."""
-    return vision.ImageAnnotatorClient()
+    if not self._client:
+      self._client = vision.ImageAnnotatorClient()
+    return self._client
 
   @override
   def tag(
@@ -67,28 +72,37 @@ class GoogleVisionAPITagger(base.BaseTagger):
       identifier=medium.name, type='image', content=tags
     )
 
+  def describe(
+    self,
+    medium: media.Medium,
+    tagging_options: base.TaggingOptions = base.TaggingOptions(),
+  ) -> tagging_result.TaggingResult:
+    raise base.UnsupportedMethodError
 
-class GoogleVideoIntelligenceAPITagger(base.BaseTagger):
-  """Tagger responsible for getting image tags from Video Intelligence API.
+
+class VideoTaggingStrategy(base.TaggingStrategy):
+  """Tagger responsible for getting video tags from Video Intelligence API.
 
   Attributes:
     client: Video Intelligence API client responsible to tagging.
   """
 
   def __init__(self, project: str | None = None) -> None:
-    """Initializes GoogleVideoIntelligenceAPITagger with a given project.
+    """Initializes VideoTaggingStrategy with a given project.
 
     Args:
       project: Google Cloud project id.
     """
     self._project = project
+    self._client = None
 
   @property
   def client(self) -> videointelligence.VideoIntelligenceServiceClient:
     """Creates VideoIntelligenceServiceClient."""
-    return videointelligence.VideoIntelligenceServiceClient()
+    if not self._client:
+      self._client = videointelligence.VideoIntelligenceServiceClient()
+    return self._client
 
-  @override
   def tag(
     self,
     medium: media.Medium,
@@ -123,3 +137,10 @@ class GoogleVideoIntelligenceAPITagger(base.BaseTagger):
     return tagging_result.TaggingResult(
       identifier=medium.name, type='video', content=tags
     )
+
+  def describe(
+    self,
+    medium: media.Medium,
+    tagging_options: base.TaggingOptions = base.TaggingOptions(),
+  ) -> tagging_result.TaggingResult:
+    raise base.UnsupportedMethodError

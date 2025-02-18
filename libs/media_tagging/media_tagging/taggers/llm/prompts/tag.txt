@@ -1,0 +1,8 @@
+Analyze this {media_type} and generate {n_tags} tags that uniquely describe it for advertising purposes.
+
+Important guidelines:
+- Focus on elements that would be relevant for ad targeting and creative similarity matching
+- Be specific with tag names (e.g., "young_professional_woman" instead of just "woman")
+- Assign scores based on prominence and clarity in the {media_type}
+- Include both obvious and subtle elements that could differentiate this creative
+- Consider advertising-specific elements like brand presence, call-to-action, and emotional appeal
