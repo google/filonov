@@ -21,6 +21,7 @@ import sys
 
 import gaarf.cli.utils as gaarf_utils
 import media_tagging
+from media_tagging import media
 
 import media_similarity
 
@@ -36,9 +37,16 @@ def main():  # noqa: D103
     'media_paths', nargs='*', help='Paths to local/remote files or URLs'
   )
   parser.add_argument(
+    '--media-type',
+    dest='media_type',
+    choices=media.MediaTypeEnum.options(),
+    help='Type of media.',
+  )
+  parser.add_argument(
     '--tagger',
-    dest='tagger_type',
-    help=f'Tagger type, on of the following: {AVAILABLE_TAGGERS}',
+    dest='tagger',
+    choices=AVAILABLE_TAGGERS,
+    help='Type of tagger',
   )
   parser.add_argument(
     '--db-uri',
@@ -75,7 +83,9 @@ def main():  # noqa: D103
   )
   if args.action == 'cluster':
     tagging_results = tagging_service.tag_media(
-      tagger_type=args.tagger_type, media_paths=args.media_paths
+      tagger_type=args.tagger,
+      media_type=args.media_type,
+      media_paths=args.media_paths,
     )
     clustering_results = similarity_service.cluster_media(
       tagging_results, normalize=args.normalize

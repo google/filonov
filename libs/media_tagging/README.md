@@ -60,11 +60,18 @@ Alternatively you can install subsets of `media-tagging` library:
 Once `media-tagger` is installed you can call it:
 
 ```
-media-tagger MEDIA_PATHs --tagger TAGGER_TYPE --writer WRITER_TYPE
+media-tagger MEDIA_PATHs \
+  --media-type <MEDIA_TYPE> \
+  --tagger <TAGGER_TYPE> \
+  --db-uri=<CONNECTION_STRING> \
+  --writer <WRITER_TYPE>
 ```
 where:
-* MEDIA_PATHs - names of files for tagging (can be urls).
-* TAGGER_TYPE - name of tagger, supported options:
+* `MEDIA_PATHs` - names of files for tagging (can be urls).
+* `<MEDIA_TYPE>` - type of media (YOUTUBE_VIDEO, VIDEO, IMAGE):
+* `<TAGGER_TYPE>` - name of tagger, supported options:
+* `<CONNECTION_STRING>` - Connection string to the database with tagging results (i.e. sqlite:///tagging.db). Make sure that DB exists.
+> To create an empty Sqlite DB call touch database.db.
   * `vision-api` - tags images based on [Google Cloud Vision API](https://cloud.google.com/vision/),
   * `video-api` for videos based on [Google Cloud Video Intelligence API](https://cloud.google.com/video-intelligence/)
   * `gemini-image` - Uses Gemini to tags images. Add `--tagger.n_tags=<N_TAGS>`
@@ -73,7 +80,7 @@ where:
     Add `--tagger.tags='tag1, tag2, ..., tagN` parameter to find certain tags
     in the image.
   * `gemini-description-image` - Provides brief description of the image,
-* WRITER_TYPE - name of writer, one of `csv`, `json`
+* `<WRITER_TYPE>` - name of writer, one of `csv`, `json`
 
 By default script will create a single file with tagging results for each media_path.
 If you want to combine results into a single file add `--output OUTPUT_NAME` flag (without extension, i.e. `--output tagging_sample`.

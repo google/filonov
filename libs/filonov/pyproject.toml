@@ -22,6 +22,15 @@ dynamic = ["version"]
 [tool.setuptools.dynamic]
 version = {attr = "filonov.__version__"}
 
+[project.optional-dependencies]
+server = [
+  "media-tagging[server]",
+  "media-similarity[server]",
+]
+all = [
+  "filonov[server]"
+]
+
 [options.extras_require]
 test =  [
   "pytest",

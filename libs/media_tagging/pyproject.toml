@@ -63,7 +63,8 @@ llm=[
   "media-tagging[base-llm,google-genai,google-vertexai]",
 ]
 server = [
-  "fastapi==0.111.0"
+  "fastapi==0.111.0",
+  "pydantic-settings",
 ]
 all = [
   "media-tagging[api,llm,server]"

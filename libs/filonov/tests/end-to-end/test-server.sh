@@ -3,8 +3,8 @@ if [ -f $SCRIPT_PATH/.env ]; then
   source $SCRIPT_PATH/.env
 fi
 
-tag() {
-  http --print b POST localhost:8000/creative_map \
+map() {
+  http --print b POST localhost:8000/creative_maps/generate \
     source='googleads' \
     tagger='vision-api' \
     media_type='IMAGE' \
@@ -13,4 +13,4 @@ tag() {
     input_parameters[ads_config_path]=$FILONOV_ADS_CONFIG
 }
 
-tag
+map

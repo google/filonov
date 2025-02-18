@@ -22,7 +22,13 @@ import sys
 from garf_executors.entrypoints import utils as garf_utils
 
 import media_tagging
-from media_tagging import media_tagging_service, repositories, tagger, writer
+from media_tagging import (
+  media,
+  media_tagging_service,
+  repositories,
+  tagger,
+  writer,
+)
 
 AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
 
@@ -34,9 +40,16 @@ def main():
     'media_paths', nargs='*', help='Paths to local/remote files or URLs'
   )
   parser.add_argument(
+    '--media-type',
+    dest='media_type',
+    choices=media.MediaTypeEnum.options(),
+    help='Type of media.',
+  )
+  parser.add_argument(
     '--tagger',
     dest='tagger',
-    help=f'Tagger type, on of the following: {AVAILABLE_TAGGERS}',
+    choices=AVAILABLE_TAGGERS,
+    help='Type of tagger',
   )
   parser.add_argument('--writer', dest='writer', default='json')
   parser.add_argument(
@@ -75,6 +88,7 @@ def main():
 
   tagging_results = tagging_service.tag_media(
     tagger_type=args.tagger,
+    media_type=args.media_type,
     media_paths=args.media_paths,
     tagging_parameters=tagging_parameters.get('tagger'),
     parallel_threshold=args.parallel_threshold,

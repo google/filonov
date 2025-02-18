@@ -30,19 +30,26 @@ class MediaTypeEnum(enum.Enum):
   UNKNOWN = 0
   IMAGE = 1
   VIDEO = 2
-  YOUTUBE_LINK = 3
+  YOUTUBE_VIDEO = 3
+
+  @classmethod
+  def options(cls) -> list[str]:
+    return [option for option in cls.__members__ if option != 'UNKNOWN']
 
 
 class Medium:
   """Represents a single Medium."""
 
   def __init__(
-    self, media_path: str, media_type: MediaTypeEnum = MediaTypeEnum.UNKNOWN
+    self,
+    media_path: str,
+    media_type: MediaTypeEnum = MediaTypeEnum.UNKNOWN,
+    media_name: str = '',
   ) -> None:
     """Initializes Medium."""
     self._media_path = media_path
     self._media_type = media_type
-    self._name = ''
+    self._name = media_name
     self._content: bytes = bytes()
 
   @property
@@ -51,7 +58,7 @@ class Medium:
 
     Converts YouTube Shorts links to YouTube video link.
     """
-    if '/shorts/' in self._media_path:
+    if self.type == MediaTypeEnum.YOUTUBE_VIDEO:
       return f'https://www.youtube.com/watch?v={self.name}'
     return self._media_path
 
@@ -60,7 +67,7 @@ class Medium:
     """Normalized name."""
     if self._name:
       return self._name
-    self._name = convert_path_to_media_name(self._media_path)
+    self._name = convert_path_to_media_name(self._media_path, self.type)
     return self._name
 
   @property
@@ -72,7 +79,7 @@ class Medium:
       with smart_open.open(self._media_path, 'rb') as f:
         content = f.read()
     except FileNotFoundError as e:
-      if self.type in (MediaTypeEnum.YOUTUBE_LINK, MediaTypeEnum.UNKNOWN):
+      if self.type in (MediaTypeEnum.YOUTUBE_VIDEO, MediaTypeEnum.UNKNOWN):
         content = bytes()
       else:
         raise InvalidMediaPathError(
@@ -91,15 +98,28 @@ class InvalidMediaPathError(Exception):
   """Raised when media is inaccessible."""
 
 
-def convert_path_to_media_name(media_path: str) -> str:
+class InvalidMediaTypeError(Exception):
+  """Raised when media type is invalid."""
+
+  def __init__(self, media_type: str) -> None:
+    """Initializes InvalidMediaTypeError."""
+    super().__init__(
+      f'Incorrect media_type: {media_type}, '
+      f'supported type are: {MediaTypeEnum.options()}'
+    )
+
+
+def convert_path_to_media_name(
+  media_path: str, media_type: MediaTypeEnum
+) -> str:
   """Extracts file name without extension."""
-  if 'youtube' in media_path:
-    return _convert_youtube_link_to_name(media_path)
+  if media_type == MediaTypeEnum.YOUTUBE_VIDEO:
+    return _convert_youtube_link_to_id(media_path)
   base_name = media_path.split('/')[-1]
   return base_name.split('.')[0]
 
 
-def _convert_youtube_link_to_name(youtube_video_link: str) -> str:
+def _convert_youtube_link_to_id(youtube_video_link: str) -> str:
   """Extracts YouTube video id from the link.
 
   Args:
@@ -109,15 +129,23 @@ def _convert_youtube_link_to_name(youtube_video_link: str) -> str:
     YouTube video_id.
 
   Raises:
-    ValueError: If incorrect link format is supplied.
+    InvalidMediaPathError: If incorrect link is supplied.
   """
-  if 'watch?v=' in youtube_video_link:
-    return youtube_video_link.split('?v=')[1][:11]
-  if 'youtu.be' in youtube_video_link:
-    return youtube_video_link.split('youtu.be/')[1][:11]
-  if 'youtube.com/shorts' in youtube_video_link:
-    return youtube_video_link.split('shorts/')[1][:11]
-  raise ValueError(
-    'Provide URL of YouTube Video in https://youtube.com/watch?v=<VIDEO_ID> '
-    'or https://youtube.com/shorts/<VIDEO_ID> format'
-  )
+  video_id_length = 11
+  if 'shorts' in youtube_video_link:
+    youtube_link_parts = youtube_video_link.split('shorts/')
+  elif 'watch?v=' in youtube_video_link:
+    youtube_link_parts = youtube_video_link.split('?v=')
+  elif 'youtu.be' in youtube_video_link:
+    youtube_link_parts = youtube_video_link.split('youtu.be/')
+  else:
+    youtube_link_parts = youtube_video_link.split('/')
+  if (
+    len(youtube_video_id := youtube_link_parts[-1][:video_id_length])
+    != video_id_length
+  ):
+    raise InvalidMediaPathError(
+      'Provide URL of YouTube Video in https://youtube.com/watch?v=<VIDEO_ID> '
+      'or https://youtube.com/shorts/<VIDEO_ID> format'
+    )
+  return youtube_video_id

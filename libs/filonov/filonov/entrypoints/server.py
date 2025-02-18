@@ -11,40 +11,58 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Provides HTTP endpoint for media similarity requests."""
+"""Provides HTTP endpoint for filonov requests."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
-import os
 
 import fastapi
 import media_similarity
 import media_tagging
 import pydantic
+import uvicorn
+from media_similarity.entrypoints.server import (
+  router as media_similarity_router,
+)
+from media_tagging.entrypoints.server import router as media_tagging_router
+from pydantic_settings import BaseSettings
+from typing_extensions import Annotated
 
 import filonov
 
-app = fastapi.FastAPI()
 
-media_db_uri = os.getenv('MEDIA_TAGGING_DB_URL')
-tagging_service = media_tagging.MediaTaggingService(
-  tagging_results_repository=(
-    media_tagging.repositories.SqlAlchemyTaggingResultsRepository(media_db_uri)
-  )
-)
-similarity_service = media_similarity.MediaSimilarityService(
-  media_similarity_repository=(
-    media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
-      media_db_uri
+class FilonovSettings(BaseSettings):
+  media_tagging_db_url: str
+
+
+class Dependencies:
+  def __init__(self) -> None:
+    """Initializes CommonDependencies."""
+    settings = FilonovSettings()
+    self.tagging_service = media_tagging.MediaTaggingService(
+      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(
+        settings.media_tagging_db_url
+      )
     )
-  ),
-)
+    self.similarity_service = media_similarity.MediaSimilarityService(
+      media_similarity_repository=(
+        media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
+          settings.media_tagging_db_url
+        )
+      ),
+    )
+
+
+router = fastapi.APIRouter(prefix='/creative_maps')
 
 
 class CreativeMapPostRequest(pydantic.BaseModel):
-  """Specifies structure of request for tagging media.
+  """Specifies structure of request for returning creative map.
 
   Attributes:
-    media_paths: Identifiers or media to cluster (file names or links).
+    source: Source of getting data for creative map.
+    media_type: Type of media to get.
+    input_parameters: Parameters to get data from the source.
+    tagger: Type of tagger to use.
     normalize: Whether to apply normalization threshold.
   """
 
@@ -55,11 +73,12 @@ class CreativeMapPostRequest(pydantic.BaseModel):
   normalize: bool = True
 
 
-@app.post('/creative_map')
+@router.post('/generate')
 async def generate_creative_map(
   request: CreativeMapPostRequest,
+  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> filonov.creative_map.CreativeMapJson:
-  """Performs media clustering."""
+  """Generates Json with creative map data."""
   input_service = filonov.MediaInputService(request.source)
   media_info, context = input_service.generate_media_info(
     request.media_type, request.input_parameters
@@ -68,10 +87,12 @@ async def generate_creative_map(
     tagger = f'gemini-{request.media_type.lower()}'
   else:
     tagger = request.tagger
-  tagging_results = tagging_service.tag_media(
-    tagger_type=tagger, media_paths=media_info.keys()
+  tagging_results = dependencies.tagging_service.tag_media(
+    tagger_type=tagger,
+    media_type=request.media_type,
+    media_paths=media_info.keys(),
   )
-  clustering_results = similarity_service.cluster_media(
+  clustering_results = dependencies.similarity_service.cluster_media(
     tagging_results, normalize=request.normalize
   )
   generated_map = filonov.CreativeMap.from_clustering(
@@ -80,3 +101,17 @@ async def generate_creative_map(
   return fastapi.responses.JSONResponse(
     content=fastapi.encoders.jsonable_encoder(generated_map.to_json())
   )
+
+
+app = fastapi.FastAPI()
+app.include_router(router)
+app.include_router(media_tagging_router)
+app.include_router(media_similarity_router)
+
+
+def main():
+  uvicorn.run(app)
+
+
+if __name__ == '__main__':
+  main()
