@@ -134,10 +134,16 @@ class ExtraInfoFetcher:
       )
     else:
       video_extra_info = {}
+    media_size_column = (
+      'file_size'
+      if fetching_request.media_type == 'IMAGE'
+      else 'video_duration'
+    )
+
     self._inject_extra_info_into_reports(
       performance,
       video_extra_info,
-      columns=('media_size', 'aspect_ratio'),
+      columns=(media_size_column, 'aspect_ratio'),
     )
     if not performance:
       return {}
@@ -262,6 +268,12 @@ class ExtraInfoFetcher:
 
     for row in video_orientations:
       row['aspect_ratio'] = round(int(row.width) / int(row.height), 2)
+      if row.aspect_ratio > 1:
+        row['orientation'] = 'Landscape'
+      elif row.aspect_ratio < 1:
+        row['orientation'] = 'Portrait'
+      else:
+        row['orientation'] = 'Square'
 
     video_orientations = video_orientations.to_dict(
       key_column='id',
@@ -272,7 +284,7 @@ class ExtraInfoFetcher:
     for video_id, aspect_ratio in video_orientations.items():
       video_extra_info[video_id] = {'aspect_ratio': aspect_ratio}
       video_extra_info[video_id].update(
-        {'media_size': video_durations.get(video_id)}
+        {'video_duration': video_durations.get(video_id)}
       )
     return video_extra_info
 
@@ -295,12 +307,6 @@ class ExtraInfoFetcher:
       if extra_info:
         for column in columns:
           row[column] = extra_info.get(row[base_key], {}).get(column)
-      if row.aspect_ratio > 1:
-        row['orientation'] = 'Landscape'
-      elif row.aspect_ratio < 1:
-        row['orientation'] = 'Portrait'
-      else:
-        row['orientation'] = 'Square'
 
 
 def _convert_to_media_info(
@@ -321,13 +327,14 @@ def _convert_to_media_info(
 
   performance = performance.to_dict(key_column='media_url')
   results = {}
+  media_size_column = 'file_size' if media_type == 'IMAGE' else 'video_duration'
   for media_url, values in performance.items():
     info = interfaces.build_info(values, _CORE_METRICS)
     segments = interfaces.build_info(values, ('campaign_type',))
     info.update(
       {
         'orientation': values[0].get('orientation'),
-        'media_size': values[0].get('media_size'),
+        media_size_column: values[0].get(media_size_column),
       }
     )
     if values[0].get('date'):
