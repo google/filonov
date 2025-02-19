@@ -20,6 +20,7 @@ from collections.abc import Sequence
 
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.pool import StaticPool
 from typing_extensions import override
 
 from media_tagging import media, tagging_result
@@ -94,17 +95,19 @@ class TaggingResults(Base):
     )
 
 
-class SqlAlchemyTaggingResultsRepository(BaseTaggingResultsRepository):
-  """Uses SqlAlchemy engine for persisting tagging results."""
+class SqlAlchemyRepository:
+  """Mixin class for common functionality in SqlAlchemy based repositories."""
 
-  def __init__(self, db_url: str) -> None:
+  IN_MEMORY_DB = 'sqlite://'
+
+  def __init__(self, db_url: str | None = None) -> None:
     """Initializes SqlAlchemyTaggingResultsRepository."""
-    self.db_url = db_url
+    self.db_url = db_url or self.IN_MEMORY_DB
     self.initialized = False
+    self._engine = None
 
   def initialize(self) -> None:
     """Creates all ORM objects."""
-    Base.metadata.create_all(self.engine)
     self.initialized = True
 
   @property
@@ -117,7 +120,28 @@ class SqlAlchemyTaggingResultsRepository(BaseTaggingResultsRepository):
   @property
   def engine(self) -> sqlalchemy.engine.Engine:
     """Initialized SQLalchemy engine."""
-    return sqlalchemy.create_engine(self.db_url)
+    if self._engine:
+      return self._engine
+    if self.db_url == self.IN_MEMORY_DB:
+      self._engine = sqlalchemy.create_engine(
+        self.db_url,
+        connect_args={'check_same_thread': False},
+        poolclass=StaticPool,
+      )
+    else:
+      self._engine = sqlalchemy.create_engine(self.db_url)
+    return self._engine
+
+
+class SqlAlchemyTaggingResultsRepository(
+  BaseTaggingResultsRepository, SqlAlchemyRepository
+):
+  """Uses SqlAlchemy engine for persisting tagging results."""
+
+  def initialize(self) -> None:
+    """Creates all ORM objects."""
+    Base.metadata.create_all(self.engine)
+    super().initialize()
 
   def get(
     self, media_paths: str | Sequence[str], media_type: media.MediaTypeEnum

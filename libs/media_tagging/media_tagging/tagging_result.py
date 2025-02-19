@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import dataclasses
 import os
+from collections.abc import Sequence
 from typing import Literal
 
+import garf_core
 import pandas as pd
 import pydantic
 
@@ -121,3 +123,19 @@ def from_file(
     TaggingResult(identifier=row[identifier], type=media_type, content=row.tag)
     for _, row in grouped.iterrows()
   ]
+
+
+def convert_tagging_results_to_garf_report(
+  tagging_results: Sequence[TaggingResult],
+) -> garf_core.report.GarfReport:
+  """Convert results of tagging to GarfReport for further writing."""
+  results = []
+  column_names = ['identifier', 'type', 'content']
+  for result in tagging_results:
+    parsed_result = [result.identifier, result.type]
+    if isinstance(result.content, Description):
+      parsed_result.append(result.content.text)
+    else:
+      parsed_result.append({tag.name: tag.score for tag in result.content})
+    results.append(parsed_result)
+  return garf_core.report.GarfReport(results=results, column_names=column_names)

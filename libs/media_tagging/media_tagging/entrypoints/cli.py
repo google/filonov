@@ -20,6 +20,7 @@ import logging
 import sys
 
 from garf_executors.entrypoints import utils as garf_utils
+from garf_io import writer as garf_writer
 
 import media_tagging
 from media_tagging import (
@@ -27,7 +28,7 @@ from media_tagging import (
   media_tagging_service,
   repositories,
   tagger,
-  writer,
+  tagging_result,
 )
 
 AVAILABLE_TAGGERS = list(tagger.TAGGERS.keys())
@@ -52,12 +53,18 @@ def main():
     help='Type of tagger',
   )
   parser.add_argument('--writer', dest='writer', default='json')
+  parser.add_argument('--output', dest='output', default='tagging_results')
+  parser.add_argument(
+    '--no-output',
+    dest='no_output',
+    action='store_true',
+    help='Skip writing tagging results',
+  )
   parser.add_argument(
     '--db-uri',
     dest='db_uri',
     help='Database connection string to store and retrieve tagging results',
   )
-  parser.add_argument('--output-to-file', dest='output', default=None)
   parser.add_argument('--loglevel', dest='loglevel', default='INFO')
   parser.add_argument('--no-parallel', dest='parallel', action='store_false')
   parser.add_argument(
@@ -77,7 +84,9 @@ def main():
   tagging_service = media_tagging_service.MediaTaggingService(
     repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
   )
-  tagging_parameters = garf_utils.ParamsParser(['tagger']).parse(kwargs)
+  extra_parameters = garf_utils.ParamsParser(['tagger', args.writer]).parse(
+    kwargs
+  )
 
   logging.basicConfig(
     format='[%(asctime)s][%(name)s][%(levelname)s] %(message)s',
@@ -90,12 +99,18 @@ def main():
     tagger_type=args.tagger,
     media_type=args.media_type,
     media_paths=args.media_paths,
-    tagging_parameters=tagging_parameters.get('tagger'),
+    tagging_parameters=extra_parameters.get('tagger'),
     parallel_threshold=args.parallel_threshold,
   )
-  if output := args.output:
-    concrete_writer = writer.create_writer(args.writer)
-    concrete_writer.write(tagging_results, output)
+  if args.no_output:
+    sys.exit()
+  report = tagging_result.convert_tagging_results_to_garf_report(
+    tagging_results
+  )
+  writer_parameters = extra_parameters.get(args.writer) or {}
+  garf_writer.create_writer(args.writer, **writer_parameters).write(
+    report, args.output
+  )
 
 
 if __name__ == '__main__':

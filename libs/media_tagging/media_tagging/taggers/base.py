@@ -30,10 +30,12 @@ class TaggingOptions:
   Attributes:
     n_tags: Max number of tags to return.
     tags: Particular tags to find in the media.
+    custom_prompt: User provided prompt.
   """
 
   n_tags: int | None = None
   tags: Sequence[str] | None = None
+  custom_prompt: [str] | None = None
 
   def __post_init__(self):  # noqa: D105
     if self.tags and not isinstance(self.tags, MutableSequence):
@@ -42,7 +44,7 @@ class TaggingOptions:
       self.n_tags = int(self.n_tags)
 
   def __bool__(self) -> bool:  # noqa: D105
-    return bool(self.n_tags or self.tags)
+    return bool(self.n_tags or self.tags or self.custom_prompt)
 
 
 class BaseTagger(abc.ABC):
