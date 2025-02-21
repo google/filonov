@@ -2,7 +2,7 @@
   <div class="main-component q-pa-md">
     <div class="row items-center q-pa-sm bg-grey-2 controls-bar">
       <q-btn
-        flat
+        class="q-mr-md"
         icon="upload_file"
         label="Load Data"
         @click="showLoadDataDialog = true"
@@ -17,7 +17,9 @@
         </template>
         <span v-else class="text-grey">No data loaded</span>
       </div>
-      <q-btn v-if="nodes.length" flat @click="unloadData">Unload</q-btn>
+      <q-btn v-if="nodes.length" @click="unloadData" class="q-ml-md"
+        >Unload</q-btn
+      >
     </div>
     <div class="row content-area">
       <div class="col-9 graph-container">
@@ -331,13 +333,13 @@
 
     <q-dialog v-model="showLoadDataDialog">
       <q-card style="min-width: 500px; height: auto">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Load Graph Data</div>
+        <q-card-section class="row items-center q-py-md">
+          <div class="text-h6 q-ml-sm">Load Graph Data</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-card-section>
+        <q-card-section class="q-pt-none">
           <json-file-selector @json-loaded="onDataLoaded" />
         </q-card-section>
       </q-card>
@@ -370,6 +372,7 @@ import { formatMetricValue } from 'src/helpers/utils';
 import {
   aggregateNodesMetrics,
   initClusters,
+  optimizeGraphEdges,
   sortTags,
 } from 'src/helpers/graph';
 
@@ -432,14 +435,42 @@ const timeSeriesData = computed(() => {
   })).sort((a, b) => a.date.valueOf() - b.date.valueOf());
 });
 
-async function onDataLoaded(args: { data: GraphData; origin: string }) {
+async function onDataLoaded(args: {
+  data: GraphData;
+  origin: string;
+  optimizeGraph: boolean;
+  threshold?: number;
+}) {
   showLoadDataDialog.value = false;
   dataSourceDescription.value = args.origin || 'Custom data';
-  const jsonData: GraphData = args.data;
-  sortTags(jsonData.nodes);
-  clusters.value = initClusters(jsonData.nodes, jsonData.edges);
-  nodes.value = jsonData.nodes;
-  edges.value = jsonData.edges;
+  const graphData: GraphData = args.data;
+  sortTags(graphData.nodes);
+  console.log('threshold: ' + args.threshold);
+  if (args.threshold !== undefined && args.threshold > 0) {
+    // filter edges by threshold
+    const threshold = args.threshold;
+    const edges = graphData.edges.filter((e) => e.similarity > threshold);
+    console.log(
+      `Graph optimized: edges originally ${graphData.edges.length} filtered by similarity threshold ${threshold} to ${edges.length}`,
+    );
+    graphData.edges = edges;
+  }
+  clusters.value = initClusters(graphData.nodes, graphData.edges, 'cost');
+  // optimize edges within each cluster
+  if (args.optimizeGraph) {
+    const optimizedEdges = optimizeGraphEdges(
+      graphData.nodes,
+      graphData.edges,
+      0,
+    );
+    console.log(
+      `Graph optimized: edges originally ${graphData.edges.length} optimized to ${optimizedEdges.length}`,
+    );
+    edges.value = optimizedEdges;
+  } else {
+    edges.value = graphData.edges;
+  }
+  nodes.value = graphData.nodes;
   clusterForAllNodes = {
     id: '',
     nodes: nodes.value,

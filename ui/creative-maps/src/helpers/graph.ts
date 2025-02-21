@@ -21,27 +21,168 @@ export function sortTags(nodes: Node[]) {
  * @param edges all graph edges (links)
  * @return array of clusters
  */
-export function initClusters(nodes: Node[], edges: Edge[]): ClusterInfo[] {
+export function initClusters(
+  nodes: Node[],
+  edges: Edge[],
+  sortBy: string,
+): ClusterInfo[] {
   const clusters = [] as ClusterInfo[];
   const visited = new Set();
 
   // Find all clusters
-  let clusterId = 0;
   nodes.forEach((node) => {
     if (!visited.has(node.id.toString())) {
-      clusterId++;
       const clusterNodes = findConnectedNodes(node, nodes, edges);
       clusterNodes.forEach((n) => visited.add(n.id.toString()));
-      clusterNodes.forEach((n) => (n.cluster = clusterId.toString()));
       const metrics = aggregateNodesMetrics(clusterNodes);
       clusters.push({
-        id: clusterId.toString(),
+        id: '',
         nodes: clusterNodes,
         metrics,
       });
     }
   });
+  if (sortBy) {
+    if (clusters.every((c) => isNumber(c.metrics[sortBy]))) {
+      clusters.sort((a, b) => {
+        return (
+          ((b.metrics['cost'] as number) || 0) -
+          ((a.metrics['cost'] as number) || 0)
+        );
+      });
+    } else {
+      clusters.sort((a, b) => {
+        return b.nodes.length - a.nodes.length;
+      });
+    }
+  }
+  clusters.forEach((cluster, index) => {
+    const clusterId = (index + 1).toString();
+    cluster.id = clusterId;
+    cluster.nodes.forEach((n) => (n.cluster = clusterId));
+  });
   return clusters;
+}
+
+export function optimizeGraphEdges(
+  nodes: Node[],
+  edges: Edge[],
+  keepTopPercentage = 0.2,
+) {
+  // Group nodes by cluster
+  const clusterMap = new Map<string, Node[]>();
+
+  nodes.forEach((node) => {
+    if (!clusterMap.has(node.cluster)) {
+      clusterMap.set(node.cluster, []);
+    }
+    clusterMap.get(node.cluster)!.push(node);
+  });
+
+  // Group edges by cluster
+  const clusterEdges = new Map<string, Edge[]>();
+
+  edges.forEach((edge) => {
+    const sourceNode = nodes.find((n) => n.id === edge.from);
+    const targetNode = nodes.find((n) => n.id === edge.to);
+
+    if (sourceNode && targetNode && sourceNode.cluster === targetNode.cluster) {
+      const cluster = sourceNode.cluster;
+      if (!clusterEdges.has(cluster)) {
+        clusterEdges.set(cluster, []);
+      }
+      clusterEdges.get(cluster)!.push(edge);
+    }
+  });
+
+  // Create a minimum spanning tree for each cluster
+  let optimizedEdges: Edge[] = [];
+
+  clusterMap.forEach((clusterNodes, clusterId) => {
+    const clusterEdgeList = clusterEdges.get(clusterId) || [];
+
+    // Create MST for this cluster
+    const mstEdges = createMinimumSpanningTree(clusterNodes, clusterEdgeList);
+
+    // If we want to keep some additional high-similarity edges
+    if (keepTopPercentage > 0 && keepTopPercentage < 1) {
+      // Sort non-MST edges by similarity
+      const mstEdgeSet = new Set(mstEdges.map((e) => `${e.from}-${e.to}`));
+      const nonMstEdges = clusterEdgeList
+        .filter(
+          (e) =>
+            !mstEdgeSet.has(`${e.from}-${e.to}`) &&
+            !mstEdgeSet.has(`${e.to}-${e.from}`),
+        )
+        .sort((a, b) => b.similarity - a.similarity);
+
+      // Keep top percentage of non-MST edges
+      const additionalEdgesToKeep = Math.floor(
+        nonMstEdges.length * keepTopPercentage,
+      );
+      const highSimilarityEdges = nonMstEdges.slice(0, additionalEdgesToKeep);
+
+      // Add both MST and high similarity edges
+      optimizedEdges = [...optimizedEdges, ...mstEdges, ...highSimilarityEdges];
+    } else {
+      // Just add MST edges
+      optimizedEdges = [...optimizedEdges, ...mstEdges];
+    }
+  });
+
+  return optimizedEdges;
+}
+
+/**
+ * This function creates a minimum spanning tree from a given set of nodes and edges
+ * to reduce the number of edges while maintaining connectivity.
+ * It uses Kruskal's algorithm to find the minimum spanning tree.
+ */
+export function createMinimumSpanningTree(nodes: Node[], edges: Edge[]): Edge[] {
+  // Create a disjoint-set data structure for union-find operations
+  const disjointSet = new Map<number, number>();
+
+  // Initialize each node as its own set
+  nodes.forEach(node => {
+    disjointSet.set(node.id, node.id);
+  });
+
+  // Find function for the disjoint-set
+  const find = (nodeId: number): number => {
+    if (disjointSet.get(nodeId) !== nodeId) {
+      disjointSet.set(nodeId, find(disjointSet.get(nodeId)!));
+    }
+    return disjointSet.get(nodeId)!;
+  };
+
+  // Union function for the disjoint-set
+  const union = (nodeId1: number, nodeId2: number): void => {
+    const root1 = find(nodeId1);
+    const root2 = find(nodeId2);
+    if (root1 !== root2) {
+      disjointSet.set(root2, root1);
+    }
+  };
+
+  // Sort edges by similarity (descending order since higher similarity is better)
+  const sortedEdges = [...edges].sort((a, b) => b.similarity - a.similarity);
+
+  // Result array to store MST edges
+  const mstEdges: Edge[] = [];
+
+  // Process edges in order of decreasing similarity
+  for (const edge of sortedEdges) {
+    const fromRoot = find(edge.from);
+    const toRoot = find(edge.to);
+
+    // If including this edge doesn't create a cycle, add it to the MST
+    if (fromRoot !== toRoot) {
+      mstEdges.push(edge);
+      union(fromRoot, toRoot);
+    }
+  }
+
+  return mstEdges;
 }
 
 /**

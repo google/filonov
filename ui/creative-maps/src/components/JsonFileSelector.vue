@@ -1,7 +1,27 @@
 <template>
-  <div class="q-pa-md">
+  <div>
     <q-card class="q-mb-md">
       <q-card-section>
+        <div class="row">
+          <div class="q-gutter-sm col">
+            <q-toggle
+              v-model="optimizeGraph"
+              label="Optimize graph"
+              color="primary"
+            />
+          </div>
+          <q-input
+            v-model="threshold"
+            dense
+            clearable
+            placeholder="Similarity threshold"
+            class="col q-gutter-sm"
+            @clear="threshold = ''"
+          >
+          </q-input>
+        </div>
+        <q-separator></q-separator>
+        <q-space></q-space>
         <!-- Source Selection -->
         <div class="q-gutter-sm">
           <q-radio v-model="sourceType" val="local" label="Upload local file" />
@@ -72,6 +92,8 @@ interface JsonLoadedEvent {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
   origin: string;
+  optimizeGraph: boolean;
+  threshold?: number;
 }
 
 // State
@@ -80,6 +102,8 @@ const file = ref<File | null>(null);
 const remoteUrl = ref('');
 const error = ref<string | null>(null);
 const loading = ref(false);
+const optimizeGraph = ref(true);
+const threshold = ref('');
 
 // Event emits
 const emit = defineEmits<{
@@ -129,6 +153,13 @@ const handleRemoteFile = async () => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const processJsonData = (jsonData: any, source: string) => {
   console.log('Received JSON data:', jsonData);
-  emit('json-loaded', { data: jsonData, origin: source });
+  emit('json-loaded', {
+    data: jsonData,
+    origin: source,
+    optimizeGraph: optimizeGraph.value,
+    threshold: Number.isFinite(parseFloat(threshold.value))
+      ? Number(threshold.value)
+      : undefined,
+  });
 };
 </script>
