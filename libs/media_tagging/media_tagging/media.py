@@ -110,9 +110,11 @@ class InvalidMediaTypeError(Exception):
 
 
 def convert_path_to_media_name(
-  media_path: str, media_type: MediaTypeEnum
+  media_path: str, media_type: MediaTypeEnum | str = MediaTypeEnum.UNKNOWN
 ) -> str:
   """Extracts file name without extension."""
+  if isinstance(media_type, str):
+    media_type = MediaTypeEnum[media_type.upper()]
   if media_type == MediaTypeEnum.YOUTUBE_VIDEO:
     return _convert_youtube_link_to_id(media_path)
   base_name = media_path.split('/')[-1]
