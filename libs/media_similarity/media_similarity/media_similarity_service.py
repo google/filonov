@@ -26,8 +26,8 @@ from concurrent import futures
 from typing import Final
 
 import igraph
-import media_tagging
 import pandas as pd
+from garf_core import report
 from media_tagging import tagging_result
 
 from media_similarity import (
@@ -78,6 +78,16 @@ class SimilaritySearchResults:
 
   seed_media_identifier: str
   results: dict[str, float]
+
+  def to_garf_report(self) -> report.GarfReport:
+    """Converts to flattened report."""
+    results = []
+    for k, v in self.results.items():
+      results.append([self.seed_media_identifier, k, v])
+    return report.GarfReport(
+      results,
+      column_names=['seed_media_identifier', 'media_identifier', 'score'],
+    )
 
 
 def _create_similarity_pairs(
@@ -227,9 +237,6 @@ class MediaSimilarityService:
     self, seed_media_identifier: os.PathLike[str] | str, n_results: int = 10
   ) -> SimilaritySearchResults:
     """Finds top similar media for a given seed media identifier."""
-    seed_media_identifier = media_tagging.media.convert_path_to_media_name(
-      seed_media_identifier
-    )
     similar_media = self.repo.get_similar_media(
       identifier=seed_media_identifier, n_results=n_results
     )
