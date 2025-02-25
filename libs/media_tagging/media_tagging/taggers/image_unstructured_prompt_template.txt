@@ -1,1 +1,0 @@
-Generate {n_tags} tags for the following image.
