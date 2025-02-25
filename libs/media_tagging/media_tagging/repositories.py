@@ -84,14 +84,24 @@ class TaggingResults(Base):
   """ORM model for persisting TaggingResult."""
 
   __tablename__ = 'tagging_results'
+  processed_at = sqlalchemy.Column(sqlalchemy.DateTime)
   identifier = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
+  output = sqlalchemy.Column(sqlalchemy.String(255))
+  tagger = sqlalchemy.Column(sqlalchemy.String(255))
   type = sqlalchemy.Column(sqlalchemy.String(10), primary_key=True)
   content = sqlalchemy.Column(sqlalchemy.JSON)
+  tagging_details = sqlalchemy.Column(sqlalchemy.JSON)
 
   def to_pydantic_model(self) -> tagging_result.TaggingResult:
     """Converts model to pydantic object."""
     return tagging_result.TaggingResult(
-      identifier=self.identifier, type=self.type, content=self.content
+      processed_at=self.processed_at,
+      identifier=self.identifier,
+      type=self.type,
+      content=self.content,
+      output=self.output,
+      tagger=self.tagger,
+      tagging_details=self.tagging_details,
     )
 
 

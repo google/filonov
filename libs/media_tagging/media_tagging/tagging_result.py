@@ -17,10 +17,11 @@
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import json
 import os
 from collections.abc import Sequence
-from typing import Literal
+from typing import Any, Literal
 
 import garf_core
 import pandas as pd
@@ -74,13 +75,19 @@ class TaggingResult(pydantic.BaseModel):
   """Contains tagging information for a given identifier.
 
   Attributes:
+    processed_at: Time in UTC timezone when media was processed.
     identifier: Unique identifier of a media being tagged.
     type: Type of media.
-    tags: Tags associated with a given media.
+    content: Tags / description associated with a given media.
+    tagger: Tagger used to generating the content.
+    output: Type of tagging output (tag or description).
+    tagging_details: Additional details used to perform the tagging.
   """
 
-  model_config = pydantic.ConfigDict(frozen=True)
-
+  processed_at: datetime.datetime = pydantic.Field(
+    description='When the media was processed',
+    default_factory=datetime.datetime.utcnow,
+  )
   identifier: str = pydantic.Field(description='media identifier')
   type: Literal['image', 'video', 'youtube_video'] = pydantic.Field(
     description='type of media'
@@ -88,6 +95,35 @@ class TaggingResult(pydantic.BaseModel):
   content: tuple[Tag, ...] | Description = pydantic.Field(
     description='tags or description in the result'
   )
+  tagger: str | None = pydantic.Field(
+    description='type of tagger used', default=None
+  )
+  output: Literal['tag', 'description'] | None = pydantic.Field(
+    description='type of output', default=None
+  )
+  tagging_details: dict[str, Any] | None = pydantic.Field(
+    description='Additional details used during tagging', default=None
+  )
+
+  def __hash__(self):  # noqa: D105
+    return hash(
+      (self.identifier, self.type, self.content, self.tagger, self.output)
+    )
+
+  def __eq__(self, other) -> bool:  # noqa: D105
+    return (
+      self.identifier,
+      self.type,
+      self.content,
+      self.tagger,
+      self.output,
+    ) == (
+      other.identifier,
+      other.type,
+      other.content,
+      other.tagger,
+      other.output,
+    )
 
 
 @dataclasses.dataclass
@@ -144,9 +180,22 @@ def convert_tagging_results_to_garf_report(
 ) -> garf_core.report.GarfReport:
   """Convert results of tagging to GarfReport for further writing."""
   results = []
-  column_names = ['identifier', 'type', 'content']
+  column_names = [
+    'identifier',
+    'output',
+    'tagger',
+    'type',
+    'tagging_details',
+    'content',
+  ]
   for result in tagging_results:
-    parsed_result = [result.identifier, result.type]
+    parsed_result = [
+      result.identifier,
+      result.output,
+      result.tagger,
+      result.type,
+      result.tagging_details,
+    ]
     if isinstance(result.content, Description):
       parsed_result.append(result.content.text)
     else:
