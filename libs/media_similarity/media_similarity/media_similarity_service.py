@@ -141,6 +141,7 @@ class MediaSimilarityService:
     Returns:
        Results of clustering that contain mapping between media identifier.
     """
+    tagger = tagging_results[0].tagger
     logging.info('calculating context...')
     idf_tag_context = idf_context.calculate_idf_context(tagging_results)
     similarity_pairs = []
@@ -149,7 +150,7 @@ class MediaSimilarityService:
     uncalculated_media_pairs = media_pairs
     calculated_similarity_pairs = []
     if self.repo and (
-      calculated_similarity_pairs := self.repo.get(media_pairs)
+      calculated_similarity_pairs := self.repo.get(media_pairs, tagger)
     ):
       calculated_similarity_pairs_keys = {
         pair.key for pair in calculated_similarity_pairs
