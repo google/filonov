@@ -86,8 +86,8 @@ class TaggingResults(Base):
   __tablename__ = 'tagging_results'
   processed_at = sqlalchemy.Column(sqlalchemy.DateTime)
   identifier = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
-  output = sqlalchemy.Column(sqlalchemy.String(255))
-  tagger = sqlalchemy.Column(sqlalchemy.String(255))
+  output = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
+  tagger = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
   type = sqlalchemy.Column(sqlalchemy.String(10), primary_key=True)
   content = sqlalchemy.Column(sqlalchemy.JSON)
   tagging_details = sqlalchemy.Column(sqlalchemy.JSON)
@@ -154,7 +154,11 @@ class SqlAlchemyTaggingResultsRepository(
     super().initialize()
 
   def get(
-    self, media_paths: str | Sequence[str], media_type: media.MediaTypeEnum
+    self,
+    media_paths: str | Sequence[str],
+    media_type: str,
+    tagger_type: str,
+    output: str,
   ) -> list[tagging_result.TaggingResult]:
     """Specifies get operations."""
     converted_media_paths = [
@@ -165,7 +169,11 @@ class SqlAlchemyTaggingResultsRepository(
       return [
         res.to_pydantic_model()
         for res in session.query(TaggingResults)
-        .where(TaggingResults.identifier.in_(converted_media_paths))
+        .where(
+          TaggingResults.identifier.in_(converted_media_paths),
+          TaggingResults.output == output,
+          TaggingResults.tagger == tagger_type,
+        )
         .all()
       ]
 

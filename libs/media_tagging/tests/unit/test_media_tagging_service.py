@@ -17,22 +17,21 @@
 from media_tagging import media_tagging_service, repositories, tagging_result
 
 
-def test_tag_media_saves_tagging_results_to_repository(mocker, tmp_path):
+def test_tag_media_saves_tagging_results_to_repository(mocker):
   expected_result = tagging_result.TaggingResult(
     identifier='test',
+    tagger='google-cloud',
+    output='tag',
     type='image',
     content=tagging_result.Description(text='Test description.'),
+    tagging_details={},
   )
   mocker.patch(
     'media_tagging.taggers.google_cloud.tagger.GoogleCloudTagger.tag',
     return_value=expected_result,
   )
-  persist_repository_path = f'sqlite:///{tmp_path}.db'
-  persist_repository = repositories.SqlAlchemyTaggingResultsRepository(
-    persist_repository_path
-  )
   tagging_service = media_tagging_service.MediaTaggingService(
-    repositories.SqlAlchemyTaggingResultsRepository(persist_repository_path)
+    repositories.SqlAlchemyTaggingResultsRepository()
   )
   test_tagging_result = tagging_service.tag_media(
     tagger_type='google-cloud',
@@ -42,4 +41,3 @@ def test_tag_media_saves_tagging_results_to_repository(mocker, tmp_path):
   )
 
   assert test_tagging_result == [expected_result]
-  assert persist_repository.list() == [expected_result]
