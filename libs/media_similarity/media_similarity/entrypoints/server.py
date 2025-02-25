@@ -62,7 +62,7 @@ class MediaClusteringPostRequest(pydantic.BaseModel):
 
   media_paths: list[str]
   media_type: str
-  tagger_type: str = 'vision-api'
+  tagger_type: str = 'gemini'
   normalize: bool = True
 
 
@@ -89,6 +89,7 @@ async def cluster_media(
 async def search_media(
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
   seed_media_identifier: str,
+  media_type: str = 'UNKNOWN',
   n_results: int = 10,
 ) -> dict[str, str]:
   """Searches for similar media based on a provided seed media identifier.
@@ -96,11 +97,16 @@ async def search_media(
   Args:
     dependencies: Common dependencies injected.
     seed_media_identifier: Media identifier to (file name of link).
+    media_type: Type of media to search for.
     n_results: How many similar media to return.
 
   Returns:
     Top n identifiers for similar media.
   """
+  seed_media_identifier = media_tagging.media.convert_path_to_media_name(
+    seed_media_identifier,
+    media_type,
+  )
   results = dependencies.similarity_service.find_similar_media(
     seed_media_identifier, n_results
   )

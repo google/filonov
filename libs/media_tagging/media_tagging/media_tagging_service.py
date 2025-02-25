@@ -24,6 +24,8 @@ from concurrent import futures
 from importlib.metadata import entry_points
 from typing import Literal
 
+import rich
+
 from media_tagging import media, repositories, tagging_result
 from media_tagging.taggers import base as base_tagger
 
@@ -196,7 +198,10 @@ class MediaTaggingService:
       untagged_media = itertools.chain.from_iterable(
         [
           future.result()
-          for future in futures.as_completed(future_to_media_path)
+          for future in rich.progress.track(
+            futures.as_completed(future_to_media_path),
+            f'Tagging {len(untagged_media)} media...',
+          )
         ]
       )
       return list(untagged_media) + tagged_media
@@ -212,6 +217,7 @@ class MediaTaggingService:
     """Runs media tagging algorithm.
 
     Args:
+      action: Defines output of tagging: tags or description.
       concrete_tagger: Instantiated tagger.
       media_type: Type of media.
       media_paths: Local or remote path to media file.
@@ -228,10 +234,10 @@ class MediaTaggingService:
       if self.repo and (
         tagging_results := self.repo.get([medium.name], media_type)
       ):
-        logging.info('Getting media from repository: %s', path)
+        logging.debug('Getting media from repository: %s', path)
         results.extend(tagging_results)
         continue
-      logging.info('Processing media: %s', path)
+      logging.debug('Processing media: %s', path)
       tagging_results = getattr(concrete_tagger, action)(
         medium,
         tagging_options=base_tagger.TaggingOptions.from_dict(

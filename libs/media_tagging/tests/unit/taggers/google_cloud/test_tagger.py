@@ -69,7 +69,10 @@ class TestGoogleCloudTagger:
     expected_result = tagging_result.TaggingResult(
       identifier='test',
       type='image',
+      tagger='google-cloud',
+      output='tag',
       content=[tagging_result.Tag(name='test', score=0.0)],
+      tagging_details={},
     )
 
     assert result == expected_result
@@ -91,7 +94,10 @@ class TestGoogleCloudTagger:
     expected_result = tagging_result.TaggingResult(
       identifier='test',
       type='video',
+      tagger='google-cloud',
+      output='tag',
       content=[tagging_result.Tag(name='test', score=0.0)],
+      tagging_details={},
     )
 
     assert result == expected_result

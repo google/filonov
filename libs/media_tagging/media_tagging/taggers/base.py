@@ -19,6 +19,7 @@ from __future__ import annotations
 import abc
 import dataclasses
 from collections.abc import MutableSequence, Sequence
+from typing import Literal
 
 from media_tagging import media, tagging_result
 
@@ -118,8 +119,11 @@ class BaseTagger(abc.ABC):
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
     """Tags media based on specified parameters."""
-    return self.get_tagging_strategy(medium.type).tag(
+    result = self.get_tagging_strategy(medium.type).tag(
       medium, tagging_options, **kwargs
+    )
+    return self._enrich_tagging_result(
+      output='tag', result=result, tagging_options=tagging_options
     )
 
   def describe(
@@ -129,9 +133,33 @@ class BaseTagger(abc.ABC):
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
     """Describes media based on specified parameters."""
-    return self.get_tagging_strategy(medium.type).describe(
+    result = self.get_tagging_strategy(medium.type).describe(
       medium, tagging_options, **kwargs
     )
+    return self._enrich_tagging_result(
+      output='description', result=result, tagging_options=tagging_options
+    )
+
+  def _enrich_tagging_result(
+    self,
+    output: Literal['tag', 'description'],
+    result: tagging_result.TaggingResult,
+    tagging_options: TaggingOptions,
+  ) -> tagging_result.TaggingResult:
+    """Adds to tagging result extra parameters."""
+    parameters = result.dict()
+    if tagging_details := tagging_options.dict():
+      tagging_details = {k: v for k, v in tagging_details.items() if v}
+    else:
+      tagging_details = {}
+    parameters.update(
+      {
+        'tagger': self.alias,
+        'output': output,
+        'tagging_details': tagging_details,
+      }
+    )
+    return tagging_result.TaggingResult(**parameters)
 
   def _limit_number_of_tags(
     self, tags: Sequence[tagging_result.Tag], n_tags: int

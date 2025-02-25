@@ -11,26 +11,55 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# pylint: disable=C0330, g-bad-import-order, g-multiple-import, missing-class-docstring
+
 from __future__ import annotations
 
+import pytest
 from media_similarity import (
   adaptive_threshold,
   media_pair,
   media_similarity_service,
+  repositories,
 )
 
 
-def test_cluster_media_returns_currect_clusters(media_1, media_2, media_3):
-  clustering_results = media_similarity_service.cluster_media(
-    [media_1, media_2, media_3]
-  )
-  calculated_clusters = clustering_results.clusters
+class TestMediaSimilarityService:
+  @pytest.fixture(scope='class')
+  def repo(self):
+    return repositories.SqlAlchemySimilarityPairsRepository()
 
-  assert (
-    calculated_clusters['media_1']
-    != calculated_clusters['media_2']
-    != calculated_clusters['media_3']
-  )
+  @pytest.fixture
+  def service(self, repo):
+    return media_similarity_service.MediaSimilarityService(repo)
+
+  def test_cluster_media_returns_correct_clusters(
+    self, service, media_1, media_2, media_3
+  ):
+    clustering_results = service.cluster_media([media_1, media_2, media_3])
+    calculated_clusters = clustering_results.clusters
+
+    assert (
+      calculated_clusters['media_1']
+      != calculated_clusters['media_2']
+      != calculated_clusters['media_3']
+    )
+
+  def test_find_similar_media_returns_correct_results(self, repo, service):
+    repo.add(
+      [
+        media_pair.SimilarityPair(('media_1', 'media_2'), 100),
+        media_pair.SimilarityPair(('media_1', 'media_3'), 10),
+        media_pair.SimilarityPair(('media_1', 'media_4'), 1),
+      ]
+    )
+    result = service.find_similar_media('media_1', n_results=1)
+    expected_result = media_similarity_service.SimilaritySearchResults(
+      seed_media_identifier='media_1', results={'media_2': 100.0}
+    )
+
+    assert result == expected_result
 
 
 def test_calculate_cluster_assisnment():

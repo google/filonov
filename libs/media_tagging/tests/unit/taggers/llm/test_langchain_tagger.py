@@ -58,12 +58,15 @@ class TestLangchainLLMTagger:
         responses=[json.dumps([_TAGS_RESPONSE[0]])]
       ),
     )
-    result = test_tagger.tag(medium)
+    result = test_tagger.tag(medium, base.TaggingOptions(n_tags=100))
 
     expected_result = tagging_result.TaggingResult(
       identifier='test',
       type=media_type,
+      tagger='langchain',
+      output='tag',
       content=_build_tags_from_dicts(_TAGS_RESPONSE[0:1]),
+      tagging_details={'n_tags': 100},
     )
 
     assert result == expected_result
@@ -91,12 +94,17 @@ class TestLangchainLLMTagger:
       ),
     )
 
-    result = test_tagger.describe(medium)
+    result = test_tagger.describe(
+      medium, base.TaggingOptions(custom_prompt='Test custom prompt')
+    )
 
     expected_result = tagging_result.TaggingResult(
       identifier='test',
       type=media_type,
+      tagger='langchain',
+      output='description',
       content=tagging_result.Description(text=test_description),
+      tagging_details={'custom_prompt': 'Test custom prompt'},
     )
 
     assert result == expected_result

@@ -19,8 +19,9 @@ import argparse
 import pprint
 import sys
 
-import gaarf.cli.utils as gaarf_utils
 import media_tagging
+from garf_executors.entrypoints import utils as garf_utils
+from garf_io import writer as garf_writer
 from media_tagging import media
 
 import media_similarity
@@ -40,6 +41,7 @@ def main():  # noqa: D103
     '--media-type',
     dest='media_type',
     choices=media.MediaTypeEnum.options(),
+    default='UNKNOWN',
     help='Type of media.',
   )
   parser.add_argument(
@@ -53,6 +55,8 @@ def main():  # noqa: D103
     dest='db_uri',
     help='Database connection string to store and retrieve tagging results',
   )
+  parser.add_argument('--writer', dest='writer', default='json')
+  parser.add_argument('--output', dest='output', default='similarity_results')
   parser.add_argument(
     '--parallel-threshold',
     dest='parallel_threshold',
@@ -68,7 +72,8 @@ def main():  # noqa: D103
   if args.version:
     print(f'media-similarity version: {media_similarity.__version__}')
     sys.exit()
-  gaarf_utils.init_logging(logger_type='rich')
+  garf_utils.init_logging(logger_type='rich')
+  extra_parameters = garf_utils.ParamsParser([args.writer]).parse(kwargs)
   tagging_service = media_tagging.MediaTaggingService(
     tagging_results_repository=(
       media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
@@ -92,10 +97,18 @@ def main():  # noqa: D103
     )
     pprint.pprint(clustering_results.clusters)
   elif args.action == 'search':
-    similarity_search_results = similarity_service.find_similar_media(
-      args.media_paths[0]
+    seed_media_identifier = media_tagging.media.convert_path_to_media_name(
+      args.media_paths[0],
+      args.media_type,
     )
-    pprint.pprint(similarity_search_results)
+    similarity_search_results = similarity_service.find_similar_media(
+      seed_media_identifier
+    )
+    report = similarity_search_results.to_garf_report()
+    writer_parameters = extra_parameters.get(args.writer) or {}
+    garf_writer.create_writer(args.writer, **writer_parameters).write(
+      report, args.output
+    )
 
 
 if __name__ == '__main__':
