@@ -16,6 +16,7 @@
 
 """Module responsible for extracting media dimensions and metrics."""
 
+import pathlib
 from typing import Literal, get_args
 
 from filonov.inputs import google_ads, interfaces, youtube
@@ -85,6 +86,8 @@ class MediaInputService:
       )
     if 'ads_config_path' in input_parameters:
       ads_config = input_parameters.pop('ads_config_path')
+    else:
+      ads_config = str(pathlib.Path.home() / 'google-ads.yaml')
     if 'account' in input_parameters:
       accounts = input_parameters.pop('account')
     fetcher = google_ads.ExtraInfoFetcher(
