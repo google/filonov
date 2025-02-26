@@ -14,11 +14,13 @@
 """Provides HTTP endpoint for filonov requests."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
+import json
+from typing import Literal
 
 import fastapi
 import media_similarity
 import media_tagging
-import pydantic
+import smart_open
 import uvicorn
 from media_similarity.entrypoints.server import (
   router as media_similarity_router,
@@ -28,10 +30,20 @@ from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
 import filonov
+from filonov.entrypoints import utils
 
 
 class FilonovSettings(BaseSettings):
-  media_tagging_db_url: str
+  """Specifies environmental variables for filonov.
+
+  Ensure that mandatory variables are exposed via
+  export ENV_VARIABLE_NAME=VALUE.
+
+  Attributes:
+    media_tagging_db_url: Connection string to DB with tagging results.
+  """
+
+  media_tagging_db_url: str | None = None
 
 
 class Dependencies:
@@ -55,52 +67,75 @@ class Dependencies:
 router = fastapi.APIRouter(prefix='/creative_maps')
 
 
-class CreativeMapPostRequest(pydantic.BaseModel):
-  """Specifies structure of request for returning creative map.
+class CreativeMapGoogleAdsGenerateRequest(filonov.CreativeMapGenerateRequest):
+  """Specifies Google Ads specific request for returning creative map."""
 
-  Attributes:
-    source: Source of getting data for creative map.
-    media_type: Type of media to get.
-    input_parameters: Parameters to get data from the source.
-    tagger: Type of tagger to use.
-    normalize: Whether to apply normalization threshold.
-  """
-
-  source: str
-  media_type: str
-  input_parameters: dict[str, str]
-  tagger: str | None = None
-  normalize: bool = True
+  input_parameters: filonov.inputs.google_ads.GoogleAdsInputParameters
+  source: Literal['googleads'] = 'googleads'
 
 
-@router.post('/generate')
-async def generate_creative_map(
-  request: CreativeMapPostRequest,
+class CreativeMapYouTubeGenerateRequest(filonov.CreativeMapGenerateRequest):
+  """Specifies YouTube specific request for returning creative map."""
+
+  input_parameters: filonov.inputs.youtube.YouTubeInputParameters
+  source: Literal['youtube'] = 'youtube'
+  media_type: Literal['YOUTUBE_VIDEO'] = 'YOUTUBE_VIDEO'
+  tagger: Literal['gemini'] = 'gemini'
+
+
+@router.post('/generate:googleads')
+async def generate_creative_map_googleads(
+  request: CreativeMapGoogleAdsGenerateRequest,
+  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
+) -> fastapi.responses.JSONResponse:
+  """Generates Json with creative map data."""
+  return generate_creative_map(
+    'googleads',
+    request,
+    dependencies,
+  )
+
+
+@router.post('/generate:youtube')
+async def generate_creative_map_youtube(
+  request: CreativeMapYouTubeGenerateRequest,
+  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
+) -> fastapi.responses.JSONResponse:
+  """Generates Json with creative map data."""
+  return generate_creative_map(
+    'youtube',
+    request,
+    dependencies,
+  )
+
+
+def generate_creative_map(
+  source: Literal['youtube', 'googleads'],
+  request: filonov.CreativeMapGenerateRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> filonov.creative_map.CreativeMapJson:
   """Generates Json with creative map data."""
-  input_service = filonov.MediaInputService(request.source)
-  media_info, context = input_service.generate_media_info(
-    request.media_type, request.input_parameters
+  generated_map = (
+    filonov.FilonovService(
+      tagging_service=dependencies.tagging_service,
+      similarity_service=dependencies.similarity_service,
+    )
+    .generate_creative_map(source, request)
+    .to_json()
   )
-  if request.tagger is None:
-    tagger = f'gemini-{request.media_type.lower()}'
-  else:
-    tagger = request.tagger
-  tagging_results = dependencies.tagging_service.tag_media(
-    tagger_type=tagger,
-    media_type=request.media_type,
-    tagging_parameters={'n_tags': 100},
-    media_paths=media_info.keys(),
-  )
-  clustering_results = dependencies.similarity_service.cluster_media(
-    tagging_results, normalize=request.normalize
-  )
-  generated_map = filonov.CreativeMap.from_clustering(
-    clustering_results, tagging_results, media_info, context
-  )
+
+  if request.output_parameters.output_type == 'file':
+    destination = utils.build_creative_map_destination(
+      request.output_parameters.output_name
+    )
+    with smart_open.open(destination, 'w', encoding='utf-8') as f:
+      json.dump(generated_map, f)
+    return fastapi.responses.JSONResponse(
+      content=f'Creative map was saved to {destination}.'
+    )
+
   return fastapi.responses.JSONResponse(
-    content=fastapi.encoders.jsonable_encoder(generated_map.to_json())
+    content=fastapi.encoders.jsonable_encoder(generated_map)
   )
 
 

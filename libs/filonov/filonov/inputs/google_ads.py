@@ -16,118 +16,76 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-import dataclasses
 import datetime
 import functools
-import logging
 import operator
-import os
+import pathlib
 from collections.abc import Sequence
-from typing import Final, Literal, get_args
+from typing import Final, get_args
 
 import gaarf
 import garf_youtube_data_api
-import numpy as np
-import pandas as pd
+import pydantic
 from filonov.inputs import interfaces, queries
 from media_tagging import media
 
 
-@dataclasses.dataclass
-class FetchingRequest:
-  """Specifies parameters of report fetching."""
+class GoogleAdsInputParameters(pydantic.BaseModel):
+  """Google Ads specific parameters for generating creative map."""
 
-  media_type: queries.SupportedMediaTypes
+  model_config = pydantic.ConfigDict(extra='ignore')
+  account: str
+  start_date: str = (
+    datetime.datetime.today() - datetime.timedelta(days=30)
+  ).strftime('%Y-%m-%d')
+  end_date: str = (
+    datetime.datetime.today() - datetime.timedelta(days=1)
+  ).strftime('%Y-%m-%d')
+
   campaign_types: Sequence[queries.SupportedCampaignTypes] | str = ('app',)
-  start_date: str | None = None
-  end_date: str | None = None
+  ads_config_path: str = str(pathlib.Path.home() / 'google-ads.yaml')
 
-  def __post_init__(self) -> None:
+  def model_post_init(self, __context):  # noqa: D105
     if self.campaign_types == 'all':
       self.campaign_types = get_args(queries.SupportedCampaignTypes)
-    if isinstance(self.campaign_types, str):
+    elif isinstance(self.campaign_types, str):
       self.campaign_types = self.campaign_types.split(',')
-    if self.end_date is None:
-      self.end_date = (
-        datetime.datetime.today() - datetime.timedelta(days=1)
-      ).strftime('%Y-%m-%d')
-    if self.start_date is None:
-      self.start_date = (
-        datetime.datetime.today() - datetime.timedelta(days=30)
-      ).strftime('%Y-%m-%d')
-
-  def to_dict(self):
-    return dataclasses.asdict(self)
-
-
-@dataclasses.dataclass
-class MediaInfoFileInput:
-  """Specifies column names in input file."""
-
-  media_identifier: str
-  media_name: str
-  metric_names: Sequence[str]
 
 
 _CORE_METRICS: Final[tuple[str, ...]] = (
-  'cost',
-  'impressions',
   'clicks',
+  'impressions',
+  'cost',
   'conversions',
   'conversions_value',
 )
 
 
-def from_file(
-  path: os.PathLike[str],
-  media_type: Literal['image', 'youtube_video'],
-  with_size_base: str | None = None,
-) -> dict[str, interfaces.MediaInfo]:
-  """Generates MediaInfo from a file.
-
-  Args:
-    path: Path to files with Google Ads performance data.
-    media_type: Type of media found in a file.
-    with_size_base: Optional metric to calculate size of media in the output.
-
-  Returns:
-    File content converted to MediaInfo mapping.
-
-  Raises:
-    ValueError: If files doesn't have all required input columns.
-  """
-  performance = gaarf.GaarfReport.from_pandas(pd.read_csv(path))
-  if missing_columns := {'media_url', 'media_name', *_CORE_METRICS}.difference(
-    set(performance.column_names)
-  ):
-    raise ValueError(f'Missing column(s) in {path}: {missing_columns}')
-  return _convert_to_media_info(performance, media_type, with_size_base)
-
-
 class ExtraInfoFetcher:
   """Extracts additional information from Google Ads to build CreativeMap."""
 
-  def __init__(
-    self, accounts: str | Sequence[str], ads_config: os.PathLike[str] | str
-  ) -> None:
-    """Initializes ExtraInfoFetcher."""
-    self.accounts = accounts
-    self.ads_config = ads_config
-
-  def generate_extra_info(
-    self, fetching_request: FetchingRequest, with_size_base: str | None = None
-  ) -> dict[str, interfaces.MediaInfo]:
-    """Extracts data from Ads API and converts to MediaInfo objects."""
+  def fetch_media_data(
+    self,
+    fetching_request: GoogleAdsInputParameters,
+    media_type: str,
+  ) -> gaarf.GaarfReport:
+    """Fetches performance data from Google Ads API."""
     fetcher = gaarf.AdsReportFetcher(
-      api_client=gaarf.GoogleAdsApiClient(path_to_config=self.ads_config)
+      api_client=gaarf.GoogleAdsApiClient(
+        path_to_config=fetching_request.ads_config_path
+      )
     )
 
     performance_queries = self._define_performance_queries(fetching_request)
     customer_ids = self._define_customer_ids(fetcher, fetching_request)
     performance = self._execute_performance_queries(
-      fetcher, performance_queries, fetching_request, customer_ids
+      fetcher=fetcher,
+      performance_queries=performance_queries,
+      fetching_request=fetching_request,
+      media_type=media_type,
+      customer_ids=customer_ids,
     )
-    if fetching_request.media_type == 'YOUTUBE_VIDEO':
+    if media_type == 'YOUTUBE_VIDEO':
       video_ids = performance['media_url'].to_list(flatten=True, distinct=True)
       video_extra_info = self._build_youtube_video_extra_info(
         fetcher, customer_ids, video_ids
@@ -135,9 +93,7 @@ class ExtraInfoFetcher:
     else:
       video_extra_info = {}
     media_size_column = (
-      'file_size'
-      if fetching_request.media_type == 'IMAGE'
-      else 'video_duration'
+      'file_size' if media_type == 'IMAGE' else 'video_duration'
     )
 
     self._inject_extra_info_into_reports(
@@ -145,14 +101,27 @@ class ExtraInfoFetcher:
       video_extra_info,
       columns=(media_size_column, 'aspect_ratio'),
     )
-    if not performance:
+    return performance
+
+  def generate_extra_info(
+    self,
+    fetching_request: GoogleAdsInputParameters,
+    media_type: str,
+    with_size_base: str | None = None,
+  ) -> dict[str, interfaces.MediaInfo]:
+    """Extracts data from Ads API and converts to MediaInfo objects."""
+    if not (performance := self.fetch_media_data(fetching_request, media_type)):
       return {}
-    return _convert_to_media_info(
-      performance, fetching_request.media_type, with_size_base
+    return interfaces.convert_gaarf_report_to_media_info(
+      performance=performance,
+      media_type=media.MediaTypeEnum[media_type.upper()],
+      metric_columns=_CORE_METRICS,
+      segment_columns=('campaign_type',),
+      with_size_base=with_size_base,
     )
 
   def _define_performance_queries(
-    self, fetching_request: FetchingRequest
+    self, fetching_request: GoogleAdsInputParameters
   ) -> dict[str, queries.PerformanceQuery]:
     """Defines queries based on campaign and media types.
 
@@ -173,7 +142,7 @@ class ExtraInfoFetcher:
   def _define_customer_ids(
     self,
     fetcher: gaarf.AdsReportFetcher,
-    fetching_request: FetchingRequest,
+    fetching_request: GoogleAdsInputParameters,
   ) -> list[str]:
     """Identifies all accounts that have campaigns with specified types.
 
@@ -192,13 +161,14 @@ class ExtraInfoFetcher:
       'SELECT customer.id FROM campaign '
       f'WHERE campaign.advertising_channel_type IN ({campaign_types})'
     )
-    return fetcher.expand_mcc(self.accounts, customer_ids_query)
+    return fetcher.expand_mcc(fetching_request.account, customer_ids_query)
 
   def _execute_performance_queries(
     self,
     fetcher: gaarf.AdsReportFetcher,
-    performance_queries: Sequence[queries.PerformanceQuery],
-    fetching_request: FetchingRequest,
+    performance_queries: dict[str, queries.PerformanceQuery],
+    fetching_request: GoogleAdsInputParameters,
+    media_type: str,
     customer_ids: Sequence[str],
   ) -> gaarf.GaarfReport:
     """Executes performance queries for a set of customer ids.
@@ -210,6 +180,7 @@ class ExtraInfoFetcher:
       fetcher: Instantiated AdsReportFetcher.
       performance_queries: Queries that need to be executed.
       fetching_request: Request for fetching data from Google Ads.
+      media_type: Type of media to fetch.
       customer_ids: Accounts to get data from.
 
     Returns:
@@ -218,11 +189,13 @@ class ExtraInfoFetcher:
     performance_reports = []
     common_fields = list(queries.PerformanceQuery.required_fields)
     for campaign_type, query in performance_queries.items():
-      fetching_parameters = dataclasses.asdict(fetching_request)
+      fetching_parameters = fetching_request.dict()
       fetching_parameters.pop('campaign_types')
+      fetching_parameters.pop('account')
+      fetching_parameters.pop('ads_config_path')
       fetching_parameters['campaign_type'] = campaign_type
       performance = fetcher.fetch(
-        query(**fetching_parameters),
+        query(media_type=media_type, **fetching_parameters),
         customer_ids,
       )
       if len(performance_queries) > 1:
@@ -307,55 +280,3 @@ class ExtraInfoFetcher:
       if extra_info:
         for column in columns:
           row[column] = extra_info.get(row[base_key], {}).get(column)
-
-
-def _convert_to_media_info(
-  performance: gaarf.GaarfReport,
-  media_type: queries.SupportedMediaTypes,
-  with_size_base: str | None,
-) -> dict[str, interfaces.MediaInfo]:
-  """Convert report to MediaInfo mappings."""
-  if with_size_base and with_size_base not in performance.column_names:
-    logging.warning('Failed to set MediaInfo size to {with_size_base}')
-    with_size_base = None
-  if with_size_base:
-    try:
-      float(performance[0][with_size_base])
-    except TypeError:
-      logging.warning('MediaInfo size attribute should be numeric')
-      with_size_base = None
-
-  performance = performance.to_dict(key_column='media_url')
-  results = {}
-  media_size_column = 'file_size' if media_type == 'IMAGE' else 'video_duration'
-  for media_url, values in performance.items():
-    info = interfaces.build_info(values, _CORE_METRICS)
-    segments = interfaces.build_info(values, ('campaign_type',))
-    info.update(
-      {
-        'orientation': values[0].get('orientation'),
-        media_size_column: values[0].get(media_size_column),
-      }
-    )
-    if values[0].get('date'):
-      series = {
-        entry.get('date'): interfaces.build_info(entry, _CORE_METRICS)
-        for entry in values
-      }
-    else:
-      series = {}
-    if with_size_base and (size_base := info.get(with_size_base)):
-      media_size = np.log(size_base) * np.log10(size_base)
-    else:
-      media_size = None
-    results[media.convert_path_to_media_name(media_url, media_type)] = (
-      interfaces.MediaInfo(
-        **interfaces.create_node_links(media_url, media_type),
-        media_name=values[0].get('media_name'),
-        info=info,
-        series=series,
-        size=media_size,
-        segments=segments,
-      )
-    )
-  return results

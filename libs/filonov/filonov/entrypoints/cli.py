@@ -92,51 +92,38 @@ def main():  # noqa: D103
     print(f'filonov version: {filonov.__version__}')
     sys.exit()
 
-  logger = gaarf_utils.init_logging(loglevel='INFO', logger_type='rich')
+  _ = gaarf_utils.init_logging(loglevel='INFO', logger_type='rich')
   extra_parameters = gaarf_utils.ParamsParser([args.source, 'tagger']).parse(
     kwargs
   )
-  input_parameters = extra_parameters.get(args.source)
-  media_type = 'YOUTUBE_VIDEO' if args.source == 'youtube' else args.media_type
-  media_info, context = filonov.MediaInputService(
-    args.source
-  ).generate_media_info(media_type, input_parameters)
-  if not media_info:
-    logger.error('No performance data found')
-    sys.exit()
-
   tagging_service = media_tagging.MediaTaggingService(
     tagging_results_repository=(
       media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
     )
   )
-  media_urls = {media.media_path for media in media_info.values()}
-  if not (tagging_parameters := extra_parameters.get('tagger')):
-    tagging_parameters = {'n_tags': 100}
-
-  tagging_results = tagging_service.tag_media(
-    tagger_type=args.tagger,
-    media_type=media_type,
-    media_paths=media_urls,
-    tagging_parameters=tagging_parameters,
-    parallel_threshold=args.parallel_threshold,
-  )
-
-  clustering_results = media_similarity.MediaSimilarityService(
+  similarity_service = media_similarity.MediaSimilarityService(
     media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
       args.db_uri
     )
-  ).cluster_media(
-    tagging_results,
-    normalize=args.normalize,
-    custom_threshold=args.custom_threshold,
-    parallel=args.parallel_threshold > 1,
-    parallel_threshold=args.parallel_threshold,
   )
-  generated_map = filonov.CreativeMap.from_clustering(
-    clustering_results, tagging_results, media_info, context
+  request = filonov.CreativeMapGenerateRequest(
+    source=args.source,
+    media_type='YOUTUBE_VIDEO' if args.source == 'youtube' else args.media_type,
+    tagger=args.tagger,
+    tagger_parameters=extra_parameters.get('tagger'),
+    similarity_parameters={
+      'normalize': args.normalize,
+      'custom_threshold': args.custom_threshold,
+    },
+    input_parameters=extra_parameters.get(args.source),
+    output_parameters=filonov.filonov_service.OutputParameters(),
   )
-  destination = utils.build_creative_map_destination(args.output_name)
+  generated_map = filonov.FilonovService(
+    tagging_service, similarity_service
+  ).generate_creative_map(args.source, request)
+  destination = utils.build_creative_map_destination(
+    request.output_parameters.output_name
+  )
   with smart_open.open(destination, 'w', encoding='utf-8') as f:
     json.dump(generated_map.to_json(), f)
 

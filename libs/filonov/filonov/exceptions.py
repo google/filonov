@@ -14,17 +14,8 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-"""Simplifies imports from inner modules."""
+"""Defines common library exceptions."""
 
-from filonov.creative_map import CreativeMap
-from filonov.filonov_service import CreativeMapGenerateRequest, FilonovService
-from filonov.inputs.input_service import MediaInputService
 
-__all__ = [
-  'FilonovService',
-  'CreativeMapGenerateRequest',
-  'MediaInputService',
-  'CreativeMap',
-]
-
-__version__ = '0.0.3'
+class FilonovError(Exception):
+  """Base exception for the filonov library."""

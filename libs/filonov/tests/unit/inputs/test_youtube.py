@@ -13,84 +13,54 @@
 # limitations under the License.
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
-import gaarf
+
+import garf_core
 import pytest
-from filonov.inputs import google_ads, interfaces
+from filonov.inputs import interfaces, youtube
 
 
 class TestExtraInfoFetcher:
   @pytest.fixture
   def fetcher(self):
-    return google_ads.ExtraInfoFetcher()
+    return youtube.ExtraInfoFetcher()
 
   def test_generate_extra_info_returns_correct_result(self, fetcher, mocker):
     youtube_video_id = '12345678900'
     youtube_link = f'https://www.youtube.com/watch?v={youtube_video_id}'
-    fake_report = gaarf.GaarfReport(
+    fake_report = garf_core.report.GarfReport(
       results=[
-        [
-          '2025-01-01',
-          youtube_video_id,
-          'test_video',
-          'app',
-          '10',
-          100,
-          10,
-          10,
-          0,
-          0,
-          'Portrait',
-        ],
+        [youtube_video_id, 'test_video', '10', 'Portrait', 100, 10],
       ],
       column_names=[
-        'date',
         'media_url',
         'media_name',
-        'campaign_type',
         'video_duration',
-        'clicks',
-        'impressions',
-        'cost',
-        'conversions',
-        'conversions_value',
         'orientation',
+        'views',
+        'likes',
       ],
     )
     mocker.patch(
-      'filonov.inputs.google_ads.ExtraInfoFetcher.fetch_media_data',
+      'filonov.inputs.youtube.ExtraInfoFetcher.fetch_channel_videos',
       return_value=fake_report,
     )
 
     media_info = fetcher.generate_extra_info(
-      google_ads.GoogleAdsInputParameters(
-        account='1234',
-      ),
-      media_type='YOUTUBE_VIDEO',
+      youtube.YouTubeInputParameters(channel='test_channel')
     )
     expected_media_info = {
       youtube_video_id: interfaces.MediaInfo(
         media_path=youtube_link,
         media_name='test_video',
-        series={
-          '2025-01-01': {
-            'clicks': 100,
-            'impressions': 10,
-            'cost': 10,
-            'conversions': 0,
-            'conversions_value': 0,
-          }
-        },
+        series={},
         media_preview=f'https://img.youtube.com/vi/{youtube_video_id}/0.jpg',
         info={
-          'clicks': 100,
-          'impressions': 10,
-          'cost': 10,
-          'conversions': 0,
-          'conversions_value': 0,
+          'views': 100,
+          'likes': 10,
           'video_duration': '10',
           'orientation': 'Portrait',
         },
-        segments={'campaign_type': 'app'},
+        segments={},
         size=None,
       )
     }
