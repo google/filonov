@@ -25,13 +25,18 @@ from typing import Generator
 
 from media_tagging import tagging_result
 
-from media_similarity import idf_context
+from media_similarity import exceptions, idf_context
+
+
+class MediaPairError(exceptions.MediaSimilarityError):
+  """MediaPair specific exception."""
 
 
 class MediaPair:
   """Represents tagging results combined into a single entity.
 
   Attributes:
+    tagger: Taggers used to tag the media.
     media_1: Concrete instance of TaggingResult.
     media_2: Concrete instance of TaggingResult.
   """
@@ -42,6 +47,12 @@ class MediaPair:
     media_2: tagging_result.TaggingResult,
   ) -> None:
     """Initializes MediaPair."""
+    if media_1.tagger != media_2.tagger:
+      raise MediaPairError(
+        'Media has different tagged using different taggers.'
+        f'media_1: {media_1.tagger}, media_2: {media_2.tagger}'
+      )
+    self.tagger = media_1.tagger
     self.media_1 = media_1
     self.media_2 = media_2
 
@@ -64,9 +75,9 @@ class MediaPair:
     tags_1 = set(self.media_1.content)
     tags_2 = set(self.media_2.content)
     if not (similar_tags := tags_1.intersection(tags_2)):
-      return SimilarityPair(media, 0.0)
+      return SimilarityPair(self.tagger, media, 0.0)
     if not (dissimilar_tags := tags_1.symmetric_difference(tags_2)):
-      return SimilarityPair(media, sys.float_info.max)
+      return SimilarityPair(self.tagger, media, sys.float_info.max)
     min_score_for_similar_tags = sum(
       min(tag1.score, tag2.score) * idf_context_values.get(tag1.name)
       for tag1, tag2 in zip(
@@ -78,7 +89,7 @@ class MediaPair:
       t.score * idf_context_values.get(t.name) for t in dissimilar_tags
     )
     return SimilarityPair(
-      media, min_score_for_similar_tags / dissimilarity_score
+      self.tagger, media, min_score_for_similar_tags / dissimilarity_score
     )
 
   def __eq__(self, other: MediaPair) -> bool:
@@ -101,7 +112,10 @@ class MediaPair:
 
   def __repr__(self) -> str:
     """Simplified representation of MediaPair based on its identifiers."""
-    return f'MediaPair({self.media_1.identifier}, {self.media_2.identifier})'
+    return (
+      f'MediaPair({self.tagger}, '
+      f'{self.media_1.identifier}, {self.media_2.identifier})'
+    )
 
 
 def build_media_pairs(
@@ -111,7 +125,6 @@ def build_media_pairs(
 
   Args:
     tagging_results: Results of tagging to generate media pairs.
-
 
   Yields:
     MediaPair with unique media identifiers.
@@ -123,8 +136,9 @@ def build_media_pairs(
 
 @dataclasses.dataclass(frozen=True)
 class SimilarityPair:
-  """Contains information on similarity between two media."""
+  """Contains information on similarity between two media given the tagger."""
 
+  tagger: str
   media: tuple[str, str]
   similarity_score: float
 
@@ -135,7 +149,11 @@ class SimilarityPair:
 
   def to_dict(self) -> dict[str, str | float]:
     """Converts all data to tuple of values."""
-    return {'identifier': self.key, 'score': self.similarity_score}
+    return {
+      'tagger': self.tagger,
+      'identifier': self.key,
+      'score': self.similarity_score,
+    }
 
   @property
   def key(self) -> str:

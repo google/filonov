@@ -88,6 +88,21 @@ class TaggingStrategy(abc.ABC):
   ) -> tagging_result.TaggingResult:
     """Describes media based on specified parameters."""
 
+  def _limit_number_of_tags(
+    self, tags: Sequence[tagging_result.Tag], n_tags: int
+  ) -> list[tagging_result.Tag]:
+    """Returns limited number of tags from the pool.
+
+    Args:
+      tags: All tags produced by tagging algorithm.
+      n_tags: Max number of tags to return.
+
+    Returns:
+      Limited number of tags sorted by the score.
+    """
+    sorted_tags = sorted(tags, key=lambda x: x.score, reverse=True)
+    return sorted_tags[:n_tags]
+
 
 class BaseTagger(abc.ABC):
   """Interface to inherit all taggers from.
@@ -160,21 +175,6 @@ class BaseTagger(abc.ABC):
       }
     )
     return tagging_result.TaggingResult(**parameters)
-
-  def _limit_number_of_tags(
-    self, tags: Sequence[tagging_result.Tag], n_tags: int
-  ) -> list[tagging_result.Tag]:
-    """Returns limited number of tags from the pool.
-
-    Args:
-      tags: All tags produced by tagging algorithm.
-      n_tags: Max number of tags to return.
-
-    Returns:
-      Limited number of tags sorted by the score.
-    """
-    sorted_tags = sorted(tags, key=lambda x: x.score, reverse=True)
-    return sorted_tags[:n_tags]
 
 
 class TaggerError(Exception):

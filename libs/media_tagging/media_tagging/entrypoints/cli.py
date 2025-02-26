@@ -54,6 +54,7 @@ def main():
     '--tagger',
     dest='tagger',
     choices=list(media_tagging_service.TAGGERS.keys()),
+    default='gemini',
     help='Type of tagger',
   )
   parser.add_argument('--writer', dest='writer', default='json')

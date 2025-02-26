@@ -39,7 +39,9 @@ def _batched(iterable: Iterable[Any], chunk_size: int):
 class BaseSimilarityPairsRepository(abc.ABC):
   """Interface for defining repositories."""
 
-  def get(self, pairs: str | Sequence[str]) -> list[media_pair.SimilarityPair]:
+  def get(
+    self, pairs: str | Sequence[str], tagger: str
+  ) -> list[media_pair.SimilarityPair]:
     """Specifies get operations."""
     if isinstance(pairs, MutableSequence):
       pairs = {str(pair) for pair in pairs}
@@ -47,10 +49,11 @@ class BaseSimilarityPairsRepository(abc.ABC):
       pairs = (str(pairs),)
     if len(pairs) > DEFAULT_CHUNK_SIZE:
       results = [
-        self._get(batch) for batch in _batched(pairs, DEFAULT_CHUNK_SIZE)
+        self._get(batch, tagger)
+        for batch in _batched(pairs, DEFAULT_CHUNK_SIZE)
       ]
       return list(itertools.chain.from_iterable(results))
-    return self._get(pairs)
+    return self._get(pairs, tagger)
 
   def add(
     self,
@@ -62,7 +65,9 @@ class BaseSimilarityPairsRepository(abc.ABC):
     self._add(pairs)
 
   @abc.abstractmethod
-  def _get(self, pairs: str | Sequence[str]) -> list[media_pair.SimilarityPair]:
+  def _get(
+    self, pairs: str | Sequence[str], tagger: str
+  ) -> list[media_pair.SimilarityPair]:
     """Specifies get operations."""
 
   @abc.abstractmethod
@@ -85,7 +90,9 @@ class InMemorySimilarityPairsRepository(BaseSimilarityPairsRepository):
     self.results = []
 
   @override
-  def _get(self, pairs: str | Sequence[str]) -> list[media_pair.SimilarityPair]:
+  def _get(
+    self, pairs: str | Sequence[str], tagger: str
+  ) -> list[media_pair.SimilarityPair]:
     return [result for result in self.results if result.key in pairs]
 
   @override
@@ -107,12 +114,14 @@ class SimilarityPairs(Base):
   """ORM model for persisting SimilarityPair."""
 
   __tablename__ = 'similarity_pairs'
+  tagger = sqlalchemy.Column(sqlalchemy.String(20), primary_key=True)
   identifier = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
   score = sqlalchemy.Column(sqlalchemy.Float)
 
   def to_model(self) -> media_pair.SimilarityPair:
     """Converts model to SimilarityPair."""
     return media_pair.SimilarityPair(
+      tagger=self.tagger,
       media=tuple(self.identifier.split('|')),
       similarity_score=self.score,
     )
@@ -129,12 +138,17 @@ class SqlAlchemySimilarityPairsRepository(
     super().initialize()
 
   @override
-  def _get(self, pairs: str | Sequence[str]) -> list[media_pair.SimilarityPair]:
+  def _get(
+    self, pairs: str | Sequence[str], tagger: str
+  ) -> list[media_pair.SimilarityPair]:
     with self.session() as session:
       return [
         res.to_model()
         for res in session.query(SimilarityPairs)
-        .where(SimilarityPairs.identifier.in_(pairs))
+        .where(
+          SimilarityPairs.identifier.in_(pairs),
+          SimilarityPairs.tagger == tagger,
+        )
         .all()
       ]
 

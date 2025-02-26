@@ -49,9 +49,9 @@ class TestMediaSimilarityService:
   def test_find_similar_media_returns_correct_results(self, repo, service):
     repo.add(
       [
-        media_pair.SimilarityPair(('media_1', 'media_2'), 100),
-        media_pair.SimilarityPair(('media_1', 'media_3'), 10),
-        media_pair.SimilarityPair(('media_1', 'media_4'), 1),
+        media_pair.SimilarityPair('gemini', ('media_1', 'media_2'), 100),
+        media_pair.SimilarityPair('gemini', ('media_1', 'media_3'), 10),
+        media_pair.SimilarityPair('gemini', ('media_1', 'media_4'), 1),
       ]
     )
     result = service.find_similar_media('media_1', n_results=1)
@@ -64,12 +64,12 @@ class TestMediaSimilarityService:
 
 def test_calculate_cluster_assisnment():
   similarity_pairs = {
-    media_pair.SimilarityPair(('media_1', 'media_2'), 10),
-    media_pair.SimilarityPair(('media_2', 'media_3'), 10),
-    media_pair.SimilarityPair(('media_1', 'media_3'), 10),
-    media_pair.SimilarityPair(('media_1', 'media_4'), 10),
-    media_pair.SimilarityPair(('media_2', 'media_4'), 10),
-    media_pair.SimilarityPair(('media_3', 'media_4'), 10),
+    media_pair.SimilarityPair('gemini', ('media_1', 'media_2'), 10),
+    media_pair.SimilarityPair('gemini', ('media_2', 'media_3'), 10),
+    media_pair.SimilarityPair('gemini', ('media_1', 'media_3'), 10),
+    media_pair.SimilarityPair('gemini', ('media_1', 'media_4'), 10),
+    media_pair.SimilarityPair('gemini', ('media_2', 'media_4'), 10),
+    media_pair.SimilarityPair('gemini', ('media_3', 'media_4'), 10),
   }
 
   calculated_clusters = media_similarity_service._calculate_cluster_assignments(

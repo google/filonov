@@ -159,9 +159,14 @@ class MediaTaggingService:
     concrete_tagger = tagger_class(
       **tagging_parameters,
     )
+    output = 'description' if action == 'describe' else 'tag'
     untagged_media = media_paths
     tagged_media = []
-    if self.repo and (tagged_media := self.repo.get(media_paths, media_type)):
+    if self.repo and (
+      tagged_media := self.repo.get(
+        media_paths, media_type, tagger_type, output
+      )
+    ):
       tagged_media_names = {media.identifier for media in tagged_media}
       untagged_media = {
         media_path
@@ -229,10 +234,14 @@ class MediaTaggingService:
     if not tagging_parameters:
       tagging_parameters = {}
     results = []
+    output = 'description' if action == 'describe' else 'tag'
+    tagger_type = concrete_tagger.alias
     for path in media_paths:
       medium = media.Medium(path, media_type)
       if self.repo and (
-        tagging_results := self.repo.get([medium.name], media_type)
+        tagging_results := self.repo.get(
+          [medium.name], media_type, tagger_type, output
+        )
       ):
         logging.debug('Getting media from repository: %s', path)
         results.extend(tagging_results)

@@ -11,16 +11,38 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# pylint: disable=C0330, g-bad-import-order, g-multiple-import
+
 from __future__ import annotations
 
 import sys
 
+import pytest
 from media_similarity import media_pair
+from media_tagging import tagging_result
 
 idf_context = {'tag1': 10, 'tag2': 5, 'tag3': 1, 'tag4': 0.1}
 
 
 class TestMediaPair:
+  def test_init_raises_media_pair_error_on_media_with_different_taggers(self):
+    media_1 = tagging_result.TaggingResult(
+      identifier='media_1',
+      type='image',
+      tagger='gemini',
+      content=(tagging_result.Tag(name='tag1', score=1.0),),
+    )
+    media_2 = tagging_result.TaggingResult(
+      identifier='media_2',
+      type='image',
+      tagger='google-cloud',
+      content=(tagging_result.Tag(name='tag1', score=1.0),),
+    )
+
+    with pytest.raises(media_pair.MediaPairError):
+      media_pair.MediaPair(media_1, media_2)
+
   def test_calculate_similarity_returns_correct_score(self, media_1, media_2):
     test_media_pair = media_pair.MediaPair(media_1, media_2)
     similarity_pair = test_media_pair.calculate_similarity(idf_context)
