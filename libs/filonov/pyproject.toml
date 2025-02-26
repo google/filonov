@@ -5,13 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "filonov"
 dependencies = [
-  "media-tagging[api,llm]",
   "media-similarity",
-  "garf-youtube-data-api==0.0.4",
+  "garf-youtube-data-api",
   "google-ads-api-report-fetcher==1.15.4",
 ]
 requires-python = ">=3.8"
-description = "description"
+description = "AI Creative Concept Analysis library"
 readme = "README.md"
 classifiers = [
   "Development Status :: 4 - Beta",
