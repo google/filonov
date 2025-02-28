@@ -59,7 +59,7 @@ class TestMediaSimilarityService:
       seed_media_identifier='media_1', results={'media_2': 100.0}
     )
 
-    assert result == expected_result
+    assert result == [expected_result]
 
 
 def test_calculate_cluster_assisnment():

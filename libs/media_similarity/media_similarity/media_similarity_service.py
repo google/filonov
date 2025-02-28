@@ -27,6 +27,7 @@ from typing import Final
 
 import igraph
 import pandas as pd
+import pydantic
 from garf_core import report
 from media_tagging import tagging_result
 
@@ -67,8 +68,7 @@ class ClusteringResults:
   graph: GraphInfo
 
 
-@dataclasses.dataclass
-class SimilaritySearchResults:
+class SimilaritySearchResults(pydantic.BaseModel):
   """Contains results of similarity search.
 
   Attributes:
@@ -235,7 +235,30 @@ class MediaSimilarityService:
     return _calculate_cluster_assignments(pairs2, threshold)
 
   def find_similar_media(
-    self, seed_media_identifier: os.PathLike[str] | str, n_results: int = 10
+    self,
+    seed_media_identifiers: Sequence[os.PathLike[str] | str] | str,
+    n_results: int = 10,
+  ) -> list[SimilaritySearchResults]:
+    """Finds top similar media for multiple seed media identifiers.
+
+    Args:
+      seed_media_identifiers: File names or links.
+      n_results: Maximum number of results to return for each identifier.
+
+    Returns:
+      Similar media for each seed identifier.
+    """
+    if isinstance(seed_media_identifiers, str):
+      seed_media_identifiers = [seed_media_identifiers]
+    return [
+      self._find_similar_media(identifier, n_results)
+      for identifier in seed_media_identifiers
+    ]
+
+  def _find_similar_media(
+    self,
+    seed_media_identifier: os.PathLike[str] | str,
+    n_results: int = 10,
   ) -> SimilaritySearchResults:
     """Finds top similar media for a given seed media identifier."""
     similar_media = self.repo.get_similar_media(
