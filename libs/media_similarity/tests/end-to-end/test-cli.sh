@@ -22,13 +22,14 @@ cluster() {
     $FILONOV_MEDIA_IDENTIFIER_2 \
     $FILONOV_MEDIA_IDENTIFIER_3 \
     --media-type='YOUTUBE_VIDEO' \
-		--tagger='gemini-youtube-video' \
-		--db-uri $FILONOV_DB_URI
+    --tagger='gemini' \
+    --db-uri $FILONOV_DB_URI
 }
 
 search() {
-  media-similarity search $FILONOV_MEDIA_IDENTIFIER_1 \
-		--db-uri $FILONOV_DB_URI
+  media-similarity search \
+  $FILONOV_MEDIA_IDENTIFIER_1 $FILONOV_MEDIA_IDENTIFIER_2 \
+  --db-uri $FILONOV_DB_URI --writer console
 }
 
 cluster

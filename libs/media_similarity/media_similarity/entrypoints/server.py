@@ -14,7 +14,6 @@
 """Provides HTTP endpoint for media similarity requests."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
-import dataclasses
 
 import fastapi
 import media_tagging
@@ -29,7 +28,16 @@ router = fastapi.APIRouter(prefix='/media_similarity')
 
 
 class MediaSimilaritySettings(BaseSettings):
-  media_tagging_db_url: str
+  """Specifies environmental variables for media-similarity.
+
+  Ensure that mandatory variables are exposed via
+  export ENV_VARIABLE_NAME=VALUE.
+
+  Attributes:
+    media_tagging_db_url: Connection string to DB with tagging results.
+  """
+
+  media_tagging_db_url: str | None = None
 
 
 class Dependencies:
@@ -88,30 +96,36 @@ async def cluster_media(
 @router.get('/search')
 async def search_media(
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
-  seed_media_identifier: str,
+  seed_media_identifiers: str,
   media_type: str = 'UNKNOWN',
   n_results: int = 10,
 ) -> dict[str, str]:
-  """Searches for similar media based on a provided seed media identifier.
+  """Searches for similar media based on provided seed media identifiers.
 
   Args:
     dependencies: Common dependencies injected.
-    seed_media_identifier: Media identifier to (file name of link).
+    seed_media_identifiers: Comma separated file names or links.
     media_type: Type of media to search for.
-    n_results: How many similar media to return.
+    n_results: How many similar media to return for each seed identifier.
 
   Returns:
     Top n identifiers for similar media.
   """
-  seed_media_identifier = media_tagging.media.convert_path_to_media_name(
-    seed_media_identifier,
-    media_type,
+  seed_media_identifiers = [
+    media_tagging.media.convert_path_to_media_name(
+      seed_media_identifier.strip(),
+      media_type,
+    )
+    for seed_media_identifier in seed_media_identifiers.split(',')
+  ]
+  similar_media = dependencies.similarity_service.find_similar_media(
+    seed_media_identifiers, n_results
   )
-  results = dependencies.similarity_service.find_similar_media(
-    seed_media_identifier, n_results
-  )
+  results = {
+    result.seed_media_identifier: result.results for result in similar_media
+  }
   return fastapi.responses.JSONResponse(
-    content=fastapi.encoders.jsonable_encoder(dataclasses.asdict(results))
+    content=fastapi.encoders.jsonable_encoder(results)
   )
 
 

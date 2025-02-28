@@ -16,6 +16,8 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import argparse
+import functools
+import operator
 import pprint
 import sys
 
@@ -97,14 +99,20 @@ def main():  # noqa: D103
     )
     pprint.pprint(clustering_results.clusters)
   elif args.action == 'search':
-    seed_media_identifier = media_tagging.media.convert_path_to_media_name(
-      args.media_paths[0],
-      args.media_type,
-    )
+    seed_media_identifiers = [
+      media_tagging.media.convert_path_to_media_name(
+        media_path,
+        args.media_type,
+      )
+      for media_path in args.media_paths
+    ]
     similarity_search_results = similarity_service.find_similar_media(
-      seed_media_identifier
+      seed_media_identifiers
     )
-    report = similarity_search_results.to_garf_report()
+    report = functools.reduce(
+      operator.add,
+      [result.to_garf_report() for result in similarity_search_results],
+    )
     writer_parameters = extra_parameters.get(args.writer) or {}
     garf_writer.create_writer(args.writer, **writer_parameters).write(
       report, args.output
