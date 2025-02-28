@@ -22,7 +22,7 @@ from media_tagging import media
 from media_tagging.taggers import base
 from media_tagging.taggers.llm.gemini import tagging_strategies as ts
 
-DEFAULT_GEMINI_MODEL: Final[str] = 'models/gemini-1.5-flash'
+DEFAULT_GEMINI_MODEL: Final[str] = 'models/gemini-2.0-flash'
 
 
 class GeminiTagger(base.BaseTagger):
