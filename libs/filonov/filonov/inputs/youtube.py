@@ -16,20 +16,52 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
+import garf_core
 import garf_youtube_data_api
+import pydantic
 from filonov.inputs import interfaces
 from media_tagging import media
+
+
+class YouTubeInputParameters(pydantic.BaseModel):
+  """YouTube specific parameters for generating creative map."""
+
+  model_config = pydantic.ConfigDict(extra='ignore')
+
+  channel: str
 
 
 class ExtraInfoFetcher:
   """Extracts additional information from YouTube to build CreativeMap."""
 
-  def __init__(self, channel: str) -> None:
-    """Initializes ExtraInfoFetcher."""
-    self.channel = channel
-
-  def generate_extra_info(self) -> dict[str, interfaces.MediaInfo]:
+  def generate_extra_info(
+    self,
+    fetching_request: YouTubeInputParameters,
+    media_type: str = 'YOUTUBE_VIDEO',
+    with_size_base: str | None = None,
+  ) -> dict[str, interfaces.MediaInfo]:
     """Extracts data from YouTube Data API and converts to MediaInfo objects."""
+    if media_type != 'YOUTUBE_VIDEO':
+      raise interfaces.FilonovInputError(
+        'Only YOUTUBE_VIDEO media type is supported.'
+      )
+    video_performance = self.fetch_channel_videos(fetching_request)
+    for row in video_performance:
+      row['views'] = int(row.views)
+      row['likes'] = int(row.likes)
+    core_metrics = ('likes', 'views')
+    return interfaces.convert_gaarf_report_to_media_info(
+      performance=video_performance,
+      media_type=media.MediaTypeEnum.YOUTUBE_VIDEO,
+      metric_columns=core_metrics,
+      with_size_base=with_size_base,
+    )
+
+  def fetch_channel_videos(
+    self,
+    fetching_request: YouTubeInputParameters,
+  ) -> garf_core.report.GarfReport:
+    """Get all public videos from YouTube channel."""
     youtube_api_fetcher = garf_youtube_data_api.YouTubeDataApiReportFetcher()
     channel_uploads_playlist_query = """
     SELECT
@@ -38,7 +70,7 @@ class ExtraInfoFetcher:
     """
     videos_playlist = youtube_api_fetcher.fetch(
       channel_uploads_playlist_query,
-      id=[self.channel],
+      id=[fetching_request.channel],
     )
 
     channel_videos_query = """
@@ -54,35 +86,9 @@ class ExtraInfoFetcher:
     SELECT
       id AS media_url,
       snippet.title AS media_name,
-      contentDetails.duration AS media_size,
+      contentDetails.duration AS video_duration,
       statistics.viewCount AS views,
       statistics.likeCount AS likes
     FROM videos
     """
-    video_performance = youtube_api_fetcher.fetch(
-      video_performance_query, id=videos
-    )
-    for row in video_performance:
-      row['views'] = int(row.views)
-      row['likes'] = int(row.likes)
-    video_performance = video_performance.to_dict(key_column='media_url')
-    results = {}
-    core_metrics = ('likes', 'views')
-
-    for media_url, values in video_performance.items():
-      info = interfaces.build_info(values, core_metrics)
-      info.update(
-        {
-          'orientation': values[0].get('orientation', 'null'),
-          'media_size': values[0].get('media_size', 'null'),
-        }
-      )
-      results[media.convert_path_to_media_name(media_url)] = (
-        interfaces.MediaInfo(
-          **interfaces.create_node_links(media_url, 'youtube_video'),
-          media_name=values[0].get('media_name').replace("'", ''),
-          info=info,
-          series={},
-        )
-      )
-    return results
+    return youtube_api_fetcher.fetch(video_performance_query, id=videos)
