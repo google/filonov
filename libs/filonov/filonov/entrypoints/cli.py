@@ -21,10 +21,12 @@ import sys
 
 import media_similarity
 import media_tagging
+import smart_open
 from garf_executors.entrypoints import utils as gaarf_utils
 from media_tagging import media
 
 import filonov
+from filonov.entrypoints import utils
 
 AVAILABLE_TAGGERS = list(media_tagging.TAGGERS.keys())
 
@@ -48,7 +50,7 @@ def main():  # noqa: D103
     '--tagger',
     dest='tagger',
     choices=AVAILABLE_TAGGERS,
-    default=None,
+    default='gemini',
     help='Type of tagger',
   )
   parser.add_argument(
@@ -65,7 +67,7 @@ def main():  # noqa: D103
     '--output-name',
     dest='output_name',
     default='creative_map',
-    help='Name of creative map (without an .html extension)',
+    help='Name of output file',
   )
   parser.add_argument(
     '--custom-threshold',
@@ -95,7 +97,7 @@ def main():  # noqa: D103
     kwargs
   )
   input_parameters = extra_parameters.get(args.source)
-  media_type = args.media_type
+  media_type = 'YOUTUBE_VIDEO' if args.source == 'youtube' else args.media_type
   media_info, context = filonov.MediaInputService(
     args.source
   ).generate_media_info(media_type, input_parameters)
@@ -108,18 +110,15 @@ def main():  # noqa: D103
       media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
     )
   )
-  if args.tagger is None:
-    normalized_media_type = media_type.replace('_', '-').lower()
-    tagger = f'gemini-{normalized_media_type}'
-  else:
-    tagger = args.tagger
-
   media_urls = {media.media_path for media in media_info.values()}
+  if not (tagging_parameters := extra_parameters.get('tagger')):
+    tagging_parameters = {'n_tags': 100}
+
   tagging_results = tagging_service.tag_media(
-    tagger_type=tagger,
+    tagger_type=args.tagger,
     media_type=media_type,
     media_paths=media_urls,
-    tagging_parameters=extra_parameters.get('tagger'),
+    tagging_parameters=tagging_parameters,
     parallel_threshold=args.parallel_threshold,
   )
 
@@ -137,7 +136,8 @@ def main():  # noqa: D103
   generated_map = filonov.CreativeMap.from_clustering(
     clustering_results, tagging_results, media_info, context
   )
-  with open(f'{args.output_name}.json', 'w', encoding='utf-8') as f:
+  destination = utils.build_creative_map_destination(args.output_name)
+  with smart_open.open(destination, 'w', encoding='utf-8') as f:
     json.dump(generated_map.to_json(), f)
 
 

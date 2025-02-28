@@ -90,6 +90,7 @@ async def generate_creative_map(
   tagging_results = dependencies.tagging_service.tag_media(
     tagger_type=tagger,
     media_type=request.media_type,
+    tagging_parameters={'n_tags': 100},
     media_paths=media_info.keys(),
   )
   clustering_results = dependencies.similarity_service.cluster_media(
