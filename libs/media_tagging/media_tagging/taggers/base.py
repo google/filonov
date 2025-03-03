@@ -21,6 +21,9 @@ import dataclasses
 from collections.abc import MutableSequence, Sequence
 from typing import Literal
 
+import pydantic
+import tenacity
+
 from media_tagging import media, tagging_result
 
 
@@ -127,6 +130,11 @@ class BaseTagger(abc.ABC):
       self._tagging_strategy = self.create_tagging_strategy(media_type)
     return self._tagging_strategy
 
+  @tenacity.retry(
+    stop=tenacity.stop_after_attempt(3),
+    retry=tenacity.retry_if_exception_type(pydantic.ValidationError),
+    reraise=True,
+  )
   def tag(
     self,
     medium: media.Medium,
@@ -141,6 +149,11 @@ class BaseTagger(abc.ABC):
       output='tag', result=result, tagging_options=tagging_options
     )
 
+  @tenacity.retry(
+    stop=tenacity.stop_after_attempt(3),
+    retry=tenacity.retry_if_exception_type(pydantic.ValidationError),
+    reraise=True,
+  )
   def describe(
     self,
     medium: media.Medium,
