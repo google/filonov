@@ -22,7 +22,7 @@ import media_similarity
 import media_tagging
 import pydantic
 
-from filonov import creative_map
+from filonov import creative_map, exceptions
 from filonov.inputs import input_service
 
 
@@ -109,6 +109,10 @@ class FilonovService:
     media_info, context = input_service.MediaInputService(
       source
     ).generate_media_info(request.media_type, input_parameters)
+    if not media_info:
+      raise exceptions.FilonovError(
+        f'No performance data found for the context: {context}'
+      )
     media_urls = {media.media_path for media in media_info.values()}
     tagging_results = self.tagging_service.tag_media(
       tagger_type=request.tagger,
@@ -116,6 +120,11 @@ class FilonovService:
       tagging_parameters=request.tagger_parameters,
       media_paths=media_urls,
     )
+    if not tagging_results:
+      raise exceptions.FilonovError(
+        f'Failed to perform media tagging for the context: {context}'
+      )
+
     clustering_results = self.similarity_service.cluster_media(
       tagging_results, **request.similarity_parameters
     )
