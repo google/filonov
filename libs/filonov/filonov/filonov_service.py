@@ -56,12 +56,16 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   media_type: Literal['IMAGE', 'YOUTUBE_VIDEO'] = 'IMAGE'
   tagger: Literal['gemini', 'google-cloud', 'langchain'] = 'gemini'
   tagger_parameters: dict[str, str | int] = {'n_tags': 100}
-  similarity_parameters: dict[str, int | bool | None] = {
+  similarity_parameters: dict[str, float | bool | None] = {
     'normalize': True,
     'custom_threshold': None,
   }
   input_parameters: dict[str, str] = {}
   output_parameters: OutputParameters = OutputParameters()
+
+  def model_post_init(self, __context):  # noqa: D105
+    if not self.tagger_parameters:
+      self.tagger_parameters = {'n_tags': 100}
 
 
 class FilonovService:
