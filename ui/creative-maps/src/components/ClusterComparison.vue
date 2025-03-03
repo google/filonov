@@ -65,6 +65,25 @@
           row-key="cluster"
           :pagination="{ rowsPerPage: 0 }"
         >
+          <template #header="props">
+            <q-tr :props="props">
+              <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                {{ col.label }}
+              </q-th>
+            </q-tr>
+            <q-tr class="bg-grey-2 text-weight-bold">
+              <q-td v-for="col in props.cols" :key="col.name" :props="props">
+                <template v-if="col.name === 'cluster'">Totals</template>
+                <template
+                  v-else-if="
+                    col.name !== 'size' && totalsRow[col.name] !== undefined
+                  "
+                >
+                  {{ formatMetricValue(totalsRow[col.name], col.name) }}
+                </template>
+              </q-td>
+            </q-tr>
+          </template>
           <template #body-cell-cluster="props">
             <q-td :props="props">
               <a
@@ -94,10 +113,15 @@
 import { ref, computed, ComputedRef } from 'vue';
 import ClusterCard from './ClusterCard.vue';
 import { ClusterInfo } from './models';
-import { assertIsError, capitalize, formatMetricValue } from 'src/helpers/utils';
+import { assertIsError, capitalize } from 'src/helpers/utils';
 import { useQuasar, QTableColumn } from 'quasar';
 import { isNumber } from 'lodash';
 import { exportTable } from 'src/helpers/export';
+import {
+  formatMetricValue,
+  formatMetricWithProportion,
+  getTotalsRow,
+} from 'src/helpers/graph';
 
 interface Props {
   clusters: Array<ClusterInfo>;
@@ -165,7 +189,8 @@ const clustersListColumns = computed<QTableColumn[]>(() => {
         label: capitalize(metric),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         field: (row: any) => row[metric],
-        format: (value: number) => formatMetricValue(value, metric),
+        format: (value: number) =>
+          formatMetricWithProportion(value, metric, totalsRow.value),
         align: 'right',
         sortable: true,
         //classes: 'text-right'
@@ -173,6 +198,10 @@ const clustersListColumns = computed<QTableColumn[]>(() => {
   );
 
   return [...baseColumns, ...metricColumns];
+});
+
+const totalsRow = computed((): Record<string, number> => {
+  return getTotalsRow(clustersMetrics.value, metrics.value);
 });
 
 // Return cluster ids as options for dynamic dropdown list

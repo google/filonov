@@ -26,6 +26,25 @@
         separator="vertical"
         :pagination="{ rowsPerPage: 0 }"
       >
+        <template #header="props">
+          <q-tr :props="props">
+            <q-th v-for="col in props.cols" :key="col.name" :props="props">
+              {{ col.label }}
+            </q-th>
+          </q-tr>
+          <q-tr class="bg-grey-2 text-weight-bold">
+            <q-td v-for="col in props.cols" :key="col.name" :props="props">
+              <template v-if="col.name === 'tag'">Totals</template>
+              <template
+                v-else-if="
+                  col.name !== 'freq' && totalsRow[col.name] !== undefined
+                "
+              >
+                {{ formatMetricValue(totalsRow[col.name], col.name) }}
+              </template>
+            </q-td>
+          </q-tr>
+        </template>
         <template #body-cell-tag="props">
           <q-td :props="props">
             <a
@@ -84,13 +103,14 @@
 import { ref, computed, ComputedRef, onMounted } from 'vue';
 import { useQuasar, QTableColumn } from 'quasar';
 import { TagStats } from './models';
-import {
-  formatMetricValue,
-  capitalize,
-  assertIsError,
-} from 'src/helpers/utils';
+import { capitalize, assertIsError } from 'src/helpers/utils';
 import { exportTable } from 'src/helpers/export';
-import { aggregateNodesMetrics } from 'src/helpers/graph';
+import {
+  aggregateNodesMetrics,
+  formatMetricValue,
+  formatMetricWithProportion,
+  getTotalsRow,
+} from 'src/helpers/graph';
 
 interface Props {
   tagsStats: TagStats[];
@@ -138,6 +158,13 @@ const metrics: ComputedRef<string[]> = computed(() => {
     });
   });
   return Array.from(metricSet);
+});
+
+const totalsRow = computed((): Record<string, number> => {
+  return getTotalsRow(
+    tagsMetrics.value.map((o) => o.metrics),
+    metrics.value,
+  );
 });
 
 // Initialize with first metric and tag
@@ -192,10 +219,10 @@ const columns = computed<QTableColumn[]>(() => {
         label: capitalize(metric),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         field: (row: any) => row.metrics[metric],
-        format: (value: number) => formatMetricValue(value, metric),
+        format: (value: number) =>
+          formatMetricWithProportion(value, metric, totalsRow.value),
         align: 'right',
         sortable: true,
-        //classes: 'text-right'
       }) as QTableColumn,
   );
 

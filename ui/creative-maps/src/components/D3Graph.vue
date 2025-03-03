@@ -173,8 +173,7 @@ import {
 } from 'vue';
 import * as d3 from 'd3';
 import { ClusterInfo, Edge, Node } from 'components/models';
-import { aggregateNodesMetrics } from 'src/helpers/graph';
-import { formatMetricValue } from 'src/helpers/utils';
+import { aggregateNodesMetrics, formatMetricValue } from 'src/helpers/graph';
 import NodeSearchDialog from './NodeSearchDialog.vue';
 import {
   Simulation,

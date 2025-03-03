@@ -81,6 +81,27 @@
           row-key="id"
           :pagination="{ rowsPerPage: 0 }"
         >
+          <template #header="props">
+            <q-tr :props="props">
+              <q-th v-for="col in props.cols" :key="col.name" :props="props">
+                {{ col.label }}
+              </q-th>
+            </q-tr>
+            <q-tr class="bg-grey-2 text-weight-bold">
+              <q-td v-for="col in props.cols" :key="col.name" :props="props">
+                <template v-if="col.name === 'name'">Totals</template>
+                <template
+                  v-else-if="
+                    col.name !== 'image' &&
+                    col.name !== 'assetId' &&
+                    totalsRow[col.name] !== undefined
+                  "
+                >
+                  {{ formatMetricValue(totalsRow[col.name], col.name) }}
+                </template>
+              </q-td>
+            </q-tr>
+          </template>
           <template #top-left>
             <div class="row items-center q-mb-md">
               <q-toggle
@@ -148,13 +169,14 @@ import type { ApexOptions } from 'apexcharts';
 import NodeCard from './NodeCard.vue';
 import CreativePreview from './CreativePreview.vue';
 import { Node } from './models';
-import {
-  assertIsError,
-  capitalize,
-  formatMetricValue,
-} from 'src/helpers/utils';
+import { assertIsError, capitalize } from 'src/helpers/utils';
 import { isNumber } from 'lodash';
 import { exportTable } from 'src/helpers/export';
+import {
+  getTotalsRow,
+  formatMetricValue,
+  formatMetricWithProportion,
+} from 'src/helpers/graph';
 
 interface Props {
   nodes: Node[];
@@ -208,6 +230,10 @@ const nodesMetrics = computed((): NodeMetrics[] => {
   }));
 });
 
+const totalsRow = computed((): Record<string, number> => {
+  return getTotalsRow(nodesMetrics.value, metrics.value);
+});
+
 function openPreview(row: NodeMetrics) {
   previewData.value = {
     image: row.image as string,
@@ -251,7 +277,8 @@ const nodesListColumns = computed((): QTableColumn[] => {
         name: metric,
         label: capitalize(metric),
         field: metric,
-        format: (value: number) => formatMetricValue(value, metric),
+        format: (value: number /*, row: NodeMetrics*/) =>
+          formatMetricWithProportion(value, metric, totalsRow.value),
         align: 'right',
         sortable: true,
       }) as QTableColumn,

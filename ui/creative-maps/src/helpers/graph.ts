@@ -138,12 +138,15 @@ export function optimizeGraphEdges(
  * to reduce the number of edges while maintaining connectivity.
  * It uses Kruskal's algorithm to find the minimum spanning tree.
  */
-export function createMinimumSpanningTree(nodes: Node[], edges: Edge[]): Edge[] {
+export function createMinimumSpanningTree(
+  nodes: Node[],
+  edges: Edge[],
+): Edge[] {
   // Create a disjoint-set data structure for union-find operations
   const disjointSet = new Map<number, number>();
 
   // Initialize each node as its own set
-  nodes.forEach(node => {
+  nodes.forEach((node) => {
     disjointSet.set(node.id, node.id);
   });
 
@@ -391,4 +394,122 @@ function aggregateMetric(name: string, values: number[]) {
   return values.reduce((sum, val) => sum + val, 0);
   // arv:
   // values.reduce((sum, val) => sum + val, 0) / values.length;
+}
+
+export const computedMetrics = ['ctr', 'cr', 'cpa', 'roas', 'cpm'];
+
+export function getTotalsRow(nodes: MetricsObject[], metrics: string[]) {
+  const totals: Record<string, number> = {};
+
+  metrics.forEach((metric) => {
+    if (computedMetrics.includes(metric)) {
+      // For computed metrics, we'll recalculate them based on totals
+      return;
+    }
+
+    const values = nodes
+      .map((node) => node[metric])
+      .filter((v) => isNumber(v)) as number[];
+
+    if (values.length > 0) {
+      totals[metric] = values.reduce((sum, val) => sum + (val as number), 0);
+    }
+  });
+
+  // Calculate computed metrics based on aggregated values
+  if (
+    isNumber(totals['clicks']) &&
+    isNumber(totals['impressions']) &&
+    (totals['impressions'] as number) > 0
+  ) {
+    totals['ctr'] =
+      (totals['clicks'] as number) / (totals['impressions'] as number);
+  }
+
+  if (
+    isNumber(totals['conversions']) &&
+    isNumber(totals['clicks']) &&
+    (totals['clicks'] as number) > 0
+  ) {
+    totals['cr'] =
+      (totals['conversions'] as number) / (totals['clicks'] as number);
+  }
+
+  if (
+    isNumber(totals['cost']) &&
+    isNumber(totals['conversions']) &&
+    (totals['conversions'] as number) > 0
+  ) {
+    totals['cpa'] =
+      (totals['cost'] as number) / (totals['conversions'] as number);
+  }
+
+  if (
+    isNumber(totals['conversions_value']) &&
+    isNumber(totals['cost']) &&
+    (totals['cost'] as number) > 0
+  ) {
+    totals['roas'] =
+      (totals['conversions_value'] as number) / (totals['cost'] as number);
+  }
+
+  if (
+    isNumber(totals['cost']) &&
+    isNumber(totals['impressions']) &&
+    (totals['impressions'] as number) > 0
+  ) {
+    totals['cpm'] =
+      ((totals['cost'] as number) / (totals['impressions'] as number)) * 1000;
+  }
+
+  return totals;
+}
+
+/**
+ * Format arbitrary metric's value.
+ * @param value A value
+ * @param metric A metric name
+ * @return a formatted string value
+ */
+export function formatMetricValue(
+  value: number | string | boolean | undefined,
+  metric: string,
+) {
+  if (typeof value !== 'number') return value;
+
+  if (
+    metric === 'impressions' ||
+    metric === 'clicks' ||
+    metric === 'cost' ||
+    metric === 'inapps'
+  ) {
+    return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+  if (metric === 'duration') {
+    return `${(value / 60).toFixed(1)} min`;
+  }
+  return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+export function formatMetricWithProportion(
+  value: number | string,
+  metric: string,
+  totals: Record<string, number | string>,
+): string | undefined {
+  if (!isNumber(value)) return value as string;
+
+  const numValue = value as number;
+  const formattedValue = formatMetricValue(numValue, metric);
+
+  if (computedMetrics.includes(metric)) {
+    return formatMetricValue(value, metric) as string;
+  }
+
+  const total = totals[metric];
+  if (total && isNumber(total) && total !== 0) {
+    const proportion = (numValue / total) * 100;
+    return `${formattedValue} (${proportion.toFixed(1)}%)`;
+  }
+
+  return formattedValue as string;
 }

@@ -368,12 +368,12 @@ import {
   HistogramData,
   MetricValue,
 } from 'components/models';
-import { formatMetricValue } from 'src/helpers/utils';
 import {
   aggregateNodesMetrics,
   initClusters,
   optimizeGraphEdges,
   sortTags,
+  formatMetricValue,
 } from 'src/helpers/graph';
 
 const d3GraphRef = ref<InstanceType<typeof D3Graph> | null>(null);

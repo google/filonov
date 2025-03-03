@@ -72,7 +72,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Node } from 'components/models';
-import { formatMetricValue } from 'src/helpers/utils';
+import { formatMetricValue } from 'src/helpers/graph';
 import NodeMetricsDialog from './NodeMetricsDialog.vue';
 import CreativePreview from './CreativePreview.vue';
 
@@ -96,5 +96,4 @@ const showMetrics = ref(false);
   height: 200px;
   object-fit: contain;
 }
-
 </style>

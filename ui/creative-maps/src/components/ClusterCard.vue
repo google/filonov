@@ -60,7 +60,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { ClusterInfo } from 'components/models';
-import { formatMetricValue } from 'src/helpers/utils';
+import { formatMetricValue } from 'src/helpers/graph';
 
 interface Props {
   cluster: ClusterInfo;
