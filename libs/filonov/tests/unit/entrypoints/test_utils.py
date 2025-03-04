@@ -14,12 +14,23 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-"""Simplifies imports from inner modules."""
+import pytest
+from filonov.entrypoints import utils
 
-from media_similarity.media_similarity_service import MediaSimilarityService
 
-__all__ = [
-  'MediaSimilarityService',
-]
-
-__version__ = '0.1.0'
+@pytest.mark.parametrize(
+  'path, expected',
+  [
+    ('creative_map', 'creative_map.json'),
+    ('creative_map.json', 'creative_map.json'),
+    ('/app/creative_map', '/app/creative_map.json'),
+    ('/app/creative_map.json', '/app/creative_map.json'),
+    ('gs://bucket/creative_map', 'gs://bucket/creative_map.json'),
+    ('gs://bucket/creative_map.json', 'gs://bucket/creative_map.json'),
+  ],
+)
+def test_build_creative_map_destination_returns_correct_file_name(
+  path: str, expected: str
+):
+  result = utils.build_creative_map_destination(path)
+  assert result == expected

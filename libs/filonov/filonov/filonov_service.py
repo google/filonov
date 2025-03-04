@@ -16,13 +16,13 @@
 
 """Handles creative map generation."""
 
-from typing import Literal
+from typing import ClassVar, Literal
 
 import media_similarity
 import media_tagging
 import pydantic
 
-from filonov import creative_map
+from filonov import creative_map, exceptions
 from filonov.inputs import input_service
 
 
@@ -52,16 +52,22 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
     output_parameters: Parameters for saving creative maps data.
   """
 
+  default_tagger_parameters: ClassVar[dict[str, int]] = {'n_tags': 100}
+
   source: input_service.InputSource
   media_type: Literal['IMAGE', 'YOUTUBE_VIDEO'] = 'IMAGE'
   tagger: Literal['gemini', 'google-cloud', 'langchain'] = 'gemini'
-  tagger_parameters: dict[str, str | int] = {'n_tags': 100}
-  similarity_parameters: dict[str, int | bool | None] = {
+  tagger_parameters: dict[str, str | int] = default_tagger_parameters
+  similarity_parameters: dict[str, float | bool | None] = {
     'normalize': True,
     'custom_threshold': None,
   }
   input_parameters: dict[str, str] = {}
   output_parameters: OutputParameters = OutputParameters()
+
+  def model_post_init(self, __context):  # noqa: D105
+    if not self.tagger_parameters or 'n_tags' not in self.tagger_parameters:
+      self.tagger_parameters = self.default_tagger_parameters
 
 
 class FilonovService:
@@ -105,6 +111,10 @@ class FilonovService:
     media_info, context = input_service.MediaInputService(
       source
     ).generate_media_info(request.media_type, input_parameters)
+    if not media_info:
+      raise exceptions.FilonovError(
+        f'No performance data found for the context: {context}'
+      )
     media_urls = {media.media_path for media in media_info.values()}
     tagging_results = self.tagging_service.tag_media(
       tagger_type=request.tagger,
@@ -112,6 +122,11 @@ class FilonovService:
       tagging_parameters=request.tagger_parameters,
       media_paths=media_urls,
     )
+    if not tagging_results:
+      raise exceptions.FilonovError(
+        f'Failed to perform media tagging for the context: {context}'
+      )
+
     clustering_results = self.similarity_service.cluster_media(
       tagging_results, **request.similarity_parameters
     )

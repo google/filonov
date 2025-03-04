@@ -33,6 +33,7 @@ from media_tagging import tagging_result
 
 from media_similarity import (
   adaptive_threshold,
+  exceptions,
   idf_context,
   media_pair,
   repositories,
@@ -140,7 +141,12 @@ class MediaSimilarityService:
 
     Returns:
        Results of clustering that contain mapping between media identifier.
+
+    Raises:
+      MediaSimilarityError: When not tagging results were found.
     """
+    if not tagging_results:
+      raise exceptions.MediaSimilarityError('No tagging results found.')
     tagger = tagging_results[0].tagger
     logging.info('calculating context...')
     idf_tag_context = idf_context.calculate_idf_context(tagging_results)

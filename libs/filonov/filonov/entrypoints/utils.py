@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=C0330, g-bad-import-order, g-multiple-import
+
 """Utils module for filonov entrypoints."""
 
 
 def build_creative_map_destination(path: str):
   """Build correct output path."""
-  if path := path.split('.')[0:-1]:
-    path = '.'.join(path)
+  if path_elements := path.split('.')[0:-1]:
+    path = '.'.join(path_elements)
   return f'{path}.json'

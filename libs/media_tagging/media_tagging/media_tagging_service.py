@@ -15,6 +15,7 @@
 """Responsible for performing media tagging."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
+import contextlib
 import inspect
 import itertools
 import logging
@@ -24,9 +25,10 @@ from concurrent import futures
 from importlib.metadata import entry_points
 from typing import Literal
 
+import pydantic
 import rich
 
-from media_tagging import media, repositories, tagging_result
+from media_tagging import exceptions, media, repositories, tagging_result
 from media_tagging.taggers import base as base_tagger
 
 
@@ -247,15 +249,18 @@ class MediaTaggingService:
         results.extend(tagging_results)
         continue
       logging.debug('Processing media: %s', path)
-      tagging_results = getattr(concrete_tagger, action)(
-        medium,
-        tagging_options=base_tagger.TaggingOptions.from_dict(
-          tagging_parameters
-        ),
-      )
-      if tagging_results is None:
-        continue
-      results.append(tagging_results)
-      if self.repo:
-        self.repo.add([tagging_results])
+      with contextlib.suppress(
+        exceptions.FailedTaggingError, pydantic.ValidationError
+      ):
+        tagging_results = getattr(concrete_tagger, action)(
+          medium,
+          tagging_options=base_tagger.TaggingOptions.from_dict(
+            tagging_parameters
+          ),
+        )
+        if tagging_results is None:
+          continue
+        results.append(tagging_results)
+        if self.repo:
+          self.repo.add([tagging_results])
     return results

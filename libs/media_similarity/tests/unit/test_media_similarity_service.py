@@ -19,6 +19,7 @@ from __future__ import annotations
 import pytest
 from media_similarity import (
   adaptive_threshold,
+  exceptions,
   media_pair,
   media_similarity_service,
   repositories,
@@ -33,6 +34,14 @@ class TestMediaSimilarityService:
   @pytest.fixture
   def service(self, repo):
     return media_similarity_service.MediaSimilarityService(repo)
+
+  def test_cluster_media_raises_similarity_error_when_no_tagging_results(
+    self, service
+  ):
+    with pytest.raises(
+      exceptions.MediaSimilarityError, match='No tagging results found.'
+    ):
+      service.cluster_media(tagging_results=[])
 
   def test_cluster_media_returns_correct_clusters(
     self, service, media_1, media_2, media_3
