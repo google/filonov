@@ -20,6 +20,20 @@ from filonov import exceptions, filonov_service
 from filonov.inputs import interfaces
 
 
+class TestCreativeMapGenerateRequest:
+  @pytest.mark.parametrize(
+    'tagger_parameters',
+    [{'custom_prompt': 'test prompt'}, {}],
+  )
+  def test_model_post_init_creates_correct_tagger_parameters(
+    self, tagger_parameters
+  ):
+    request = filonov_service.CreativeMapGenerateRequest(
+      source='googleads', tagger_parameters=tagger_parameters
+    )
+    assert request.tagger_parameters == {'n_tags': 100}
+
+
 class TestFilonovService:
   @pytest.fixture
   def service(self):

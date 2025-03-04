@@ -16,7 +16,7 @@
 
 """Handles creative map generation."""
 
-from typing import Literal
+from typing import ClassVar, Literal
 
 import media_similarity
 import media_tagging
@@ -52,10 +52,12 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
     output_parameters: Parameters for saving creative maps data.
   """
 
+  default_tagger_parameters: ClassVar[dict[str, int]] = {'n_tags': 100}
+
   source: input_service.InputSource
   media_type: Literal['IMAGE', 'YOUTUBE_VIDEO'] = 'IMAGE'
   tagger: Literal['gemini', 'google-cloud', 'langchain'] = 'gemini'
-  tagger_parameters: dict[str, str | int] = {'n_tags': 100}
+  tagger_parameters: dict[str, str | int] = default_tagger_parameters
   similarity_parameters: dict[str, float | bool | None] = {
     'normalize': True,
     'custom_threshold': None,
@@ -64,8 +66,8 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   output_parameters: OutputParameters = OutputParameters()
 
   def model_post_init(self, __context):  # noqa: D105
-    if not self.tagger_parameters:
-      self.tagger_parameters = {'n_tags': 100}
+    if not self.tagger_parameters or 'n_tags' not in self.tagger_parameters:
+      self.tagger_parameters = self.default_tagger_parameters
 
 
 class FilonovService:
