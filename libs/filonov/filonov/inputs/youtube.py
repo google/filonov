@@ -79,7 +79,9 @@ class ExtraInfoFetcher:
     FROM playlistItems
     """
     videos = youtube_api_fetcher.fetch(
-      channel_videos_query, playlistId=videos_playlist[0], maxResults=50
+      channel_videos_query,
+      playlistId=videos_playlist.to_list(flatten=True, distinct=True),
+      maxResults=50,
     ).to_list(flatten=True, distinct=True)
 
     video_performance_query = """
