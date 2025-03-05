@@ -83,9 +83,10 @@ def main():  # noqa: D103
     type=int,
     help='Number of parallel processes to perform media tagging',
   )
+  parser.add_argument('--normalize', dest='normalize', action='store_true')
   parser.add_argument('--no-normalize', dest='normalize', action='store_false')
   parser.add_argument('-v', '--version', dest='version', action='store_true')
-  parser.set_defaults(normalize=True)
+  parser.set_defaults(normalize=False)
   args, kwargs = parser.parse_known_args()
 
   if args.version:
