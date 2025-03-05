@@ -26,7 +26,7 @@ from importlib.metadata import entry_points
 from typing import Literal
 
 import pydantic
-import rich
+from rich import progress
 
 from media_tagging import exceptions, media, repositories, tagging_result
 from media_tagging.taggers import base as base_tagger
@@ -205,7 +205,7 @@ class MediaTaggingService:
       untagged_media = itertools.chain.from_iterable(
         [
           future.result()
-          for future in rich.progress.track(
+          for future in progress.track(
             futures.as_completed(future_to_media_path),
             f'Tagging {len(untagged_media)} media...',
           )
