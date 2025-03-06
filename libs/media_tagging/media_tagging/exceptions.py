@@ -14,5 +14,9 @@
 """Specifies application exceptions."""
 
 
-class FailedTaggingError(Exception):
-  """Generic error for tagging."""
+class MediaTaggingError(Exception):
+  """Base exception for the library."""
+
+
+class FailedTaggingError(MediaTaggingError):
+  """Handles cases when tagging wasn't performed."""

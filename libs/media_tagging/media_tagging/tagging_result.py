@@ -70,6 +70,12 @@ class Description(TaggingOutput):
 
   text: str = pydantic.Field(description='brief description of the media')
 
+  def __hash__(self) -> int:  # noqa: D105
+    return hash(self.text)
+
+  def __eq__(self, other: Tag) -> bool:  # noqa: D105
+    return self.text == other.text
+
 
 class TaggingResult(pydantic.BaseModel):
   """Contains tagging information for a given identifier.
@@ -114,15 +120,17 @@ class TaggingResult(pydantic.BaseModel):
     return (
       self.identifier,
       self.type,
-      self.content,
+      self.output,
       self.tagger,
       self.output,
+      self.tagging_details,
     ) == (
       other.identifier,
       other.type,
-      other.content,
+      other.output,
       other.tagger,
       other.output,
+      other.tagging_details,
     )
 
 

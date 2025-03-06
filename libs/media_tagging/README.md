@@ -51,6 +51,8 @@ Alternatively you can install subsets of `media-tagging` library:
 
 ### Usage
 
+#### Tagging media
+
 > This section is focused on using `media-tagger` as a CLI tool.
 > Check [library](docs/how-to-use-media-tagger-as-a-library.md),
 > [http endpoint](docs/how-to-use-media-tagger-as-a-http-endpoint.md),
@@ -87,3 +89,29 @@ where:
 | `gemini` | `image`, `video`, `youtube_video`| `tag`, `description`| `n-tags=10` |
 
 > `langchain` and `gemini` taggers can use `custom-prompt` parameter to adjust built-in prompts.
+
+#### Loading tagging results
+
+If you want to import tags to be used later, you can use `media-loader` utility.
+
+```
+media-loader PATH_TO_FILE \
+  --media-type <MEDIA_TYPE> \
+  --loader <LOADER_TYPE> \
+  --db-uri=<CONNECTION_STRING> \
+  --action <ACTION>
+```
+where:
+* `<MEDIA_TYPE>` - type of media (YOUTUBE_VIDEO, VIDEO, IMAGE).
+> For YouTube file uploads specify YOUTUBE_VIDEO type.
+* `<LOADER_TYPE>` - name of loader, currently only `file` is supported (data are saved to CSV).
+> Loader can be customized via `loader.option=value` syntax. I.e. if you want to change the default column name with media tags are located you can specify `--loader.tag_name=new_column_name` CLI flag.
+* `<CONNECTION_STRING>` - Connection string to the database with tagging results (i.e. `sqlite:///tagging.db`). If this parameter is set make sure that DB exists.
+> To create an empty Sqlite DB execute `touch database.db`.
+* `ACTION` - either `tag` or `describe`.
+
+If loading tagging results with `file` loader, the CSV file should contains the following columns:
+
+* `media_url` - location of medium (can be remote or local).
+* `tag` - column that contains name of a tag.
+* `score` - column that contains prominence of a tag in the media.
