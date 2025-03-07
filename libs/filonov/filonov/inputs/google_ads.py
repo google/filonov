@@ -25,16 +25,15 @@ from typing import Final, get_args
 
 import gaarf
 import garf_youtube_data_api
-import pydantic
 from filonov.inputs import interfaces, queries
 from media_tagging import media
 
 
-class GoogleAdsInputParameters(pydantic.BaseModel):
+class GoogleAdsInputParameters(interfaces.InputParameters):
   """Google Ads specific parameters for generating creative map."""
 
-  model_config = pydantic.ConfigDict(extra='ignore')
   account: str
+  media_type: str
   start_date: str = (
     datetime.datetime.today() - datetime.timedelta(days=30)
   ).strftime('%Y-%m-%d')
@@ -61,13 +60,12 @@ _CORE_METRICS: Final[tuple[str, ...]] = (
 )
 
 
-class ExtraInfoFetcher:
+class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
   """Extracts additional information from Google Ads to build CreativeMap."""
 
   def fetch_media_data(
     self,
     fetching_request: GoogleAdsInputParameters,
-    media_type: str,
   ) -> gaarf.GaarfReport:
     """Fetches performance data from Google Ads API."""
     fetcher = gaarf.AdsReportFetcher(
@@ -82,10 +80,9 @@ class ExtraInfoFetcher:
       fetcher=fetcher,
       performance_queries=performance_queries,
       fetching_request=fetching_request,
-      media_type=media_type,
       customer_ids=customer_ids,
     )
-    if media_type == 'YOUTUBE_VIDEO':
+    if fetching_request.media_type == 'YOUTUBE_VIDEO':
       video_ids = performance['media_url'].to_list(flatten=True, distinct=True)
       video_extra_info = self._build_youtube_video_extra_info(
         fetcher, customer_ids, video_ids
@@ -93,7 +90,9 @@ class ExtraInfoFetcher:
     else:
       video_extra_info = {}
     media_size_column = (
-      'file_size' if media_type == 'IMAGE' else 'video_duration'
+      'file_size'
+      if fetching_request.media_type == 'IMAGE'
+      else 'video_duration'
     )
 
     self._inject_extra_info_into_reports(
@@ -106,15 +105,14 @@ class ExtraInfoFetcher:
   def generate_extra_info(
     self,
     fetching_request: GoogleAdsInputParameters,
-    media_type: str,
     with_size_base: str | None = None,
   ) -> dict[str, interfaces.MediaInfo]:
     """Extracts data from Ads API and converts to MediaInfo objects."""
-    if not (performance := self.fetch_media_data(fetching_request, media_type)):
+    if not (performance := self.fetch_media_data(fetching_request)):
       return {}
     return interfaces.convert_gaarf_report_to_media_info(
       performance=performance,
-      media_type=media.MediaTypeEnum[media_type.upper()],
+      media_type=media.MediaTypeEnum[fetching_request.media_type.upper()],
       metric_columns=_CORE_METRICS,
       segment_columns=('campaign_type',),
       with_size_base=with_size_base,
@@ -134,6 +132,8 @@ class ExtraInfoFetcher:
     performance_queries = {}
     for campaign_type in fetching_request.campaign_types:
       query = queries.QUERIES_MAPPING.get(campaign_type)
+      if campaign_type == 'video' and fetching_request.media_type == 'IMAGE':
+        continue
       if campaign_type == 'demandgen':
         query = query.get(fetching_request.media_type)
       performance_queries[campaign_type] = query
@@ -168,7 +168,6 @@ class ExtraInfoFetcher:
     fetcher: gaarf.AdsReportFetcher,
     performance_queries: dict[str, queries.PerformanceQuery],
     fetching_request: GoogleAdsInputParameters,
-    media_type: str,
     customer_ids: Sequence[str],
   ) -> gaarf.GaarfReport:
     """Executes performance queries for a set of customer ids.
@@ -180,7 +179,6 @@ class ExtraInfoFetcher:
       fetcher: Instantiated AdsReportFetcher.
       performance_queries: Queries that need to be executed.
       fetching_request: Request for fetching data from Google Ads.
-      media_type: Type of media to fetch.
       customer_ids: Accounts to get data from.
 
     Returns:
@@ -195,7 +193,7 @@ class ExtraInfoFetcher:
       fetching_parameters.pop('ads_config_path')
       fetching_parameters['campaign_type'] = campaign_type
       performance = fetcher.fetch(
-        query(media_type=media_type, **fetching_parameters),
+        query(**fetching_parameters),
         customer_ids,
       )
       if len(performance_queries) > 1:

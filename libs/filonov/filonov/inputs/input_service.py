@@ -20,6 +20,7 @@ from typing import Literal, get_args
 
 from filonov import exceptions
 from filonov.inputs import file, google_ads, interfaces, youtube
+from garf_core import report
 
 InputSource = Literal['googleads', 'youtube', 'file']
 Context = dict[str, str]
@@ -41,6 +42,44 @@ class MediaInputService:
       )
     self.source = source
 
+  def _build_fetching_context(
+    self,
+    media_type: str,
+    input_parameters: dict[str, str],
+  ) -> tuple[interfaces.BaseMediaInfoFetcher, interfaces.InputParameters]:
+    """Builds correct fetching request and initializes appropriate fetcher."""
+    if self.source == 'youtube':
+      fetching_request = youtube.YouTubeInputParameters(**input_parameters)
+      fetcher = youtube.ExtraInfoFetcher()
+    elif self.source == 'googleads':
+      fetching_request = google_ads.GoogleAdsInputParameters(
+        media_type=media_type, **input_parameters
+      )
+      fetcher = google_ads.ExtraInfoFetcher()
+    elif self.source == 'file':
+      fetching_request = file.FileInputParameters(**input_parameters)
+      fetcher = file.ExtraInfoFetcher()
+    return (fetcher, fetching_request)
+
+  def fetch_input(
+    self,
+    media_type: str,
+    input_parameters: dict[str, str],
+  ) -> report.GarfReport:
+    """Extracts data from specified source.
+
+    Args:
+      media_type: Type of media to get.
+      input_parameters: Parameters to fine-tune fetching.
+
+    Returns:
+      Report with fetched data.
+    """
+    fetcher, fetching_request = self._build_fetching_context(
+      media_type, input_parameters
+    )
+    return fetcher.fetch_media_data(fetching_request)
+
   def generate_media_info(
     self,
     media_type: str,
@@ -57,21 +96,12 @@ class MediaInputService:
     Returns:
       Tuple with mapping between media identifiers and media info and a context.
     """
-    if self.source == 'youtube':
-      fetching_request = youtube.YouTubeInputParameters(**input_parameters)
-      fetcher = youtube.ExtraInfoFetcher()
-    elif self.source == 'googleads':
-      fetching_request = google_ads.GoogleAdsInputParameters(
-        media_type=media_type, **input_parameters
-      )
-      fetcher = google_ads.ExtraInfoFetcher()
-    elif self.source == 'file':
-      fetching_request = file.FileInputParameters(**input_parameters)
-      fetcher = file.ExtraInfoFetcher()
+    fetcher, fetching_request = self._build_fetching_context(
+      media_type, input_parameters
+    )
     return (
       fetcher.generate_extra_info(
         fetching_request=fetching_request,
-        media_type=media_type,
         with_size_base=with_size_base,
       ),
       fetching_request.dict(),

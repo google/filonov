@@ -19,26 +19,36 @@ import os
 from collections.abc import Sequence
 from typing import Literal
 
-import gaarf
 import pandas as pd
-import pydantic
+import smart_open
 from filonov.inputs import interfaces
+from garf_core import report
 from media_tagging import media
 
 
-class FileInputParameters(pydantic.BaseModel):
-  """Google Ads specific parameters for generating creative map."""
+class FileInputParameters(interfaces.InputParameters):
+  """File specific parameters for generating creative map."""
 
-  model_config = pydantic.ConfigDict(extra='ignore')
+  path: os.PathLike[str] | str
+  media_identifier: str = 'media_url'
+  media_name: str = 'media_name'
+  metric_names: Sequence[str] | str = ('clicks', 'impressions')
 
-  path: os.PathLike[str]
-  media_identifier: str
-  media_name: str
-  metric_names: Sequence[str]
+  def model_post_init(self, __context):
+    if isinstance(self.metric_names, str):
+      self.metric_names = self.metric_names.split(',')
 
 
-class ExtraInfoFetcher:
+class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
   """Extracts additional information from a file to build CreativeMap."""
+
+  def fetch_media_data(
+    self,
+    fetching_request: FileInputParameters,
+  ) -> report.GarfReport:
+    return report.GarfReport.from_pandas(
+      pd.read_csv(smart_open.open(fetching_request.path))
+    )
 
   def generate_extra_info(
     self,
@@ -47,9 +57,7 @@ class ExtraInfoFetcher:
     with_size_base: str | None = None,
   ) -> dict[str, interfaces.MediaInfo]:
     """Extracts data from Ads API and converts to MediaInfo objects."""
-    performance = gaarf.GaarfReport.from_pandas(
-      pd.read_csv(fetching_request.path)
-    )
+    performance = self.fetch_media_data(fetching_request)
     if missing_columns := {'media_url'}.difference(
       set(performance.column_names)
     ):

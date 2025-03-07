@@ -18,20 +18,17 @@
 
 import garf_core
 import garf_youtube_data_api
-import pydantic
 from filonov.inputs import interfaces
 from media_tagging import media
 
 
-class YouTubeInputParameters(pydantic.BaseModel):
+class YouTubeInputParameters(interfaces.InputParameters):
   """YouTube specific parameters for generating creative map."""
-
-  model_config = pydantic.ConfigDict(extra='ignore')
 
   channel: str
 
 
-class ExtraInfoFetcher:
+class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
   """Extracts additional information from YouTube to build CreativeMap."""
 
   def generate_extra_info(
@@ -45,7 +42,7 @@ class ExtraInfoFetcher:
       raise interfaces.FilonovInputError(
         'Only YOUTUBE_VIDEO media type is supported.'
       )
-    video_performance = self.fetch_channel_videos(fetching_request)
+    video_performance = self.fetch_media_data(fetching_request)
     for row in video_performance:
       row['views'] = int(row.views)
       row['likes'] = int(row.likes)
@@ -57,7 +54,7 @@ class ExtraInfoFetcher:
       with_size_base=with_size_base,
     )
 
-  def fetch_channel_videos(
+  def fetch_media_data(
     self,
     fetching_request: YouTubeInputParameters,
   ) -> garf_core.report.GarfReport:
