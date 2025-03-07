@@ -37,3 +37,4 @@ test =  [
 
 [project.scripts]
 filonov="filonov.entrypoints.cli:main"
+creatives-fetcher="filonov.inputs.entrypoints.cli:main"

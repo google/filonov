@@ -14,7 +14,7 @@
 """Defines interfaces for input data."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
-
+import abc
 import dataclasses
 import logging
 import operator
@@ -23,7 +23,9 @@ from typing import Literal, TypeAlias
 
 import gaarf
 import numpy as np
+import pydantic
 from filonov import exceptions
+from garf_core import report
 from media_tagging import media
 
 MetricInfo: TypeAlias = dict[str, int | float]
@@ -33,6 +35,12 @@ SupportedMediaTypes = Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO']
 
 class FilonovInputError(exceptions.FilonovError):
   """Input specific exception."""
+
+
+class InputParameters(pydantic.BaseModel):
+  """Interface for parameters for getting media data."""
+
+  model_config = pydantic.ConfigDict(extra='ignore')
 
 
 @dataclasses.dataclass
@@ -51,6 +59,26 @@ class MediaInfo:
     if not self.media_preview:
       self.media_preview = self.media_path
     self.info = dict(self.info)
+
+
+class BaseMediaInfoFetcher(abc.ABC):
+  """Interface for getting data from a source."""
+
+  @abc.abstractmethod
+  def generate_extra_info(
+    self,
+    fetching_request: InputParameters,
+    media_type: str,
+    with_size_base: str | None = None,
+  ) -> dict[str, MediaInfo]:
+    """Extracts data from a source and converts to MediaInfo objects."""
+
+  @abc.abstractmethod
+  def fetch_media_data(
+    self,
+    fetching_request: InputParameters,
+  ) -> report.GarfReport:
+    """Extracts data from a source as a report."""
 
 
 def convert_gaarf_report_to_media_info(
