@@ -242,6 +242,7 @@ const highlightedEdge = ref<Edge | null>(null);
 const currentCluster = ref<ClusterInfo | null>(null);
 const selectedSizeField = ref<string | null | undefined>(props.sizeField);
 const searchDialog = ref<InstanceType<typeof NodeSearchDialog> | null>(null);
+const isMultiSelectKeyPressed = ref(false);
 
 const metricNames = computed(() => {
   let keys = props.nodes?.length
@@ -281,11 +282,58 @@ function handleNodeClick(event: Event, node: D3Node) {
   tooltipTarget.value = event.currentTarget as HTMLElement;
   tooltipVisible.value = true;
 
-  if (currentNode.value !== node) {
-    currentNode.value = node;
-    emit('node-selected', node);
+  if (isMultiSelectKeyPressed.value) {
+    if (
+      currentCluster.value
+      // currentCluster.value.id === 'manual-selection'
+    ) {
+      // Check if node is already in selection
+      const nodeIndex = currentCluster.value.nodes.findIndex(
+        (n) => n.id === node.id,
+      );
+      let updatedNodes: Node[];
+
+      if (nodeIndex !== -1) {
+        // Remove node from selection
+        updatedNodes = [...currentCluster.value.nodes];
+        updatedNodes.splice(nodeIndex, 1);
+      } else {
+        // Add node to selection
+        updatedNodes = [...currentCluster.value.nodes, node];
+      }
+
+      // If we have nodes, update the manual selection cluster
+      if (updatedNodes.length > 0) {
+        currentCluster.value = {
+          id: 'manual-selection',
+          description: 'Manually Selected Nodes',
+          nodes: updatedNodes,
+          metrics: aggregateNodesMetrics(updatedNodes),
+        };
+        highlightNodes(updatedNodes);
+      } else {
+        // If no nodes left, clear selection
+        currentCluster.value = null;
+        resetHighlight();
+      }
+    } else {
+      currentCluster.value = {
+        id: 'manual-selection',
+        description: 'Manually Selected Nodes',
+        nodes: [node],
+        metrics: aggregateNodesMetrics([node]),
+      };
+      highlightNodes([node]);
+    }
+
+    emit('cluster-selected', currentCluster.value);
+  } else {
+    if (currentNode.value !== node) {
+      currentNode.value = node;
+      emit('node-selected', node);
+    }
+    setCurrentCluster(node.cluster);
   }
-  setCurrentCluster(node.cluster);
 }
 
 function getCluster(clusterId: string) {
@@ -1303,16 +1351,28 @@ watch(nodeSizeMultiplier, () => updateNodeSizes(true)); // restart when size cha
 
 onMounted(() => {
   const handleKeydown = (event: KeyboardEvent) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
-      event.preventDefault();
-      openSearch();
+    if (event.metaKey || event.ctrlKey) {
+      isMultiSelectKeyPressed.value = true;
+
+      if (event.key === 'k') {
+        event.preventDefault();
+        openSearch();
+      }
+    }
+  };
+
+  const handleKeyup = (event: KeyboardEvent) => {
+    if (event.key === 'Meta' || event.key === 'Control') {
+      isMultiSelectKeyPressed.value = false;
     }
   };
 
   window.addEventListener('keydown', handleKeydown);
+  window.addEventListener('keyup', handleKeyup);
 
   onUnmounted(() => {
     window.removeEventListener('keydown', handleKeydown);
+    window.removeEventListener('keyup', handleKeyup);
   });
 });
 

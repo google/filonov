@@ -522,6 +522,16 @@ class ContextHistory {
   }
 
   onPush(cluster: ClusterInfo) {
+    if (cluster.id === 'manual-selection') {
+      // for manual selection we won't add history
+      if (
+        this._history.value[this._history.value.length - 1].cluster.id ===
+        'manual-selection'
+      ) {
+        selectedCluster.value = cluster;
+        return;
+      }
+    }
     this._history.value.push({ cluster, isRoot: false });
     selectedCluster.value = cluster;
   }
