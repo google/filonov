@@ -2,7 +2,7 @@
   {
     "origin": ["*"],
     "method": ["GET", "HEAD", "OPTIONS"],
-    "responseHeader": ["Content-Type", "Access-Control-Allow-Origin"],
+    "responseHeader": ["Content-Type", "Access-Control-Allow-Origin", "Authorization", "x-goog-*"],
     "maxAgeSeconds": 3600
   }
 ]
