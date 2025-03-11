@@ -50,7 +50,7 @@ def main():  # noqa: D103
     '--tagger',
     dest='tagger',
     choices=AVAILABLE_TAGGERS,
-    default='gemini',
+    default=None,
     help='Type of tagger',
   )
   parser.add_argument(
@@ -117,7 +117,9 @@ def main():  # noqa: D103
       'custom_threshold': args.custom_threshold,
     },
     input_parameters=extra_parameters.get(args.source),
-    output_parameters=filonov.filonov_service.OutputParameters(),
+    output_parameters=filonov.filonov_service.OutputParameters(
+      output_name=args.output_name
+    ),
   )
   generated_map = filonov.FilonovService(
     tagging_service, similarity_service
