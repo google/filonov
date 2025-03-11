@@ -61,6 +61,37 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     self.model_name = model_name
     self._model = None
     self._prompt = ''
+    self._response_schema = None
+
+  def get_response_schema(self, output):
+    """Generates correct response schema based on type of output."""
+    if self._response_schema:
+      return self._response_schema
+    if output == tagging_result.Description:
+      response_schema = {
+        'type': 'object',
+        'properties': {'text': {'type': 'string'}},
+      }
+    else:
+      tag_descriptions = tagging_result.Tag.field_descriptions()
+      response_schema = {
+        'type': 'array',
+        'items': {
+          'type': 'object',
+          'properties': {
+            'name': {
+              'type': 'STRING',
+              'description': tag_descriptions.get('name'),
+            },
+            'score': {
+              'type': 'NUMBER',
+              'description': tag_descriptions.get('score'),
+            },
+          },
+        },
+      }
+    self._response_schema = response_schema
+    return self._response_schema
 
   def get_llm_response(
     self,
@@ -190,7 +221,7 @@ class VideoTaggingStrategy(GeminiTaggingStrategy):
           ],
           generation_config=google_genai.GenerationConfig(
             response_mime_type='application/json',
-            response_schema=output,
+            response_schema=self.get_response_schema(output),
           ),
         )
         if hasattr(response, 'usage_metadata'):
@@ -211,11 +242,6 @@ class VideoTaggingStrategy(GeminiTaggingStrategy):
 class YouTubeVideoTaggingStrategy(GeminiTaggingStrategy):
   """Defines handling of LLM interaction for YouTube links."""
 
-  def __init__(self, model_name: str) -> None:
-    """Initializes YouTubeVideoTaggingStrategy."""
-    super().__init__(model_name)
-    self._response_schema = None
-
   @functools.cached_property
   def model(self) -> google_genai.GenerativeModel:
     """Initializes GenerativeModel."""
@@ -224,36 +250,6 @@ class YouTubeVideoTaggingStrategy(GeminiTaggingStrategy):
         model_name=self.model_name
       )
     return self._model
-
-  def get_response_schema(self, output):
-    """Generates correct response schema based on type of output."""
-    if self._response_schema:
-      return self._response_schema
-    if output == tagging_result.Description:
-      response_schema = {
-        'type': 'object',
-        'properties': {'text': {'type': 'string'}},
-      }
-    else:
-      tag_descriptions = tagging_result.Tag.field_descriptions()
-      response_schema = {
-        'type': 'array',
-        'items': {
-          'type': 'object',
-          'properties': {
-            'name': {
-              'type': 'STRING',
-              'description': tag_descriptions.get('name'),
-            },
-            'score': {
-              'type': 'NUMBER',
-              'description': tag_descriptions.get('score'),
-            },
-          },
-        },
-      }
-    self._response_schema = response_schema
-    return self._response_schema
 
   @override
   @tenacity.retry(
