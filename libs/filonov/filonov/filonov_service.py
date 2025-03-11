@@ -56,7 +56,7 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
 
   source: input_service.InputSource
   media_type: Literal['IMAGE', 'YOUTUBE_VIDEO'] = 'IMAGE'
-  tagger: Literal['gemini', 'google-cloud', 'langchain'] = 'gemini'
+  tagger: Literal['gemini', 'google-cloud', 'langchain', 'loader', None] = None
   tagger_parameters: dict[str, str | int] = default_tagger_parameters
   similarity_parameters: dict[str, float | bool | None] = {
     'normalize': False,
@@ -116,12 +116,20 @@ class FilonovService:
         f'No performance data found for the context: {context}'
       )
     media_urls = {media.media_path for media in media_info.values()}
-    tagging_results = self.tagging_service.tag_media(
-      tagger_type=request.tagger,
-      media_type=request.media_type,
-      tagging_parameters=request.tagger_parameters,
-      media_paths=media_urls,
-    )
+    if not request.tagger:
+      tagging_results = self.tagging_service.get_media(
+        media_type=request.media_type,
+        media_paths=media_urls,
+        output='tag',
+        tagger_type='loader',
+      )
+    else:
+      tagging_results = self.tagging_service.tag_media(
+        tagger_type=request.tagger,
+        media_type=request.media_type,
+        tagging_parameters=request.tagger_parameters,
+        media_paths=media_urls,
+      )
     if not tagging_results:
       raise exceptions.FilonovError(
         f'Failed to perform media tagging for the context: {context}'
