@@ -78,6 +78,9 @@ google-cloud = "media_tagging.taggers.google_cloud.tagger"
 langchain = "media_tagging.taggers.llm.langchain_tagger"
 gemini = "media_tagging.taggers.llm.gemini.tagger"
 
+[project.entry-points.media_loader]
+file = "media_tagging.loaders.file"
+
 [tool.setuptools.package-data]
 "*"= ["*.txt"]
 
@@ -88,3 +91,4 @@ testpaths = [
 
 [project.scripts]
 media-tagger="media_tagging.entrypoints.cli:main"
+media-loader="media_tagging.loaders.entrypoints.cli:main"

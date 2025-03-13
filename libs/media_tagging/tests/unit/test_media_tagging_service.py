@@ -14,30 +14,39 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import, missing-module-docstring, missing-class-docstring, missing-function-docstring
 
-from media_tagging import media_tagging_service, repositories, tagging_result
+import pytest
+from media_tagging import (
+  media_tagging_service,
+  repositories,
+  tagging_result,
+)
 
 
-def test_tag_media_saves_tagging_results_to_repository(mocker):
-  expected_result = tagging_result.TaggingResult(
-    identifier='test',
-    tagger='google-cloud',
-    output='tag',
-    type='image',
-    content=tagging_result.Description(text='Test description.'),
-    tagging_details={},
-  )
-  mocker.patch(
-    'media_tagging.taggers.google_cloud.tagger.GoogleCloudTagger.tag',
-    return_value=expected_result,
-  )
-  tagging_service = media_tagging_service.MediaTaggingService(
-    repositories.SqlAlchemyTaggingResultsRepository()
-  )
-  test_tagging_result = tagging_service.tag_media(
-    tagger_type='google-cloud',
-    media_type='IMAGE',
-    media_paths=['test'],
-    parallel_threshold=0,
-  )
+class TestMediaTaggingService:
+  @pytest.fixture
+  def service(self):
+    return media_tagging_service.MediaTaggingService(
+      repositories.SqlAlchemyTaggingResultsRepository()
+    )
 
-  assert test_tagging_result == [expected_result]
+  def test_tag_media_saves_tagging_results_to_repository(self, service, mocker):
+    expected_result = tagging_result.TaggingResult(
+      identifier='test',
+      tagger='google-cloud',
+      output='tag',
+      type='image',
+      content=tagging_result.Description(text='Test description.'),
+      tagging_details={},
+    )
+    mocker.patch(
+      'media_tagging.taggers.google_cloud.tagger.GoogleCloudTagger.tag',
+      return_value=expected_result,
+    )
+    test_tagging_result = service.tag_media(
+      tagger_type='google-cloud',
+      media_type='IMAGE',
+      media_paths=['test'],
+      parallel_threshold=0,
+    )
+
+    assert test_tagging_result == [expected_result]

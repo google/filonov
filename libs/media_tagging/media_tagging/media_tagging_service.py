@@ -63,6 +63,15 @@ class MediaTaggingService:
     """Initializes MediaTaggingService."""
     self.repo = tagging_results_repository
 
+  def get_media(
+    self,
+    media_type: str,
+    media_paths: Sequence[os.PathLike[str] | str],
+    output: str,
+    tagger_type: str = 'loader',
+  ) -> list[tagging_result.TaggingResult]:
+    return self.repo.get(media_paths, media_type, tagger_type, output)
+
   def tag_media(
     self,
     tagger_type: str,
