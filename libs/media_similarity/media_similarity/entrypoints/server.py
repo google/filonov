@@ -129,6 +129,32 @@ async def search_media(
   )
 
 
+@router.post('/compare')
+async def compare_media(
+  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
+  media_identifiers: str,
+  media_type: str = 'UNKNOWN',
+) -> dict[str, int]:
+  """Performs media clustering."""
+  media_identifiers = [
+    media_tagging.media.convert_path_to_media_name(
+      media_identifiers.strip(),
+      media_type,
+    )
+    for media_identifiers in media_identifiers.split(',')
+  ]
+  media_comparison_results = dependencies.similarity_service.compare_media(
+    *media_identifiers
+  )
+  results = {
+    result.media_pair_identifier: result.similarity_score.model_dump()
+    for result in media_comparison_results
+  }
+  return fastapi.responses.JSONResponse(
+    content=fastapi.encoders.jsonable_encoder(results)
+  )
+
+
 app = fastapi.FastAPI()
 app.include_router(router)
 

@@ -18,7 +18,6 @@
 import argparse
 import functools
 import operator
-import pprint
 import sys
 
 import media_tagging
@@ -27,6 +26,7 @@ from garf_io import writer as garf_writer
 from media_tagging import media
 
 import media_similarity
+from media_similarity.entrypoints import utils
 
 AVAILABLE_TAGGERS = list(media_tagging.TAGGERS.keys())
 
@@ -34,10 +34,16 @@ AVAILABLE_TAGGERS = list(media_tagging.TAGGERS.keys())
 def main():  # noqa: D103
   parser = argparse.ArgumentParser()
   parser.add_argument(
-    'action', nargs='?', choices=['cluster', 'search'], help='Action to perform'
+    'action',
+    nargs='?',
+    choices=['cluster', 'search', 'compare'],
+    help='Action to perform',
   )
   parser.add_argument(
     'media_paths', nargs='*', help='Paths to local/remote files or URLs'
+  )
+  parser.add_argument(
+    '--input', dest='input', default=None, help='File with media_paths'
   )
   parser.add_argument(
     '--media-type',
@@ -50,6 +56,7 @@ def main():  # noqa: D103
     '--tagger',
     dest='tagger',
     choices=AVAILABLE_TAGGERS,
+    default=None,
     help='Type of tagger',
   )
   parser.add_argument(
@@ -64,7 +71,7 @@ def main():  # noqa: D103
     dest='parallel_threshold',
     default=10,
     type=int,
-    help='Number of parallel processes to perform media tagging',
+    help='Number of parallel processes to perform media similarity calculation',
   )
   parser.add_argument('--no-normalize', dest='normalize', action='store_false')
   parser.add_argument('-v', '--version', dest='version', action='store_true')
@@ -75,7 +82,9 @@ def main():  # noqa: D103
     print(f'media-similarity version: {media_similarity.__version__}')
     sys.exit()
   garf_utils.init_logging(logger_type='rich')
-  extra_parameters = garf_utils.ParamsParser([args.writer]).parse(kwargs)
+  extra_parameters = garf_utils.ParamsParser([args.writer, 'input']).parse(
+    kwargs
+  )
   tagging_service = media_tagging.MediaTaggingService(
     tagging_results_repository=(
       media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
@@ -88,16 +97,39 @@ def main():  # noqa: D103
       )
     ),
   )
+  media_paths = args.media_paths or utils.get_media_paths_from_file(
+    utils.InputConfig(path=args.input, **extra_parameters.get('input'))
+  )
+  writer_parameters = extra_parameters.get(args.writer) or {}
+  writer = garf_writer.create_writer(args.writer, **writer_parameters)
   if args.action == 'cluster':
-    tagging_results = tagging_service.tag_media(
-      tagger_type=args.tagger,
-      media_type=args.media_type,
-      media_paths=args.media_paths,
-    )
+    if not args.tagger:
+      tagging_results = tagging_service.get_media(
+        media_type=args.media_type,
+        media_paths=media_paths,
+        output='tag',
+      )
+    else:
+      tagging_results = tagging_service.tag_media(
+        tagger_type=args.tagger,
+        media_type=args.media_type,
+        media_paths=media_paths,
+      )
     clustering_results = similarity_service.cluster_media(
-      tagging_results, normalize=args.normalize
+      tagging_results,
+      normalize=args.normalize,
+      parallel_threshold=args.parallel_threshold,
     )
-    pprint.pprint(clustering_results.clusters)
+    report = clustering_results.to_garf_report()
+
+  elif args.action == 'compare':
+    media_comparison_results = similarity_service.compare_media(
+      *args.media_paths
+    )
+    report = functools.reduce(
+      operator.add,
+      [result.to_garf_report() for result in media_comparison_results],
+    )
   elif args.action == 'search':
     seed_media_identifiers = [
       media_tagging.media.convert_path_to_media_name(
@@ -113,10 +145,7 @@ def main():  # noqa: D103
       operator.add,
       [result.to_garf_report() for result in similarity_search_results],
     )
-    writer_parameters = extra_parameters.get(args.writer) or {}
-    garf_writer.create_writer(args.writer, **writer_parameters).write(
-      report, args.output
-    )
+  writer.write(report, args.output)
 
 
 if __name__ == '__main__':
