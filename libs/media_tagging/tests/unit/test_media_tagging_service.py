@@ -43,10 +43,12 @@ class TestMediaTaggingService:
       return_value=expected_result,
     )
     test_tagging_result = service.tag_media(
-      tagger_type='google-cloud',
-      media_type='IMAGE',
-      media_paths=['test'],
-      parallel_threshold=0,
+      media_tagging_service.MediaTaggingRequest(
+        tagger_type='google-cloud',
+        media_type='IMAGE',
+        media_paths=['test'],
+        parallel_threshold=0,
+      )
     )
 
     assert test_tagging_result == [expected_result]
