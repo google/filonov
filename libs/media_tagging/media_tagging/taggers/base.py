@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import abc
-import dataclasses
 from collections.abc import MutableSequence, Sequence
 from typing import Literal
 
@@ -27,8 +26,7 @@ import tenacity
 from media_tagging import media, tagging_result
 
 
-@dataclasses.dataclass
-class TaggingOptions:
+class TaggingOptions(pydantic.BaseModel):
   """Specifies options to refine media tagging.
 
   Attributes:
@@ -37,28 +35,21 @@ class TaggingOptions:
     custom_prompt: User provided prompt.
   """
 
+  model_config = pydantic.ConfigDict(extra='ignore')
+
   n_tags: int | None = None
   tags: Sequence[str] | None = None
   custom_prompt: str | None = None
 
-  def __post_init__(self):  # noqa: D105
+  def model_post_init__(self, __context):  # noqa: D105
     if self.tags and not isinstance(self.tags, MutableSequence):
       self.tags = [tag.strip() for tag in self.tags.split(',')]
     if self.n_tags:
       self.n_tags = int(self.n_tags)
 
-  @classmethod
-  def from_dict(cls, input_dict: dict[str, int | str | Sequence[str]]):
-    """Instantiates TaggingOptions based on an input dict."""
-    valid_kwargs = {}
-    for key, value in input_dict.items():
-      if key in cls.__dataclass_fields__:
-        valid_kwargs[key] = value
-    return cls(**valid_kwargs)
-
   def dict(self):
     """Converts TaggingOptions to dict."""
-    return dataclasses.asdict(self)
+    return self.model_dump()
 
   def __bool__(self) -> bool:  # noqa: D105
     return bool(self.n_tags or self.tags or self.custom_prompt)

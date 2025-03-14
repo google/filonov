@@ -263,9 +263,7 @@ class MediaTaggingService:
       ):
         tagging_results = getattr(concrete_tagger, action)(
           medium,
-          tagging_options=base_tagger.TaggingOptions.from_dict(
-            tagging_parameters
-          ),
+          tagging_options=base_tagger.TaggingOptions(**tagging_parameters),
         )
         if tagging_results is None:
           continue
