@@ -68,6 +68,13 @@ class ClusteringResults:
   adaptive_threshold: float
   graph: GraphInfo
 
+  def to_garf_report(self) -> report.GarfReport:
+    """Converts clusters to flattend report."""
+    results = []
+    for media_url, cluster_id in self.clusters.items():
+      results.append([cluster_id, media_url])
+    return report.GarfReport(results, column_names=['cluster_id', 'media_url'])
+
 
 class SimilaritySearchResults(pydantic.BaseModel):
   """Contains results of similarity search.
@@ -88,6 +95,45 @@ class SimilaritySearchResults(pydantic.BaseModel):
     return report.GarfReport(
       results,
       column_names=['seed_media_identifier', 'media_identifier', 'score'],
+    )
+
+
+class MediaSimilarityComparisonResult(pydantic.BaseModel):
+  """Contains results of media similarity comparison.
+
+  Attributes:
+    media_pair_identifier: Media identifier used to perform comparison.
+    similarity_score: Similarity score between media.
+  """
+
+  media_pair_identifier: str
+  similarity_score: media_pair.SimilarityScore
+
+  def to_garf_report(self) -> report.GarfReport:
+    """Converts to flattened report."""
+    return report.GarfReport(
+      [
+        [
+          self.media_pair_identifier,
+          self.similarity_score.score,
+          self.similarity_score.similarity_weight.n_tags,
+          self.similarity_score.similarity_weight.normalized_value,
+          self.similarity_score.similarity_weight.unnormalized_value,
+          self.similarity_score.dissimilarity_weight.n_tags,
+          self.similarity_score.dissimilarity_weight.normalized_value,
+          self.similarity_score.dissimilarity_weight.unnormalized_value,
+        ]
+      ],
+      column_names=[
+        'media_pair_identifier',
+        'score',
+        'similar_tags',
+        'similarity_weight_normalized',
+        'similarity_weight_unnormalized',
+        'dissimilar_tags',
+        'dissimilarity_weight_normalized',
+        'dissimilarity_weight_unnormalized',
+      ],
     )
 
 
@@ -127,7 +173,6 @@ class MediaSimilarityService:
     tagging_results: Sequence[tagging_result.TaggingResult],
     normalize: bool = True,
     custom_threshold: float | None = None,
-    parallel: bool = False,
     parallel_threshold: int = 10,
   ) -> ClusteringResults:
     """Assigns clusters number for each media.
@@ -136,7 +181,6 @@ class MediaSimilarityService:
       tagging_results: Results of tagging used for clustering.
       normalize: Whether to normalize adaptive threshold.
       custom_threshold: Don't calculated adaptive threshold but use custom one.
-      parallel: Whether to perform similarity_calculation in parallel batches.
       parallel_threshold: Max number of parallel executions.
 
     Returns:
@@ -168,11 +212,10 @@ class MediaSimilarityService:
       ]
 
     if not uncalculated_media_pairs:
-      [pairs1, pairs2] = itertools.tee(calculated_similarity_pairs, 2)
       logging.info('calculating threshold...')
       if not custom_threshold:
         threshold = adaptive_threshold.compute_adaptive_threshold(
-          similarity_scores=pairs1, normalize=normalize
+          similarity_scores=calculated_similarity_pairs, normalize=normalize
         )
       else:
         threshold = adaptive_threshold.AdaptiveThreshold(
@@ -180,8 +223,10 @@ class MediaSimilarityService:
         )
       logging.info('threshold is %.2f', threshold.threshold)
       logging.info('assigning clusters...')
-      return _calculate_cluster_assignments(pairs2, threshold)
-    if parallel:
+      return _calculate_cluster_assignments(
+        calculated_similarity_pairs, threshold
+      )
+    if parallel_threshold > 1:
       total_batches = len(uncalculated_media_pairs)
       total_batches = (
         total_batches // BATCH_SIZE
@@ -221,16 +266,17 @@ class MediaSimilarityService:
       similarity_pairs = similarity_pairs + calculated_similarity_pairs
     else:
       logging.info('calculating similarity...')
-      similarity_pairs = (
+      similarity_pairs = [
         pair.calculate_similarity(idf_tag_context)
         for pair in uncalculated_media_pairs
-      )
+      ]
+      if self.repo:
+        self.repo.add(similarity_pairs)
 
-    [pairs1, pairs2] = itertools.tee(similarity_pairs, 2)
     logging.info('calculating threshold...')
     if not custom_threshold:
       threshold = adaptive_threshold.compute_adaptive_threshold(
-        similarity_scores=pairs1, normalize=normalize
+        similarity_scores=similarity_pairs, normalize=normalize
       )
     else:
       threshold = adaptive_threshold.AdaptiveThreshold(
@@ -238,7 +284,7 @@ class MediaSimilarityService:
       )
     logging.info('threshold is %.2f', threshold.threshold)
     logging.info('assigning clusters...')
-    return _calculate_cluster_assignments(pairs2, threshold)
+    return _calculate_cluster_assignments(similarity_pairs, threshold)
 
   def find_similar_media(
     self,
@@ -279,6 +325,38 @@ class MediaSimilarityService:
       seed_media_identifier=seed_media_identifier, results=media_identifiers
     )
 
+  def compare_media(
+    self,
+    *media_identifiers: os.PathLike[str] | str,
+  ) -> list[MediaSimilarityComparisonResult]:
+    """Returns results of similarity detection between pair of media.
+
+    Args:
+     *media_identifiers: Media to compare.
+
+    Returns:
+      Sequence of results of comparison.
+    """
+    results = []
+    for media_identifier_1, media_identifier_2 in itertools.combinations(
+      set(media_identifiers), 2
+    ):
+      if media_identifier_1 != media_identifier_2:
+        key = (
+          f'{media_identifier_1}|{media_identifier_2}'
+          if media_identifier_1 < media_identifier_2
+          else f'{media_identifier_2}|{media_identifier_1}'
+        )
+        if not (similarity_pair := self.repo.get([key])):
+          continue
+        results.append(
+          MediaSimilarityComparisonResult(
+            media_pair_identifier=key,
+            similarity_score=similarity_pair[0].similarity_score,
+          )
+        )
+    return results
+
 
 def _calculate_cluster_assignments(
   similarity_pairs: Iterable[media_pair.SimilarityPair],
@@ -305,7 +383,7 @@ def _calculate_cluster_assignments(
     media_1, media_2 = pair.media
     media.add(media_1)
     media.add(media_2)
-    if pair.similarity_score > threshold.threshold:
+    if pair.similarity_score.score > threshold.threshold:
       similar_media.add(pair.to_tuple())
 
   nodes = [{'name': node} for node in media]

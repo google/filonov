@@ -73,13 +73,11 @@ def compute_adaptive_threshold(
     Calculated adaptive threshold.
   """
   similarity_scores = [
-    s.similarity_score
+    s.similarity_score.score
     for s in similarity_scores
-    if s.similarity_score < sys.float_info.max
+    if s.similarity_score.score < sys.float_info.max
   ]
-  threshold_value = np.sqrt(
-    np.std(similarity_scores) + np.median(similarity_scores)
-  )
+  threshold_value = (2 * np.std(similarity_scores)) + np.mean(similarity_scores)
   return AdaptiveThreshold(
     threshold=threshold_value,
     num_pairs=len(similarity_scores),
