@@ -157,8 +157,8 @@ class SqlAlchemyTaggingResultsRepository(
     self,
     media_paths: str | Sequence[str],
     media_type: str,
-    tagger_type: str,
-    output: str,
+    tagger_type: str | None = None,
+    output: str | None = None,
   ) -> list[tagging_result.TaggingResult]:
     """Specifies get operations."""
     converted_media_paths = [
@@ -166,16 +166,14 @@ class SqlAlchemyTaggingResultsRepository(
       for media_path in media_paths
     ]
     with self.session() as session:
-      return [
-        res.to_pydantic_model()
-        for res in session.query(TaggingResults)
-        .where(
-          TaggingResults.identifier.in_(converted_media_paths),
-          TaggingResults.output == output,
-          TaggingResults.tagger == tagger_type,
-        )
-        .all()
-      ]
+      query = session.query(TaggingResults).where(
+        TaggingResults.identifier.in_(converted_media_paths)
+      )
+      if output:
+        query = query.where(TaggingResults.output == output)
+      if tagger_type:
+        query = query.where(TaggingResults.tagger == tagger_type)
+      return [res.to_pydantic_model() for res in query.all()]
 
   def add(
     self,
