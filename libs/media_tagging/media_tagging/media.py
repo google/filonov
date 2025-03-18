@@ -20,8 +20,11 @@ links does not have content).
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import enum
+import os
 
 import smart_open
+
+from media_tagging import exceptions
 
 
 class MediaTypeEnum(enum.Enum):
@@ -42,15 +45,16 @@ class Medium:
 
   def __init__(
     self,
-    media_path: str,
+    media_path: str | os.PathLike[str],
     media_type: MediaTypeEnum = MediaTypeEnum.UNKNOWN,
     media_name: str = '',
+    content: bytes = bytes(),
   ) -> None:
     """Initializes Medium."""
     self._media_path = media_path
     self._media_type = media_type
     self._name = media_name
-    self._content: bytes = bytes()
+    self._content: bytes = content
 
   @property
   def media_path(self) -> str:
@@ -73,13 +77,16 @@ class Medium:
   @property
   def content(self) -> bytes:
     """Content of media as bytes."""
-    if self._content:
+    if self._content or (
+      self.type == MediaTypeEnum.YOUTUBE_VIDEO
+      and not str(self._media_path).endswith('.mp4')
+    ):
       return self._content
     try:
       with smart_open.open(self._media_path, 'rb') as f:
         content = f.read()
     except FileNotFoundError as e:
-      if self.type in (MediaTypeEnum.YOUTUBE_VIDEO, MediaTypeEnum.UNKNOWN):
+      if self.type == MediaTypeEnum.UNKNOWN:
         content = bytes()
       else:
         raise InvalidMediaPathError(
@@ -94,11 +101,11 @@ class Medium:
     return self._media_type
 
 
-class InvalidMediaPathError(Exception):
+class InvalidMediaPathError(exceptions.MediaTaggingError):
   """Raised when media is inaccessible."""
 
 
-class InvalidMediaTypeError(Exception):
+class InvalidMediaTypeError(exceptions.MediaTaggingError):
   """Raised when media type is invalid."""
 
   def __init__(self, media_type: str) -> None:
@@ -115,7 +122,9 @@ def convert_path_to_media_name(
   """Extracts file name without extension."""
   if isinstance(media_type, str):
     media_type = MediaTypeEnum[media_type.upper()]
-  if media_type == MediaTypeEnum.YOUTUBE_VIDEO:
+  if media_type == MediaTypeEnum.YOUTUBE_VIDEO and not media_path.endswith(
+    '.mp4'
+  ):
     return _convert_youtube_link_to_id(media_path)
   base_name = media_path.split('/')[-1]
   return base_name.split('.')[0]

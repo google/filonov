@@ -239,17 +239,22 @@ class VideoTaggingStrategy(GeminiTaggingStrategy):
         video_file.delete()
 
 
-class YouTubeVideoTaggingStrategy(GeminiTaggingStrategy):
+class YouTubeVideoTaggingStrategy(VideoTaggingStrategy):
   """Defines handling of LLM interaction for YouTube links."""
 
+  def __init__(self, model_name: str) -> None:
+    """Initializes YouTubeVideoTaggingStrategy."""
+    super().__init__(model_name)
+    self._genai_model = None
+
   @functools.cached_property
-  def model(self) -> google_genai.GenerativeModel:
+  def genai_model(self) -> google_genai.GenerativeModel:
     """Initializes GenerativeModel."""
-    if not self._model:
-      self._model = google_generative_models.GenerativeModel(
+    if not self._genai_model:
+      self._genai_model = google_generative_models.GenerativeModel(
         model_name=self.model_name
       )
-    return self._model
+    return self._genai_model
 
   @override
   @tenacity.retry(
@@ -265,33 +270,35 @@ class YouTubeVideoTaggingStrategy(GeminiTaggingStrategy):
     tagging_options: base.TaggingOptions = base.TaggingOptions(),
   ):
     logging.debug('Tagging video "%s"', medium.name)
-    video_file = google_generative_models.Part.from_uri(
-      uri=medium.media_path, mime_type='video/*'
-    )
-    try:
-      prompt = self.build_prompt(medium.type, output, tagging_options)
-      return self.model.generate_content(
-        [
-          video_file,
-          '\n\n',
-          prompt,
-        ],
-        generation_config=google_generative_models.GenerationConfig(
-          response_mime_type='application/json',
-          response_schema=self.get_response_schema(output),
-        ),
+    if not medium.content:
+      video_file = google_generative_models.Part.from_uri(
+        uri=medium.media_path, mime_type='video/*'
       )
-    except google_api_exceptions.PermissionDenied as e:
-      logging.error('Cannot access video %s', medium.media_path)
-      raise exceptions.FailedTaggingError(
-        f'Unable to process media: {medium.name}'
-        'Reason: Cannot access YouTube video',
-      ) from e
-    except Exception as e:
-      logging.error('Failed to get response from Gemini: %s', e)
-      raise exceptions.FailedTaggingError(
-        f'Unable to process media: {medium.name}, Reason: {str(e)}',
-      ) from e
+      try:
+        prompt = self.build_prompt(medium.type, output, tagging_options)
+        return self.genai_model.generate_content(
+          [
+            video_file,
+            '\n\n',
+            prompt,
+          ],
+          generation_config=google_generative_models.GenerationConfig(
+            response_mime_type='application/json',
+            response_schema=self.get_response_schema(output),
+          ),
+        )
+      except google_api_exceptions.PermissionDenied as e:
+        logging.error('Cannot access video %s', medium.media_path)
+        raise exceptions.FailedTaggingError(
+          f'Unable to process media: {medium.name}'
+          'Reason: Cannot access YouTube video',
+        ) from e
+      except Exception as e:
+        logging.error('Failed to get response from Gemini: %s', e)
+        raise exceptions.FailedTaggingError(
+          f'Unable to process media: {medium.name}, Reason: {str(e)}',
+        ) from e
+    return super().get_llm_response(medium, output, tagging_options)
 
 
 class UnprocessedFileApiError(Exception):
