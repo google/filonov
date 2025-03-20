@@ -168,6 +168,51 @@
               </q-tab-panel>
 
               <q-tab-panel name="metrics">
+                <div class="row items-center q-mb-md">
+                  <q-btn-toggle
+                    v-model="visualizationMode"
+                    flat
+                    dense
+                    toggle-color="primary"
+                    class="toggle-with-underline"
+                    :options="[
+                      {
+                        label: 'Distribution',
+                        value: 'histogram',
+                        slot: 'histogram-tooltip',
+                      },
+                      {
+                        label: 'Pareto',
+                        value: 'pareto',
+                        slot: 'pareto-tooltip',
+                      },
+                      {
+                        label: 'Top Performers',
+                        value: 'top-performers',
+                        slot: 'top-tooltip',
+                      },
+                    ]"
+                  >
+                    <template v-slot:histogram-tooltip>
+                      <q-tooltip
+                        >Shows how many creatives fall into each value
+                        range</q-tooltip
+                      >
+                    </template>
+                    <template v-slot:pareto-tooltip>
+                      <q-tooltip
+                        >Shows accumulated contribution by percentile
+                        groups</q-tooltip
+                      >
+                    </template>
+                    <template v-slot:top-tooltip>
+                      <q-tooltip
+                        >Find minimal set of creatives that contribute the
+                        most</q-tooltip
+                      >
+                    </template>
+                  </q-btn-toggle>
+                </div>
                 <q-list separator v-if="selectedCluster">
                   <q-item
                     v-for="(value, metric) in selectedCluster?.metrics"
@@ -194,10 +239,27 @@
                       <q-item-label caption>{{
                         formatMetricValue(value, metric.toString())
                       }}</q-item-label>
+                      <!-- Distribution Histogram -->
                       <MetricHistogram
+                        v-if="visualizationMode === 'histogram'"
                         :data="getHistogramData(metric.toString())"
                         :metric="metric.toString()"
                         @metric-clicked="onClusterHistogramMetricClicked"
+                      />
+                      <!-- Pareto Chart -->
+                      <MetricHistogram
+                        v-else-if="visualizationMode === 'pareto'"
+                        :data="getParetoHistogramData(metric.toString())"
+                        :is-pareto-mode="true"
+                        :metric="metric.toString()"
+                        @metric-clicked="onParetoHistogramMetricClicked"
+                      />
+                      <!-- Top performers analysis view -->
+                      <TopPerformerAnalysis
+                        v-else
+                        :data="selectedCluster"
+                        :metric="metric.toString()"
+                        @select-nodes="onSelectTopPerformers"
                       />
                     </q-item-section>
                   </q-item>
@@ -353,6 +415,7 @@ import * as d3 from 'd3';
 import D3Graph from 'components/D3Graph.vue';
 import JsonFileSelector from 'components/JsonFileSelector.vue';
 import MetricHistogram from './MetricHistogram.vue';
+import TopPerformerAnalysis from './TopPerformerAnalysis.vue';
 import TimeSeriesChart from './TimeSeriesChart.vue';
 import TagsDashboard from './TagsDashboard.vue';
 import NodeCard from './NodeCard.vue';
@@ -367,6 +430,7 @@ import {
   AbstractNode,
   HistogramData,
   MetricValue,
+  ParetoHistogramData,
 } from 'components/models';
 import {
   aggregateNodesMetrics,
@@ -385,6 +449,7 @@ const clusters = ref<ClusterInfo[]>([]);
 const selectedCluster = ref(null as ClusterInfo | null);
 const selectedNode = ref(null as Node | null);
 const activeTab = ref('info');
+const visualizationMode = ref('histogram');
 const showClusterComparison = ref(false);
 const showNodeComparison = ref(false);
 const showTimeSeriesDialog = ref(false);
@@ -711,6 +776,13 @@ function getHistogramData(metric: string) {
   return [];
 }
 
+function getParetoHistogramData(metric: string) {
+  if (selectedCluster.value) {
+    return createParetoHistogramData(selectedCluster.value.nodes, metric);
+  }
+  return [];
+}
+
 const getClusterSizesHistogramData = computed(() => {
   const clusterSizeNodes = clusters.value.map((cluster) => ({
     info: { clusterSize: cluster.nodes.length },
@@ -782,6 +854,78 @@ function createHistogramData(
 }
 
 /**
+ * Creates data for a Pareto-style histogram showing accumulated metric contribution.
+ * Shows what percentage of nodes contributes to what percentage of the total metric value.
+ * @param nodes - Array of nodes to analyze
+ * @param metric - Metric name to use
+ * @param numBuckets - Number of buckets to create (default: 5)
+ * @returns Array of ParetoHistogramData objects
+ */
+function createParetoHistogramData(
+  nodes: AbstractNode[],
+  metric: string,
+  numBuckets: number = 10,
+): ParetoHistogramData[] {
+  if (!nodes || nodes.length === 0) return [];
+
+  // Filter nodes that have the specified metric and the metric is numeric
+  const nodesWithMetric = nodes.filter(
+    (node) =>
+      node.info?.[metric] !== undefined &&
+      node.info?.[metric] !== null &&
+      typeof node.info?.[metric] === 'number',
+  );
+
+  if (nodesWithMetric.length === 0) return [];
+
+  // Sort nodes by metric value in descending order (highest first)
+  const sortedNodes = [...nodesWithMetric].sort(
+    (a, b) => (b.info?.[metric] as number) - (a.info?.[metric] as number),
+  );
+
+  // Calculate total metric value across all nodes
+  const totalMetricValue = sortedNodes.reduce(
+    (sum, node) => sum + (node.info?.[metric] as number),
+    0,
+  );
+
+  // Create buckets based on percentage of nodes
+  const result: ParetoHistogramData[] = [];
+  const nodesPerBucket = Math.ceil(sortedNodes.length / numBuckets);
+
+  let accumulatedValue = 0;
+  let accumulatedNodes: AbstractNode[] = [];
+
+  for (let i = 0; i < numBuckets; i++) {
+    const startIdx = i * nodesPerBucket;
+    const endIdx = Math.min((i + 1) * nodesPerBucket, sortedNodes.length);
+
+    if (startIdx >= sortedNodes.length) break;
+
+    const bucketNodes = sortedNodes.slice(startIdx, endIdx);
+    const bucketValue = bucketNodes.reduce(
+      (sum, node) => sum + (node.info?.[metric] as number),
+      0,
+    );
+
+    accumulatedValue += bucketValue;
+    accumulatedNodes = accumulatedNodes.slice(0);
+    accumulatedNodes.push(...bucketNodes);
+
+    result.push({
+      nodePercentage: (accumulatedNodes.length / sortedNodes.length) * 100,
+      valuePercentage: (accumulatedValue / totalMetricValue) * 100,
+      bucketValue,
+      accumulatedValue,
+      nodes: accumulatedNodes,
+      label: `Top ${Math.round((accumulatedNodes.length / sortedNodes.length) * 100)}%`,
+    });
+  }
+
+  return result;
+}
+
+/**
  * Handle of click on a metric's histogram.
  * Clicking on a bar selects nodes having the metric's value range.
  */
@@ -804,6 +948,29 @@ function onClusterHistogramMetricClicked(args: {
     } else {
       d3GraphRef.value.selectNodes(args.nodes as Node[], msg);
     }
+  }
+}
+
+/**
+ * Handling Pareto histogram click
+ */
+function onParetoHistogramMetricClicked(args: {
+  metric: string;
+  nodes: AbstractNode[];
+  scalar: boolean;
+  range: string[] | number[];
+}) {
+  if (d3GraphRef.value) {
+    const msg = `Top performers for '${args.metric}': ${args.range[0]} (${args.nodes.length}) of creatives contribute ${args.range[1]} of total value`;
+    d3GraphRef.value.selectNodes(args.nodes as Node[], msg);
+  }
+}
+function onSelectTopPerformers(args: {
+  nodes: AbstractNode[];
+  message: string;
+}) {
+  if (d3GraphRef.value) {
+    d3GraphRef.value.selectNodes(args.nodes as Node[], args.message);
   }
 }
 
@@ -859,5 +1026,10 @@ function doShowTimeSeriesDialog(metric: string) {
 
 .text-h6 {
   margin-bottom: 16px;
+}
+
+.toggle-with-underline .q-btn[aria-pressed='true'] {
+  border-bottom: 2px solid var(--q-primary);
+  font-weight: bold;
 }
 </style>

@@ -142,3 +142,12 @@ export interface HistogramData {
   count: number;
   nodes: AbstractNode[];
 }
+
+export interface ParetoHistogramData {
+  nodePercentage: number; // % of total nodes included up to this bucket
+  valuePercentage: number; // % of total value contributed by nodes up to this bucket
+  bucketValue: number; // Sum of values in this bucket
+  accumulatedValue: number; // Accumulated sum of values up to and including this bucket
+  nodes: AbstractNode[]; // Array of nodes in this bucket
+  label: string; // Label for the bucket (e.g., "Top 20%")
+}
