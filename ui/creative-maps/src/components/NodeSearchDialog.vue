@@ -1,4 +1,3 @@
-// NodeSearchDialog.vue
 <template>
   <q-dialog v-model="isOpen" position="top">
     <q-card style="width: 600px; max-width: 80vw">
@@ -75,7 +74,8 @@ const filteredNodes = computed(() => {
   return props.nodes.filter(
     (node) =>
       node.label?.toLowerCase().includes(query) ||
-      node.id.toString().includes(query),
+      node.id.toString().toLowerCase().includes(query) ||
+      node.name?.toLocaleLowerCase().includes(query),
   );
 });
 
