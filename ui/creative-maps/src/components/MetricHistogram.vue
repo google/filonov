@@ -7,16 +7,20 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import * as d3 from 'd3';
-import { AbstractNode, HistogramData } from './models';
+import { AbstractNode, HistogramData, ParetoHistogramData } from './models';
 
 interface Props {
-  data: HistogramData[];
+  data: HistogramData[] | ParetoHistogramData[];
   metric: string;
   height?: number;
   showTitle?: boolean;
+  isParetoMode?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), { height: 100 });
+const props = withDefaults(defineProps<Props>(), {
+  height: 100,
+  isParetoMode: false,
+});
 
 const rootEl = ref<HTMLElement | null>(null);
 const svgRef = ref<SVGSVGElement | null>(null);
@@ -35,7 +39,11 @@ const emit = defineEmits<{
 
 onMounted(() => {
   try {
-    drawHistogram();
+    if (props.isParetoMode) {
+      drawParetoHistogram();
+    } else {
+      drawRegularHistogram();
+    }
   } catch (e) {
     console.error(e);
   }
@@ -44,16 +52,21 @@ onMounted(() => {
 watch(
   () => props.data,
   () => {
-    drawHistogram();
+    if (props.isParetoMode) {
+      drawParetoHistogram();
+    } else {
+      drawRegularHistogram();
+    }
   },
 );
 
-function drawHistogram() {
+function drawRegularHistogram() {
   if (!svgRef.value) {
     console.log('empty this.$refs.svgRef');
     return;
   }
 
+  const data = props.data as HistogramData[];
   const svg = d3.select(svgRef.value);
   svg.selectAll('*').remove();
 
@@ -64,26 +77,26 @@ function drawHistogram() {
   const height = props.height;
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
-  const isStringData = typeof props.data[0].x0 === 'string';
+  const isStringData = typeof data[0].x0 === 'string';
 
   // Create appropriate scales based on data type
   const x = isStringData
     ? d3
         .scaleBand()
-        .domain(props.data.map((d) => d.x0 as string))
+        .domain(data.map((d) => d.x0 as string))
         .range([0, innerWidth])
         .padding(0.1)
     : d3
         .scaleLinear()
         .domain([
-          d3.min(props.data, (d: HistogramData) => d.x0 as number) ?? 0,
-          d3.max(props.data, (d: HistogramData) => d.x1) ?? 0,
+          d3.min(data, (d: HistogramData) => d.x0 as number) ?? 0,
+          d3.max(data, (d: HistogramData) => d.x1) ?? 0,
         ])
         .range([0, innerWidth]);
 
   const y = d3
     .scaleSymlog()
-    .domain([0, d3.max(props.data, (d: HistogramData) => d.count) ?? 0])
+    .domain([0, d3.max(data, (d: HistogramData) => d.count) ?? 0])
     .range([innerHeight, 0]);
 
   const g = svg
@@ -92,7 +105,7 @@ function drawHistogram() {
 
   // Add bars
   g.selectAll('rect')
-    .data<HistogramData>(props.data)
+    .data<HistogramData>(data)
     .join('rect')
     .attr('x', (d) =>
       isStringData
@@ -170,6 +183,137 @@ function drawHistogram() {
       .attr('text-anchor', 'middle')
       .style('font-size', '12px')
       .text(props.metric);
+  }
+}
+
+function drawParetoHistogram() {
+  if (!svgRef.value) {
+    console.log('empty this.$refs.svgRef');
+    return;
+  }
+
+  const svg = d3.select(svgRef.value);
+  svg.selectAll('*').remove();
+
+  if (!props.data || props.data.length === 0) return;
+
+  const paretoData = props.data as ParetoHistogramData[];
+
+  const margin = { top: 10, right: 40, bottom: 20, left: 40 };
+  const width = svgRef.value.clientWidth;
+  const height = props.height;
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+
+  const g = svg
+    .append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // Create scales
+  const x = d3.scaleLinear().domain([0, 100]).range([0, innerWidth]);
+
+  const y = d3.scaleLinear().domain([0, 100]).range([innerHeight, 0]);
+
+  const blueColors = [
+    '#deebf7',
+    '#9ecae1',
+    '#6baed6',
+    '#4292c6',
+    '#2171b5',
+    '#084594',
+  ];
+
+  // Add bars
+  g.selectAll('rect')
+    .data(paretoData)
+    .join('rect')
+    .attr('x', (d, i) => (i === 0 ? 0 : x(paretoData[i - 1].nodePercentage)))
+    .attr('width', (d, i) =>
+      i === 0
+        ? x(d.nodePercentage)
+        : x(d.nodePercentage) - x(paretoData[i - 1].nodePercentage),
+    )
+    .attr('y', (d) => y(d.valuePercentage))
+    .attr('height', (d) => innerHeight - y(d.valuePercentage))
+    .attr('fill', (d, i) => blueColors[Math.min(i, blueColors.length - 1)])
+    .attr('opacity', 0.9)
+    .attr('cursor', 'pointer')
+    .on('click', (event, d) => {
+      emit('metric-clicked', {
+        metric: props.metric,
+        nodes: d.nodes,
+        scalar: false,
+        range: [d.label, `${d.valuePercentage.toFixed(1)}%`],
+      });
+    })
+    .on('mouseover', (event, d) => {
+      const tooltip = d3
+        .select(rootEl.value)
+        .select('.tooltip')
+        .style('opacity', 1)
+        .style('left', `${event.offsetX + 10}px`)
+        .style('top', `${event.offsetY - 10}px`);
+      const tooltipText = `${d.label} of creatives (${d.nodes.length}) contribute ${d.valuePercentage.toFixed(1)}% of total ${props.metric}`;
+      tooltip.html(tooltipText);
+    })
+    .on('mouseout', () => {
+      d3.select(rootEl.value).select('.tooltip').style('opacity', 0);
+    });
+
+  // Add tooltip div if not exists
+  if (!d3.select(rootEl.value).select('.tooltip').size()) {
+    d3.select(rootEl.value)
+      .append('div')
+      .attr('class', 'tooltip')
+      .style('opacity', 0);
+  }
+
+  // Add diagonal line (perfect equality line)
+  g.append('line')
+    .attr('x1', 0)
+    .attr('y1', innerHeight)
+    .attr('x2', innerWidth)
+    .attr('y2', 0)
+    .attr('stroke', 'gray')
+    .attr('stroke-dasharray', '3,3')
+    .attr('stroke-width', 1);
+
+  // Add axes
+  g.append('g')
+    .attr('transform', `translate(0,${innerHeight})`)
+    .call(
+      d3
+        .axisBottom(x)
+        .ticks(5)
+        .tickFormat((d) => `${d}%`),
+    );
+
+  g.append('g').call(
+    d3
+      .axisLeft(y)
+      .ticks(5)
+      .tickFormat((d) => `${d}%`),
+  );
+
+  // Add right Y-axis label for clarity
+  g.append('g')
+    .attr('transform', `translate(${innerWidth}, 0)`)
+    .call(
+      d3
+        .axisRight(y)
+        .ticks(5)
+        .tickFormat((d) => `${d}%`),
+    );
+
+  // Add metric name as title
+  if (props.showTitle) {
+    g.append('text')
+      .attr('class', 'metric-name')
+      .attr('x', innerWidth / 2)
+      .attr('y', -margin.top / 2)
+      .attr('text-anchor', 'middle')
+      .style('font-size', '12px')
+      .text(`${props.metric} (Contribution)`);
   }
 }
 </script>
