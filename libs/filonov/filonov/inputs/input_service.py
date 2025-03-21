@@ -57,7 +57,9 @@ class MediaInputService:
       )
       fetcher = google_ads.ExtraInfoFetcher()
     elif self.source == 'file':
-      fetching_request = file.FileInputParameters(**input_parameters)
+      fetching_request = file.FileInputParameters(
+        media_type=media_type, **input_parameters
+      )
       fetcher = file.ExtraInfoFetcher()
     return (fetcher, fetching_request)
 

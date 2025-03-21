@@ -40,7 +40,7 @@ class BaseSimilarityPairsRepository(abc.ABC):
   """Interface for defining repositories."""
 
   def get(
-    self, pairs: str | Sequence[str], tagger: str
+    self, pairs: str | Sequence[str], tagger: str | None = None
   ) -> list[media_pair.SimilarityPair]:
     """Specifies get operations."""
     if isinstance(pairs, MutableSequence):
@@ -66,7 +66,7 @@ class BaseSimilarityPairsRepository(abc.ABC):
 
   @abc.abstractmethod
   def _get(
-    self, pairs: str | Sequence[str], tagger: str
+    self, pairs: str | Sequence[str], tagger: str | None = None
   ) -> list[media_pair.SimilarityPair]:
     """Specifies get operations."""
 
@@ -91,7 +91,7 @@ class InMemorySimilarityPairsRepository(BaseSimilarityPairsRepository):
 
   @override
   def _get(
-    self, pairs: str | Sequence[str], tagger: str
+    self, pairs: str | Sequence[str], tagger: str | None = None
   ) -> list[media_pair.SimilarityPair]:
     return [result for result in self.results if result.key in pairs]
 
@@ -117,13 +117,29 @@ class SimilarityPairs(Base):
   tagger = sqlalchemy.Column(sqlalchemy.String(20), primary_key=True)
   identifier = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
   score = sqlalchemy.Column(sqlalchemy.Float)
+  similarity_weight = sqlalchemy.Column(sqlalchemy.JSON)
+  dissimilarity_weight = sqlalchemy.Column(sqlalchemy.JSON)
 
   def to_model(self) -> media_pair.SimilarityPair:
     """Converts model to SimilarityPair."""
     return media_pair.SimilarityPair(
       tagger=self.tagger,
       media=tuple(self.identifier.split('|')),
-      similarity_score=self.score,
+      similarity_score=media_pair.SimilarityScore(
+        score=self.score,
+        similarity_weight=media_pair.Weight(
+          n_tags=self.similarity_weight.get('n_tags'),
+          normalized_value=self.similarity_weight.get('normalized_value'),
+          unnormalized_value=self.similarity_weight.get('unnormalized_value'),
+        ),
+        dissimilarity_weight=media_pair.Weight(
+          n_tags=self.dissimilarity_weight.get('n_tags'),
+          normalized_value=self.dissimilarity_weight.get('normalized_value'),
+          unnormalized_value=self.dissimilarity_weight.get(
+            'unnormalized_value'
+          ),
+        ),
+      ),
     )
 
 
@@ -139,28 +155,31 @@ class SqlAlchemySimilarityPairsRepository(
 
   @override
   def _get(
-    self, pairs: str | Sequence[str], tagger: str
+    self,
+    pairs: str | Sequence[str],
+    tagger: str | None = None,
   ) -> list[media_pair.SimilarityPair]:
     with self.session() as session:
-      return [
-        res.to_model()
-        for res in session.query(SimilarityPairs)
-        .where(
-          SimilarityPairs.identifier.in_(pairs),
-          SimilarityPairs.tagger == tagger,
-        )
-        .all()
-      ]
+      query = session.query(SimilarityPairs).where(
+        SimilarityPairs.identifier.in_(pairs),
+      )
+      if tagger:
+        query = query.where(SimilarityPairs.tagger == tagger)
+
+      return [res.to_model() for res in query.all()]
 
   def get_similar_media(
-    self, identifier: str, n_results: int = 10
+    self, identifier: str, n_results: int = 10, tagger: str | None = None
   ) -> list[media_pair.SimilarityPair]:
     with self.session() as session:
+      query = session.query(SimilarityPairs).where(
+        SimilarityPairs.identifier.like(f'%{identifier}%'),
+      )
+      if tagger:
+        query = query.where(SimilarityPairs.tagger == tagger)
       return [
         res.to_model()
-        for res in session.query(SimilarityPairs)
-        .where(SimilarityPairs.identifier.like(f'%{identifier}%'))
-        .order_by(SimilarityPairs.score.desc())
+        for res in query.order_by(SimilarityPairs.score.desc())
         .limit(n_results)
         .all()
       ]
