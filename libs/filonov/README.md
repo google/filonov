@@ -103,24 +103,48 @@ filonov --source googleads --media-type IMAGE \
 ### Local files
 
 ```
-filonov --source file --media-type YOUTUBE_VIDEO \
+filonov --source file --media-type <MEDIA_TYPE> \
   --db-uri=<CONNECTION_STRING> \
-  --file.tagging_results_path=<PATH_TO_CSV_WITH_TAGGING_RESULTS> \
-  --file.performance_results_path=<PATH_TO_CSV_WITH_PERFORMANCE_RESULTS> \
+  --tagger=<TAGGER_TYPE> \
+  --file.path=<PATH_TO_CSV_WITH_PERFORMANCE_RESULTS> \
+  --file.media_identifier=<COLUMN_WITH_MEDIA_URL> \
+  --file.media_name=<COLUMN_WITH_MEDIA_NAME> \
+  --file.metric_names=<COMMA_SEPARATED_METRICS_IN_FILE> \
   --size-base=cost \
   --parallel-threshold <N_THREADS> \
   --output-name <FILE_NAME>
 ```
+where:
 
-   File with performance results should contains the following columns:
+- `<MEDIA_TYPE>` - one of `IMAGE`, `VIDEO` or `YOUTUBE_VIDEO`
+- `<TAGGER_TYPE>` - one of possible media taggers listed [here](../media_tagging/README.md')
+> `tagger` can be omitted - in that case `filonov` will search any loaded tagging data in provided database.
+- `<CONNECTION_STRING>` - Connection string to the database with tagging results
+  (i.e. `sqlite:///tagging.db`). Make sure that DB exists.
+  > To create an empty Sqlite DB call `touch database.db`.
+- `<PATH_TO_CSV_WITH_PERFORMANCE_RESULTS>` - path to csv file containing performance results.
+- `<COLUMN_WITH_MEDIA_URL>` - column name in the file where media urls are found (defaults to `media_url`).
+- `<COLUMN_WITH_MEDIA_NAME>` - column name in the file where name of media is found (defaults to `media_name`).
+- `<COMMA_SEPARATED_METRICS_IN_FILE>` - comma separated names of metrics to be injected into the output.
+- `<FILE_NAME>` - Path to store results of running `filonov`. By default results are stored in the same folder where `filonov` is run, but you can provide any custom path (including remote one).
 
-   - media_url
-   - media_name
+**Examples**
 
-   File with tagging results should contains the following columns:
-   - media_url
-   - tag
-   - score
+1. Get performance data from `performance.csv` file and search for tags in provided DB.
+
+```
+filonov --source file --media-type IMAGE \
+  --file.path=performance.csv \
+  --db-uri sqlite:///tagging.db
+```
+
+2. Get performance data from `performance.csv` file and perform tagging with `gemini` tagger.
+
+```
+filonov --source file --media-type IMAGE \
+  --file.path=performance.csv \
+  --tagger gemini
+```
 
 ### YouTube Channel
 
