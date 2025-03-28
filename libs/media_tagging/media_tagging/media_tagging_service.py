@@ -26,10 +26,50 @@ from importlib.metadata import entry_points
 from typing import Literal
 
 import pydantic
-from rich import progress
 
 from media_tagging import exceptions, media, repositories, tagging_result
 from media_tagging.taggers import base as base_tagger
+
+
+class MediaTaggingRequest(pydantic.BaseModel):
+  model_config = pydantic.ConfigDict(extra='ignore')
+
+  tagger_type: Literal['google-cloud', 'gemini', 'langchain']
+  media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO']
+  media_paths: Sequence[os.PathLike[str] | str]
+  tagging_options: base_tagger.TaggingOptions = base_tagger.TaggingOptions()
+  parallel_threshold: int = 10
+
+  def model_post_init(self, __context):
+    if isinstance(self.media_paths, str):
+      self.media_paths = [path.strip() for path in self.media_paths.split(',')]
+
+  @property
+  def media_type_enum(self):
+    try:
+      return media.MediaTypeEnum[self.media_type.upper()]
+    except KeyError as e:
+      raise media.InvalidMediaTypeError(self.tagging_request.media_type) from e
+
+  @property
+  def tagger(self):
+    if tagger_class := TAGGERS.get(self.tagger_type):
+      return tagger_class(
+        **self.tagging_options.dict(),
+      )
+    raise base_tagger.TaggerError(
+      f'Unsupported type of tagger {self.tagger_type}. '
+      f'Supported taggers: {list(TAGGERS.keys())}'
+    )
+
+
+class MediaFetchingRequest(pydantic.BaseModel):
+  model_config = pydantic.ConfigDict(extra='ignore')
+
+  media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO']
+  media_paths: Sequence[os.PathLike[str] | str]
+  output: Literal['tag', 'description']
+  tagger_type: str = 'loader'
 
 
 def _load_taggers():
@@ -74,80 +114,42 @@ class MediaTaggingService:
 
   def tag_media(
     self,
-    tagger_type: str,
-    media_type: str,
-    media_paths: Sequence[os.PathLike[str] | str],
-    tagging_parameters: dict[str, str] | None = None,
-    parallel_threshold: int = 10,
+    tagging_request: MediaTaggingRequest,
   ) -> list[tagging_result.TaggingResult]:
     """Tags media based on requested tagger.
 
     Args:
-      tagger_type: Type of tagger use.
-      media_type: Type of media.
-      media_paths: Path to media.
-      tagging_parameters: Additional parameters to use during tagging.
-      parallel_threshold: Number of parallel threads to run.
+      tagging_request: Parameters for tagging.
 
     Returns:
       Results of tagging.
     """
-    return self._process_media(
-      'tag',
-      tagger_type,
-      media_type,
-      media_paths,
-      tagging_parameters,
-      parallel_threshold,
-    )
+    return self._process_media('tag', tagging_request)
 
   def describe_media(
     self,
-    tagger_type: str,
-    media_type: str,
-    media_paths: Sequence[os.PathLike[str] | str],
-    tagging_parameters: dict[str, str] | None = None,
-    parallel_threshold: int = 10,
+    tagging_request: MediaTaggingRequest,
   ) -> list[tagging_result.TaggingResult]:
-    """Describes media based on requested tagger.
+    """Tags media based on requested tagger.
 
     Args:
-      tagger_type: Type of tagger use.
-      media_type: Type of media.
-      media_paths: Path to media.
-      tagging_parameters: Additional parameters to use during tagging.
-      parallel_threshold: Number of parallel threads to run.
+      tagging_request: Parameters for tagging.
 
     Returns:
       Results of tagging.
     """
-    return self._process_media(
-      'describe',
-      tagger_type,
-      media_type,
-      media_paths,
-      tagging_parameters,
-      parallel_threshold,
-    )
+    return self._process_media('describe', tagging_request)
 
   def _process_media(
     self,
     action: Literal['tag', 'describe'],
-    tagger_type: str,
-    media_type: str,
-    media_paths: Sequence[os.PathLike[str] | str],
-    tagging_parameters: dict[str, str] | None = None,
-    parallel_threshold: int = 10,
+    tagging_request: MediaTaggingRequest,
   ) -> list[tagging_result.TaggingResult]:
     """Gets media information based on tagger and output type.
 
     Args:
       action: Defines output of tagging: tags or description.
-      tagger_type: Type of tagger use.
-      media_type: Type of media.
-      media_paths: Path to media.
-      tagging_parameters: Additional parameters to use during tagging.
-      parallel_threshold: Number of parallel threads to run.
+      tagging_request: Parameters for tagging.
 
     Returns:
       Results of tagging.
@@ -156,50 +158,45 @@ class MediaTaggingService:
       InvalidMediaTypeError: When incorrect media type is provided.
       TaggerError: When incorrect tagger_type is used.
     """
-    try:
-      media_type_enum = media.MediaTypeEnum[media_type.upper()]
-    except KeyError as e:
-      raise media.InvalidMediaTypeError(media_type) from e
-    if not (tagger_class := TAGGERS.get(tagger_type)):
-      raise base_tagger.TaggerError(
-        f'Unsupported type of tagger {tagger_type}. '
-        f'Supported taggers: {list(TAGGERS.keys())}'
-      )
-    if not tagging_parameters:
-      tagging_parameters = {}
-    concrete_tagger = tagger_class(
-      **tagging_parameters,
-    )
+    concrete_tagger = tagging_request.tagger
+    media_type_enum = tagging_request.media_type_enum
     output = 'description' if action == 'describe' else 'tag'
-    untagged_media = media_paths
+    untagged_media = tagging_request.media_paths
     tagged_media = []
     if self.repo and (
       tagged_media := self.repo.get(
-        media_paths, media_type, tagger_type, output
+        tagging_request.media_paths,
+        tagging_request.media_type,
+        tagging_request.tagger_type,
+        output,
       )
     ):
       tagged_media_names = {media.identifier for media in tagged_media}
       untagged_media = {
         media_path
-        for media_path in media_paths
-        if media.convert_path_to_media_name(media_path, media_type)
+        for media_path in tagging_request.media_paths
+        if media.convert_path_to_media_name(
+          media_path, tagging_request.media_type
+        )
         not in tagged_media_names
       }
     if not untagged_media:
       return tagged_media
 
-    if not parallel_threshold:
+    if not tagging_request.parallel_threshold:
       return (
         self._process_media_sequentially(
           action,
           concrete_tagger,
-          media_type_enum,
+          tagging_request.media_type_enum,
           untagged_media,
-          tagging_parameters,
+          tagging_request.tagging_options,
         )
         + tagged_media
       )
-    with futures.ThreadPoolExecutor(max_workers=parallel_threshold) as executor:
+    with futures.ThreadPoolExecutor(
+      max_workers=tagging_request.parallel_threshold
+    ) as executor:
       future_to_media_path = {
         executor.submit(
           self._process_media_sequentially,
@@ -207,17 +204,14 @@ class MediaTaggingService:
           concrete_tagger,
           media_type_enum,
           [media_path],
-          tagging_parameters,
+          tagging_request.tagging_options,
         ): media_path
-        for media_path in media_paths
+        for media_path in tagging_request.media_paths
       }
       untagged_media = itertools.chain.from_iterable(
         [
           future.result()
-          for future in progress.track(
-            futures.as_completed(future_to_media_path),
-            f'Tagging {len(untagged_media)} media...',
-          )
+          for future in futures.as_completed(future_to_media_path)
         ]
       )
       return list(untagged_media) + tagged_media
@@ -228,7 +222,7 @@ class MediaTaggingService:
     concrete_tagger: base_tagger.BaseTagger,
     media_type: media.MediaTypeEnum,
     media_paths: Sequence[str | os.PathLike[str]],
-    tagging_parameters: dict[str, str] | None = None,
+    tagging_options: base_tagger.TaggingOptions,
   ) -> list[tagging_result.TaggingResult]:
     """Runs media tagging algorithm.
 
@@ -237,13 +231,11 @@ class MediaTaggingService:
       concrete_tagger: Instantiated tagger.
       media_type: Type of media.
       media_paths: Local or remote path to media file.
-      tagging_parameters: Optional keywords arguments to be sent for tagging.
+      tagging_options: Optional parameters to be sent for tagging.
 
     Returns:
       Results of tagging for all media.
     """
-    if not tagging_parameters:
-      tagging_parameters = {}
     results = []
     output = 'description' if action == 'describe' else 'tag'
     tagger_type = concrete_tagger.alias
@@ -263,7 +255,7 @@ class MediaTaggingService:
       ):
         tagging_results = getattr(concrete_tagger, action)(
           medium,
-          tagging_options=base_tagger.TaggingOptions(**tagging_parameters),
+          tagging_options,
         )
         if tagging_results is None:
           continue

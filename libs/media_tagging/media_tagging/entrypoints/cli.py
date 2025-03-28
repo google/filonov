@@ -100,17 +100,17 @@ def main():
   )
   logging.getLogger(__file__)
 
-  parameters = {
-    'tagger_type': args.tagger,
-    'media_type': args.media_type,
-    'media_paths': args.media_paths,
-    'tagging_parameters': extra_parameters.get('tagger'),
-    'parallel_threshold': args.parallel_threshold,
-  }
+  request = media_tagging_service.MediaTaggingRequest(
+    tagger_type=args.tagger,
+    media_type=args.media_type,
+    media_paths=args.media_paths,
+    tagging_parameters=extra_parameters.get('tagger'),
+    parallel_threshold=args.parallel_threshold,
+  )
   if args.action == 'tag':
-    tagging_results = tagging_service.tag_media(**parameters)
+    tagging_results = tagging_service.tag_media(request)
   else:
-    tagging_results = tagging_service.describe_media(**parameters)
+    tagging_results = tagging_service.describe_media(request)
   if args.no_output:
     sys.exit()
   report = tagging_result.convert_tagging_results_to_garf_report(

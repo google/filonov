@@ -4,11 +4,24 @@ if [ -f $SCRIPT_PATH/.env ]; then
 fi
 
 tag() {
+  local tagger=$1
   http --print b POST localhost:8000/media_tagging/tag \
-    media_paths[]=$YOUTUBE_LINK \
-    tagger_type="gemini-youtube-video" \
-    media_type="YOUTUBE_VIDEO"
+    media_paths[]=$IMAGE \
+    tagger_type=$1 \
+    media_type="IMAGE"
 
 }
 
-tag
+describe() {
+  local tagger=$1
+  http --print b POST localhost:8000/media_tagging/describe \
+    media_paths[]=$IMAGE \
+    tagger_type=$1 \
+    media_type="IMAGE"
+
+}
+
+for tagger in 'gemini' 'langchain' 'google-cloud'; do
+  tag $tagger
+  describe $tagger
+done
