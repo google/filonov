@@ -16,11 +16,16 @@
 
 """Handles creative map generation."""
 
+from collections.abc import Sequence
 from typing import ClassVar, Literal
 
 import media_similarity
 import media_tagging
 import pydantic
+from media_tagging.media_tagging_service import (
+  MediaFetchingRequest,
+  MediaTaggingRequest,
+)
 
 from filonov import creative_map, exceptions
 from filonov.inputs import input_service
@@ -62,7 +67,7 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
     'normalize': False,
     'custom_threshold': None,
   }
-  input_parameters: dict[str, str] = {}
+  input_parameters: dict[str, str | Sequence[str]] = {}
   output_parameters: OutputParameters = OutputParameters()
 
   def model_post_init(self, __context):  # noqa: D105
@@ -118,17 +123,21 @@ class FilonovService:
     media_urls = {media.media_path for media in media_info.values()}
     if not request.tagger:
       tagging_results = self.tagging_service.get_media(
-        media_type=request.media_type,
-        media_paths=media_urls,
-        output='tag',
-        tagger_type='loader',
+        MediaFetchingRequest(
+          media_type=request.media_type,
+          media_paths=media_urls,
+          output='tag',
+          tagger_type='loader',
+        )
       )
     else:
       tagging_results = self.tagging_service.tag_media(
-        tagger_type=request.tagger,
-        media_type=request.media_type,
-        tagging_parameters=request.tagger_parameters,
-        media_paths=media_urls,
+        MediaTaggingRequest(
+          tagger_type=request.tagger,
+          media_type=request.media_type,
+          tagging_parameters=request.tagger_parameters,
+          media_paths=media_urls,
+        )
       )
     if not tagging_results:
       raise exceptions.FilonovError(
