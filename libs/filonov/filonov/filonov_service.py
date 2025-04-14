@@ -125,7 +125,7 @@ class FilonovService:
       tagging_results = self.tagging_service.get_media(
         MediaFetchingRequest(
           media_type=request.media_type,
-          media_paths=media_urls,
+          media_paths=list(media_urls),
           output='tag',
           tagger_type='loader',
         )
