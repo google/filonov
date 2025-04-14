@@ -16,6 +16,7 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 import base64
 import logging
+import pathlib
 from typing import Final
 
 from langchain_core import (
@@ -103,10 +104,15 @@ class LLMTaggingStrategy(base.TaggingStrategy):
     logging.debug(
       'Tagging %s "%s" with LLMTagger', medium.type.name, medium.name
     )
-    image_data = self.convert_medium_to_encoded_string(medium)
+    if medium.media_path and pathlib.Path(medium.media_path).is_file():
+      image_data = self.convert_medium_to_encoded_string(medium)
+      include_media_data = True
+    else:
+      image_data = medium.media_path
+      include_media_data = False
     chain = self.get_chain(
       parser.pydantic_object,
-      include_media_data=True,
+      include_media_data=include_media_data,
       custom_prompt=tagging_options.custom_prompt,
     )
     response = chain.invoke(
@@ -195,12 +201,16 @@ def _build_prompt_template(
     }
   ]
   if include_image_data:
-    user_input.append(
-      {
-        'type': 'image_url',
-        'image_url': {'url': 'data:image/jpeg;base64,{image_data}'},
-      }
-    )
+    image_data = 'data:image/jpeg;base64,{image_data}'
+  else:
+    image_data = '{image_data}'
+
+  user_input.append(
+    {
+      'type': 'image_url',
+      'image_url': {'url': image_data},
+    }
+  )
 
   user_prompt = ('human', user_input)
   return prompts.ChatPromptTemplate.from_messages([system_prompt, user_prompt])
