@@ -15,7 +15,6 @@
 """Responsible for performing media tagging."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
-import contextlib
 import inspect
 import itertools
 import logging
@@ -36,7 +35,7 @@ class MediaTaggingRequest(pydantic.BaseModel):
 
   tagger_type: Literal['google-cloud', 'gemini', 'langchain']
   media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO']
-  media_paths: Sequence[os.PathLike[str] | str]
+  media_paths: set[str] | Sequence[os.PathLike[str] | str]
   tagging_options: base_tagger.TaggingOptions = base_tagger.TaggingOptions()
   parallel_threshold: int = 10
 
@@ -105,12 +104,14 @@ class MediaTaggingService:
 
   def get_media(
     self,
-    media_type: str,
-    media_paths: Sequence[os.PathLike[str] | str],
-    output: str,
-    tagger_type: str = 'loader',
+    fetching_request: MediaFetchingRequest,
   ) -> list[tagging_result.TaggingResult]:
-    return self.repo.get(media_paths, media_type, tagger_type, output)
+    return self.repo.get(
+      fetching_request.media_paths,
+      fetching_request.media_type,
+      fetching_request.tagger_type,
+      fetching_request.output,
+    )
 
   def tag_media(
     self,
@@ -250,9 +251,7 @@ class MediaTaggingService:
         results.extend(tagging_results)
         continue
       logging.debug('Processing media: %s', path)
-      with contextlib.suppress(
-        exceptions.FailedTaggingError, pydantic.ValidationError
-      ):
+      try:
         tagging_results = getattr(concrete_tagger, action)(
           medium,
           tagging_options,
@@ -262,4 +261,13 @@ class MediaTaggingService:
         results.append(tagging_results)
         if self.repo:
           self.repo.add([tagging_results])
+      except base_tagger.TaggerError as e:
+        logging.error('Tagger error: %s', str(e))
+      except pydantic.ValidationError as e:
+        logging.error('Failed to parse tagging results: %s', str(e))
+      except exceptions.FailedTaggingError as e:
+        logging.error('Failed to perform tagging: %s', str(e))
+      except Exception as e:
+        logging.error('Unknown error occurred: %s', str(e))
+
     return results
