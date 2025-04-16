@@ -24,10 +24,12 @@
 ```
 pip install filonov
 ```
+> Install filonov with UI support to have a visual way of file generation `pip install filonov[ui]`
 
 ## Usage
 
 Run `filonov` based on one of the following sources:
+> Alternatively run `filonov-ui` to generate files in an interactive UI.
 
 `filonov` supports three main modes determined by the `--source` argument:
 

@@ -26,8 +26,11 @@ server = [
   "media-tagging[server]",
   "media-similarity[server]",
 ]
+ui = [
+  "streamlit"
+]
 all = [
-  "filonov[server]"
+  "filonov[server,ui]"
 ]
 
 [options.extras_require]
@@ -37,4 +40,5 @@ test =  [
 
 [project.scripts]
 filonov="filonov.entrypoints.cli:main"
+filonov-ui="filonov.entrypoints.streamlit_cli:main"
 creatives-fetcher="filonov.inputs.entrypoints.cli:main"

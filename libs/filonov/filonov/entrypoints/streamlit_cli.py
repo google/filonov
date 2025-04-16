@@ -14,17 +14,17 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-"""Simplifies imports from inner modules."""
+import pathlib
 
-from filonov.creative_map import CreativeMap
-from filonov.filonov_service import CreativeMapGenerateRequest, FilonovService
-from filonov.inputs.input_service import MediaInputService
+from streamlit.web import cli
 
-__all__ = [
-  'FilonovService',
-  'CreativeMapGenerateRequest',
-  'MediaInputService',
-  'CreativeMap',
-]
 
-__version__ = '0.2.0'
+def main():
+  streamlit_app_location = (
+    pathlib.Path(__file__).resolve().parent / 'streamlit_app.py'
+  )
+  cli.main_run([str(streamlit_app_location)])
+
+
+if __name__ == '__main__':
+  main()

@@ -100,26 +100,26 @@ def streamlit_app():
       )
       if 'tagging_service' not in st.session_state:
         st.session_state['tagging_service'] = media_tagging.MediaTaggingService(
-            media_tagging.repositories.SqlAlchemyTaggingResultsRepository(
-                settings.media_tagging_db_url
-            )
+          media_tagging.repositories.SqlAlchemyTaggingResultsRepository(
+            settings.media_tagging_db_url
+          )
         )
       if 'similarity_service' not in st.session_state:
         st.session_state['similarity_service'] = (
-            media_similarity.MediaSimilarityService(
-                media_similarity_repository=(
-                    media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
-                        settings.media_tagging_db_url
-                    )
-                )
+          media_similarity.MediaSimilarityService(
+            media_similarity_repository=(
+              media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
+                settings.media_tagging_db_url
+              )
             )
+          )
         )
       generated_map = filonov.FilonovService(
-          st.session_state['tagging_service'],
-          st.session_state['similarity_service'],
+        st.session_state['tagging_service'],
+        st.session_state['similarity_service'],
       ).generate_creative_map(source, request)
       destination = utils.build_creative_map_destination(
-          request.output_parameters.output_name
+        request.output_parameters.output_name
       )
       with smart_open.open(destination, 'w', encoding='utf-8') as f:
         json.dump(generated_map.to_json(), f)
