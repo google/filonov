@@ -172,15 +172,18 @@ class MediaTaggingService:
         output,
       )
     ):
-      tagged_media_names = {media.identifier for media in tagged_media}
-      untagged_media = {
-        media_path
-        for media_path in tagging_request.media_paths
-        if media.convert_path_to_media_name(
-          media_path, tagging_request.media_type
-        )
-        not in tagged_media_names
+      tagged_media_names = {
+        tagged_medium.identifier for tagged_medium in tagged_media
       }
+      untagged_media = set()
+      for media_path in tagging_request.media_paths:
+        if (
+          media.convert_path_to_media_name(
+            media_path, tagging_request.media_type
+          )
+          not in tagged_media_names
+        ):
+          untagged_media.add(media_path)
     if not untagged_media:
       return tagged_media
 
