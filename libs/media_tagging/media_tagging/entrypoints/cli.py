@@ -104,7 +104,7 @@ def main():
     tagger_type=args.tagger,
     media_type=args.media_type,
     media_paths=args.media_paths,
-    tagging_parameters=extra_parameters.get('tagger'),
+    tagging_options=extra_parameters.get('tagger'),
     parallel_threshold=args.parallel_threshold,
   )
   if args.action == 'tag':
