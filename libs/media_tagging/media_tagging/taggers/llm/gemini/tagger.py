@@ -32,25 +32,24 @@ class GeminiTagger(base.BaseTagger):
 
   @override
   def __init__(
-    self,
-    model_name: str = DEFAULT_GEMINI_MODEL,
-    **kwargs: str,
+    self, model_name: str = DEFAULT_GEMINI_MODEL, **kwargs: str
   ) -> None:
     """Initializes GeminiTagger based on model name."""
     self.model_name = model_name
-    self.kwargs = kwargs
+    self.model_parameters = ts.GeminiModelParameters(**kwargs)
     super().__init__()
 
   @override
   def create_tagging_strategy(
     self, media_type: media.MediaTypeEnum
   ) -> base.TaggingStrategy:
-    if media_type == media.MediaTypeEnum.IMAGE:
-      return ts.ImageTaggingStrategy(self.model_name)
-    if media_type == media.MediaTypeEnum.VIDEO:
-      return ts.VideoTaggingStrategy(self.model_name)
-    if media_type == media.MediaTypeEnum.YOUTUBE_VIDEO:
-      return ts.YouTubeVideoTaggingStrategy(self.model_name)
-    raise base.TaggerError(
-      f'There are no supported taggers for media type: {media_type.name}'
-    )
+    tagging_strategies = {
+      media.MediaTypeEnum.IMAGE: ts.ImageTaggingStrategy,
+      media.MediaTypeEnum.VIDEO: ts.VideoTaggingStrategy,
+      media.MediaTypeEnum.YOUTUBE_VIDEO: ts.YouTubeVideoTaggingStrategy,
+    }
+    if not (tagging_strategy := tagging_strategies.get(media_type)):
+      raise base.TaggerError(
+        f'There are no supported taggers for media type: {media_type.name}'
+      )
+    return tagging_strategy(self.model_name, self.model_parameters)

@@ -24,6 +24,7 @@ import tempfile
 import google.generativeai as google_genai
 import langchain_google_genai as genai
 import proto
+import pydantic
 import tenacity
 from google.api_core import exceptions as google_api_exceptions
 from langchain_core import output_parsers
@@ -35,6 +36,16 @@ from media_tagging.taggers import base
 from media_tagging.taggers.llm import langchain_tagging_strategies, utils
 
 
+class GeminiModelParameters(pydantic.BaseModel):
+  temperature: float | None = None
+  top_p: float | None = None
+  top_k: int | None = None
+  max_output_token: int | None = None
+
+  def dict(self) -> dict[str, float | int]:
+    return {k: v for k, v in self.model_dump().items() if v}
+
+
 class ImageTaggingStrategy(langchain_tagging_strategies.ImageTaggingStrategy):
   """Defines Gemini specific tagging strategy for images."""
 
@@ -42,8 +53,13 @@ class ImageTaggingStrategy(langchain_tagging_strategies.ImageTaggingStrategy):
   def __init__(
     self,
     model_name: str,
+    model_parameters: GeminiModelParameters,
   ) -> None:
-    super().__init__(llm=genai.ChatGoogleGenerativeAI(model=model_name))
+    super().__init__(
+      llm=genai.ChatGoogleGenerativeAI(
+        model=model_name, **model_parameters.dict()
+      )
+    )
 
 
 class GeminiTaggingStrategy(base.TaggingStrategy):
@@ -52,13 +68,16 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
   def __init__(
     self,
     model_name: str,
+    model_parameters: GeminiModelParameters,
   ) -> None:
     """Initializes GeminiTaggingStrategy.
 
     Args:
       model_name: Name of the model to perform the tagging.
+      model_parameters: Various parameters to finetune the model.
     """
     self.model_name = model_name
+    self.model_parameters = model_parameters
     self._model = None
     self._prompt = ''
     self._response_schema = None
@@ -178,7 +197,10 @@ class VideoTaggingStrategy(GeminiTaggingStrategy):
   def model(self) -> google_genai.GenerativeModel:
     """Initializes GenerativeModel."""
     if not self._model:
-      self._model = google_genai.GenerativeModel(model_name=self.model_name)
+      self._model = google_genai.GenerativeModel(
+        model_name=self.model_name,
+        generation_config=self.model_parameters.dict(),
+      )
     return self._model
 
   @tenacity.retry(
@@ -242,9 +264,11 @@ class VideoTaggingStrategy(GeminiTaggingStrategy):
 class YouTubeVideoTaggingStrategy(VideoTaggingStrategy):
   """Defines handling of LLM interaction for YouTube links."""
 
-  def __init__(self, model_name: str) -> None:
+  def __init__(
+    self, model_name: str, model_parameters: GeminiModelParameters
+  ) -> None:
     """Initializes YouTubeVideoTaggingStrategy."""
-    super().__init__(model_name)
+    super().__init__(model_name, model_parameters)
     self._genai_model = None
 
   @functools.cached_property
@@ -252,7 +276,8 @@ class YouTubeVideoTaggingStrategy(VideoTaggingStrategy):
     """Initializes GenerativeModel."""
     if not self._genai_model:
       self._genai_model = google_generative_models.GenerativeModel(
-        model_name=self.model_name
+        model_name=self.model_name,
+        generation_config=self.model_parameters.dict(),
       )
     return self._genai_model
 

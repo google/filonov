@@ -12,6 +12,7 @@ dependencies = [
     "pandas",
     "pydantic",
     "SQLalchemy>=2.0.0",
+    "tenacity",
 ]
 authors = [
   {name = "Google Inc. (gTech gPS CSE team)", email = "no-reply@google.com"},

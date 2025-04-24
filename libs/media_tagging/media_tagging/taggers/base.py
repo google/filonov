@@ -35,7 +35,7 @@ class TaggingOptions(pydantic.BaseModel):
     custom_prompt: User provided prompt.
   """
 
-  model_config = pydantic.ConfigDict(extra='ignore')
+  model_config = pydantic.ConfigDict(extra='allow')
 
   n_tags: int | None = None
   tags: Sequence[str] | None = None
