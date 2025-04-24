@@ -320,7 +320,7 @@ class MediaSimilarityService:
     for pair in similar_media:
       for medium in pair.media:
         if medium != seed_media_identifier:
-          media_identifiers[medium] = pair.similarity_score
+          media_identifiers[medium] = pair.similarity_score.score
     return SimilaritySearchResults(
       seed_media_identifier=seed_media_identifier, results=media_identifiers
     )
