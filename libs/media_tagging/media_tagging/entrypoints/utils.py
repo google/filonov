@@ -14,7 +14,7 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-"""Utils module for media similarity entrypoints."""
+"""Defines helper functions for media tagging entrypoints."""
 
 import os
 
@@ -22,7 +22,7 @@ import pandas as pd
 import pydantic
 import smart_open
 
-from media_similarity import exceptions
+from media_tagging import exceptions
 
 
 class InputConfig(pydantic.BaseModel):
@@ -59,5 +59,5 @@ def get_media_paths_from_file(input_config: InputConfig) -> set[str]:
   if len(data.columns) == 1:
     column_name = data.columns[0]
   elif (column_name := input_config.column_name) not in data.columns:
-    raise exceptions.MediaSimilarityError(f'Column {column_name} not found')
+    raise exceptions.MediaTaggingError(f'Column {column_name} not found')
   return set(data[column_name].tolist())

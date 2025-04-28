@@ -29,6 +29,7 @@ from media_tagging import (
   repositories,
   tagging_result,
 )
+from media_tagging.entrypoints import utils
 
 
 def main():
@@ -43,6 +44,9 @@ def main():
   )
   parser.add_argument(
     'media_paths', nargs='*', help='Paths to local/remote files or URLs'
+  )
+  parser.add_argument(
+    '--input', dest='input', default=None, help='File with media_paths'
   )
   parser.add_argument(
     '--media-type',
@@ -89,9 +93,9 @@ def main():
   tagging_service = media_tagging_service.MediaTaggingService(
     repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
   )
-  extra_parameters = garf_utils.ParamsParser(['tagger', args.writer]).parse(
-    kwargs
-  )
+  extra_parameters = garf_utils.ParamsParser(
+    ['tagger', args.writer, 'input']
+  ).parse(kwargs)
 
   logging.basicConfig(
     format='[%(asctime)s][%(name)s][%(levelname)s] %(message)s',
@@ -100,10 +104,13 @@ def main():
   )
   logging.getLogger(__file__)
 
+  media_paths = args.media_paths or utils.get_media_paths_from_file(
+    utils.InputConfig(path=args.input, **extra_parameters.get('input'))
+  )
   request = media_tagging_service.MediaTaggingRequest(
     tagger_type=args.tagger,
     media_type=args.media_type,
-    media_paths=args.media_paths,
+    media_paths=media_paths,
     tagging_options=extra_parameters.get('tagger'),
     parallel_threshold=args.parallel_threshold,
   )

@@ -24,9 +24,9 @@ import media_tagging
 from garf_executors.entrypoints import utils as garf_utils
 from garf_io import writer as garf_writer
 from media_tagging import media
+from media_tagging.entrypoints import utils as tagging_utils
 
 import media_similarity
-from media_similarity.entrypoints import utils
 
 AVAILABLE_TAGGERS = list(media_tagging.TAGGERS.keys())
 
@@ -97,8 +97,8 @@ def main():  # noqa: D103
       )
     ),
   )
-  media_paths = args.media_paths or utils.get_media_paths_from_file(
-    utils.InputConfig(path=args.input, **extra_parameters.get('input'))
+  media_paths = args.media_paths or tagging_utils.get_media_paths_from_file(
+    tagging_utils.InputConfig(path=args.input, **extra_parameters.get('input'))
   )
   writer_parameters = extra_parameters.get(args.writer) or {}
   writer = garf_writer.create_writer(args.writer, **writer_parameters)
