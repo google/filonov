@@ -38,12 +38,13 @@ class TaggingOptions(pydantic.BaseModel):
   model_config = pydantic.ConfigDict(extra='allow')
 
   n_tags: int | None = None
-  tags: Sequence[str] | None = None
+  tags: str | Sequence[str] | None = None
   custom_prompt: str | None = None
 
-  def model_post_init__(self, __context):  # noqa: D105
+  def model_post_init(self, __context):  # noqa: D105
     if self.tags and not isinstance(self.tags, MutableSequence):
       self.tags = [tag.strip() for tag in self.tags.split(',')]
+      self.n_tags = len(self.tags)
     if self.n_tags:
       self.n_tags = int(self.n_tags)
 

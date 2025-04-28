@@ -48,7 +48,9 @@ def get_invocation_parameters(
   if n_tags := tagging_options.n_tags:
     parameters['n_tags'] = n_tags
   if tags := tagging_options.tags:
-    parameters['tags'] = ', '.join(tags)
+    parameters['tags'] = 'Find only the following tags: ' + ', '.join(tags)
+  else:
+    parameters['tags'] = ''
   return parameters
 
 

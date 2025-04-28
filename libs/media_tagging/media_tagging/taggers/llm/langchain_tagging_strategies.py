@@ -115,14 +115,13 @@ class LLMTaggingStrategy(base.TaggingStrategy):
       include_media_data=include_media_data,
       custom_prompt=tagging_options.custom_prompt,
     )
-    response = chain.invoke(
-      utils.get_invocation_parameters(
-        media_type=medium.type.name,
-        format_instructions=parser.get_format_instructions(),
-        tagging_options=tagging_options,
-        image_data=image_data,
-      )
+    invocation_parameters = utils.get_invocation_parameters(
+      media_type=medium.type.name,
+      format_instructions=parser.get_format_instructions(),
+      tagging_options=tagging_options,
+      image_data=image_data,
     )
+    response = chain.invoke(invocation_parameters)
     if hasattr(response, 'usage_metadata'):
       logging.debug(
         'usage_metadata for media %s: %s',

@@ -1,4 +1,5 @@
 Analyze this {media_type} and generate {n_tags} tags that uniquely describe it.
+{tags}
 
 Important guidelines:
 - Tag represents a unique concept (using a singular noun).
