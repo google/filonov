@@ -29,6 +29,8 @@ import pydantic
 from media_tagging import exceptions, media, repositories, tagging_result
 from media_tagging.taggers import base as base_tagger
 
+logger = logging.getLogger('media-tagger')
+
 
 class MediaTaggingRequest(pydantic.BaseModel):
   model_config = pydantic.ConfigDict(extra='ignore')
@@ -250,10 +252,10 @@ class MediaTaggingService:
           [medium.name], media_type, tagger_type, output
         )
       ):
-        logging.debug('Getting media from repository: %s', path)
+        logger.debug('Getting media from repository: %s', path)
         results.extend(tagging_results)
         continue
-      logging.debug('Processing media: %s', path)
+      logger.info('Processing media: %s', path)
       try:
         tagging_results = getattr(concrete_tagger, action)(
           medium,
@@ -265,12 +267,12 @@ class MediaTaggingService:
         if self.repo:
           self.repo.add([tagging_results])
       except base_tagger.TaggerError as e:
-        logging.error('Tagger error: %s', str(e))
+        logger.error('Tagger error: %s', str(e))
       except pydantic.ValidationError as e:
-        logging.error('Failed to parse tagging results: %s', str(e))
+        logger.error('Failed to parse tagging results: %s', str(e))
       except exceptions.FailedTaggingError as e:
-        logging.error('Failed to perform tagging: %s', str(e))
+        logger.error('Failed to perform tagging: %s', str(e))
       except Exception as e:
-        logging.error('Unknown error occurred: %s', str(e))
+        logger.error('Unknown error occurred: %s', str(e))
 
     return results
