@@ -120,6 +120,10 @@ def main():
     tagging_results = tagging_service.describe_media(request)
   if args.no_output:
     sys.exit()
+  if not tagging_results:
+    logging.error('No tagging tagging results found.')
+    sys.exit()
+
   report = tagging_result.convert_tagging_results_to_garf_report(
     tagging_results
   )
