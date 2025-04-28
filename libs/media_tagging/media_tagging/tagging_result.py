@@ -186,14 +186,13 @@ def from_file(
 def convert_tagging_results_to_garf_report(
   tagging_results: Sequence[TaggingResult],
 ) -> garf_core.report.GarfReport:
-  """Convert results of tagging to GarfReport for further writing."""
+  """Converts results of tagging to GarfReport for further writing."""
   results = []
   column_names = [
     'identifier',
     'output',
     'tagger',
     'type',
-    'tagging_details',
     'content',
   ]
   for result in tagging_results:
@@ -202,7 +201,6 @@ def convert_tagging_results_to_garf_report(
       result.output,
       result.tagger,
       result.type,
-      result.tagging_details,
     ]
     if isinstance(result.content, Description):
       parsed_result.append(result.content.text)
