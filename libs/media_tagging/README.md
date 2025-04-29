@@ -15,24 +15,29 @@ and gain insights.
 
 `media-tagger` is implemented as a:
 
-* **library** - Use it in your projects with a help of `media_tagging.tagger.create_tagger` function.
+* **library** - Use it in your projects with a help of `media_tagging.MediaTaggingService` class.
 * **CLI tool** - `media-tagger` tool is available to be used in the terminal.
 * **HTTP endpoint** - `media-tagger` can be easily exposed as HTTP endpoint.
-* **Langchain tool**  - integrated `media-tagger` into your Langchain applications.
+* **Langchain tool**  - integrate `media-tagger` into your Langchain applications.
 
 ## Deployment
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.10+
 - A GCP project with billing account attached
-- [Video Intelligence API](https://console.cloud.google.com/apis/library/videointelligence.googleapis.com) and [Vision API](https://console.cloud.google.com/apis/library/vision.googleapis.com) enabled.
-* [API key](https://support.google.com/googleapi/answer/6158862?hl=en) to access to access Google Gemini.
-  - Once you created API key export it as an environmental variable
-
-    ```
-    export GOOGLE_API_KEY=<YOUR_API_KEY_HERE>
-    ```
+- API Enabled:
+    - For `google-cloud` tagger: [Video Intelligence API](https://console.cloud.google.com/apis/library/videointelligence.googleapis.com) and [Vision API](https://console.cloud.google.com/apis/library/vision.googleapis.com) enabled.
+    - For `gemini` tagger: [Vertex AI API](https://pantheon.corp.google.com/apis/library/aiplatform.googleapis.com) enabled.
+- Environmental variables specified:
+    * [GOOGLE_API_key](https://support.google.com/googleapi/answer/6158862?hl=en) to access to access Google Gemini.
+      ```
+      export GOOGLE_API_KEY=<YOUR_API_KEY_HERE>
+      ```
+    * `GOOGLE_CLOUD_PROJECT` - points the Google Cloud project with Vertex AI API enabled.
+      ```
+      export GOOGLE_CLOUD_PROJECT=<YOUR_PROJECT_HERE>
+      ```
 
 
 ### Installation
@@ -41,14 +46,13 @@ Install `media-tagger` with `pip install media-tagging[all]` command.
 
 Alternatively you can install subsets of `media-tagging` library:
 
-* `media-tagging[api]` - tagging videos and images with Google Cloud APIs.
-    *  `media-tagging[image-api]` - only for tagging images.
-    *  `media-tagging[video-api]` - only for tagging videos.
-* `media-tagging[llm]` - tagging videos and images with LLMs.
-    *  `media-tagging[base-llm]` - only for tagging images with llms.
-    *  `media-tagging[google-genai]` - only for tagging images via Gemini.
-    *  `media-tagging[google-vertexai]` - only for tagging videos via Gemini.
-
+* `media-tagging[google-cloud]` - tagging videos and images with Google Cloud APIs.
+  *  `media-tagging[google-cloud-vision]` - only for tagging images.
+  *  `media-tagging[google-cloud-videointelligence]` - only for tagging videos.
+* `media-tagging[gemini]` - tagging videos and images with Vertex AI API.
+  *  `media-tagging[google-genai]` - only for tagging images via Gemini.
+  *  `media-tagging[google-vertexai]` - only for tagging videos via Gemini.
+* `media-tagging[langchain]` - tagging videos and images with Langchain.
 ### Usage
 
 #### Tagging media
@@ -71,7 +75,11 @@ media-tagger ACTION MEDIA_PATHs \
 ```
 where:
 * `ACTION` - either `tag` or `describe`.
-* `MEDIA_PATHs` - names of files for tagging (can be urls).
+* `MEDIA_PATHs` - names of files for tagging (can be urls) separated by spaces.
+> Instead of reading `MEDIA_PATHs` as positional arguments you can read them
+> from  a file using \
+> `--input FILENAME.CSV` argument.
+> Use `--input.column_name=NAME_OF_COLUMN` to specify column name in the file.
 * `<MEDIA_TYPE>` - type of media (YOUTUBE_VIDEO, VIDEO, IMAGE).
 * `<TAGGER_TYPE>` - name of tagger, [supported options](#supported-taggers).
 > Tagger can be customized via `tagger.option=value` syntax. I.e. if you want to request a specific number of tags you can add `--tagger.n-tags=100` CLI flag.
@@ -88,7 +96,8 @@ where:
 | `langchain` | `image`, `video`| `tag`, `description` | `n-tags=10`, `tags=tag1,tag2,tag3` |
 | `gemini` | `image`, `video`, `youtube_video`| `tag`, `description`| `n-tags=10` |
 
-> `langchain` and `gemini` taggers can use `custom-prompt` parameter to adjust built-in prompts.
+> `langchain` and `gemini` taggers can use `custom-prompt` parameter to adjust built-in prompts.\
+> Simply `--tagger.custom-prompt=YOUR_PROMPT_HERE`
 
 #### Loading tagging results
 

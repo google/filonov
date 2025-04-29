@@ -2,7 +2,7 @@
 
 `media-tagger` can be exposed as HTTP endpoint.
 
-1. Install `media-tagger` with `pip install media-tagging` command.
+1. Install `media-tagger` with `pip install media-tagging[server]` command.
 
 2. Start server
 ```
