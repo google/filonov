@@ -769,11 +769,13 @@ async function drawGraph() {
       element.selectAll('circle').remove();
 
       // Add background circle with initial styles
+      const size = d.size * imageBaseSize;
       element
         .selectAll('.node-background')
         .data([d])
         .join('circle')
         .attr('class', 'node-background')
+        .attr('r', size / 2)
         .attr('fill', 'transparent')
         .style('stroke', '#fff')
         .style('stroke-width', '1px')
@@ -786,6 +788,10 @@ async function drawGraph() {
         img = element
           .append('image')
           .attr('xlink:href', d.image)
+          .attr('width', size)
+          .attr('height', size)
+          .attr('x', -size / 2)
+          .attr('y', -size / 2)
           .style('opacity', 0.9)
           .style('stroke', '#fff')
           .style('stroke-width', '1px')
@@ -797,6 +803,7 @@ async function drawGraph() {
         .selectAll('circle')
         .data([d])
         .join('circle')
+        .attr('r', d.size * circleBaseSize)
         .attr('fill', (d) => d.color || '#69b3a2')
         .attr('stroke', '#fff')
         .attr('stroke-width', 1);
