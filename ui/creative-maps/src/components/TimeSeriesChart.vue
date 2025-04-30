@@ -83,7 +83,7 @@ const series = computed(() => {
     {
       name: 'Cluster',
       data: props.data.map((d) => ({
-        x: d.date,
+        x: d.date.getTime(),
         y: d.value,
       })),
     },
@@ -93,12 +93,15 @@ const series = computed(() => {
   selectedNodes.value.forEach((opt) => {
     const node = props.clusterNodes.find((n) => n.id === opt.id);
     if (node?.series) {
+      console.log(node.series);
       allSeries.push({
         name: `Node ${node.id}`,
-        data: Object.entries(node.series).map(([date, metrics]) => ({
-          x: new Date(date),
-          y: metrics[props.metric] as number,
-        })),
+        data: Object.entries(node.series)
+          .map(([date, metrics]) => ({
+            x: new Date(date).getTime(),
+            y: metrics[props.metric] as number,
+          }))
+          .sort((a, b) => a.x - b.x),
       });
     }
   });
