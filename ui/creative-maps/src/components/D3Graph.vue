@@ -82,6 +82,17 @@
           map-options
           clearable
         />
+        <q-select
+          class="col-2 q-mx-md"
+          style="max-width: 300px"
+          v-model="layoutStrategy"
+          :options="layoutOptions"
+          label="Layout Strategy"
+          emit-value
+          outlined
+          map-options
+          @update:model-value="changeLayoutStrategy"
+        />
       </div>
     </div>
     <div ref="chartContainer" class="graph-content"></div>
@@ -162,47 +173,22 @@
 </template>
 
 <script setup lang="ts">
-import {
-  onMounted,
-  onUnmounted,
-  watch,
-  ref,
-  markRaw,
-  defineExpose,
-  computed,
-} from 'vue';
+import { onMounted, onUnmounted, watch, ref, computed } from 'vue';
 import * as d3 from 'd3';
 import { ClusterInfo, Edge, Node } from 'components/models';
 import { aggregateNodesMetrics, formatMetricValue } from 'src/helpers/graph';
 import NodeSearchDialog from './NodeSearchDialog.vue';
-import {
-  Simulation,
-  SimulationNodeDatum,
-  SimulationLinkDatum,
-  ForceLink,
-} from 'd3-force';
-import {
-  forceCollide,
-  forceLink,
-  forceManyBody,
-  forceCenter,
-  forceSimulation,
-} from 'd3-force';
+import { Simulation } from 'd3-force';
 import { D3DragEvent, drag } from 'd3-drag';
 import { zoom, ZoomBehavior, zoomIdentity, zoomTransform } from 'd3-zoom';
 import { Transition } from 'd3-transition';
 import { Selection } from 'd3-selection';
-
-type D3Node = Node &
-  SimulationNodeDatum & {
-    initialX?: number;
-    initialY?: number;
-    relativeX?: number;
-    relativeY?: number;
-    x?: number | undefined | null;
-    y?: number | undefined | null;
-  };
-type D3Edge = Edge & SimulationLinkDatum<D3Node>;
+import {
+  useForceLayout,
+  D3Node,
+  D3Edge,
+  ForceLayoutStrategy,
+} from 'src/composables/useForceLayout';
 
 type SVGSelection = Selection<SVGSVGElement, unknown, null, undefined>;
 type SVGTransition = Transition<SVGSVGElement, unknown, null, undefined>;
@@ -244,6 +230,22 @@ const selectedSizeField = ref<string | null | undefined>(props.sizeField);
 const searchDialog = ref<InstanceType<typeof NodeSearchDialog> | null>(null);
 const isMultiSelectKeyPressed = ref(false);
 
+// Force layout composable
+const {
+  initForceLayout,
+  destroyForceLayout,
+  forceLayoutManager,
+  layoutStrategies,
+} = useForceLayout();
+
+const layoutStrategy = ref<ForceLayoutStrategy>(layoutStrategies[0]);
+const layoutOptions = layoutStrategies.map((s) => {
+  return { label: s, value: s };
+});
+
+let circleBaseSize: number;
+let imageBaseSize: number;
+
 const metricNames = computed(() => {
   let keys = props.nodes?.length
     ? props.nodes[0].info
@@ -255,8 +257,6 @@ const metricNames = computed(() => {
   }
   return keys;
 });
-let circleBaseSize: number;
-let imageBaseSize: number;
 
 const imageLoading = ref({
   total: 0,
@@ -283,10 +283,7 @@ function handleNodeClick(event: Event, node: D3Node) {
   tooltipVisible.value = true;
 
   if (isMultiSelectKeyPressed.value) {
-    if (
-      currentCluster.value
-      // currentCluster.value.id === 'manual-selection'
-    ) {
+    if (currentCluster.value) {
       // Check if node is already in selection
       const nodeIndex = currentCluster.value.nodes.findIndex(
         (n) => n.id === node.id,
@@ -570,22 +567,16 @@ function calculateNodeSizes(nodesCount: number) {
       Math.max(1, Math.min(1, 40 - Math.log2(nodesCount))) *
       nodeSizeMultiplier.value,
 
-    // Remove Math.min(1, ...) to allow larger initial sizes
     imageBaseSize:
-      Math.max(20, 20 - Math.log2(nodesCount)) * nodeSizeMultiplier.value,
+      Math.min(8, Math.max(1, 20 - Math.log2(nodesCount))) *
+      nodeSizeMultiplier.value,
   };
 }
 
 function updateNodeSizes(restartSimulation = false) {
-  if (!simulation.value || !chartContainer.value) return;
+  if (!chartContainer.value) return;
 
   ({ circleBaseSize, imageBaseSize } = calculateNodeSizes(props.nodes.length));
-  // console.log('updateNodeSizes:', {
-  //   multiplier: nodeSizeMultiplier.value,
-  //   circleBaseSize,
-  //   imageBaseSize,
-  //   showImages: showImages.value,
-  // });
 
   d3.select(chartContainer.value)
     .selectAll('g > g')
@@ -620,102 +611,16 @@ function updateNodeSizes(restartSimulation = false) {
       }
     });
 
-  // Update collision forces with new sizes
-  simulation.value.force(
-    'collision',
-    forceCollide<D3Node>()
-      .radius((d) => {
-        const baseRadius =
-          showImages.value && d.image
-            ? (d.size * imageBaseSize) / 2
-            : d.size * circleBaseSize;
-        return baseRadius * 2;
-      })
-      .strength(0.8)
-      .iterations(2),
-  );
-
   // Only restart simulation if requested
-  if (restartSimulation) {
-    simulation.value.alpha(0.3).restart();
-  }
-}
-
-function prepositionNodes() {
-  if (!chartContainer.value) return;
-  // Position clusters in a circle
-  const rect = chartContainer.value!.getBoundingClientRect();
-  const width = rect.width;
-  const height = rect.height;
-  // const centerX = width / 2;
-  // const centerY = height / 2;
-  // const radius = Math.min(width, height) / 3;
-  //const angleStep = (2 * Math.PI) / clusters.size;
-  const gridSize = Math.ceil(Math.sqrt(props.clusters.length));
-  const gridCellWidth = width / gridSize;
-  const gridCellHeight = height / gridSize;
-  //let angle = 0;
-  //const padding = 50; // Padding between clusters
-
-  // For each cluster
-  props.clusters.forEach((cluster, index) => {
-    //clusters.forEach((clusterNodes) => {
-    // const clusterX = centerX + radius * Math.cos(angle);
-    // const clusterY = centerY + radius * Math.sin(angle);
-    const row = Math.floor(index / gridSize);
-    const col = index % gridSize;
-
-    // Center of the grid cell
-    const clusterX = (col + 0.5) * gridCellWidth;
-    const clusterY = (row + 0.5) * gridCellHeight;
-
-    // Position nodes within cluster in a smaller circle
-    const clusterRadius = Math.sqrt(cluster.nodes.length) * 30;
-    cluster.nodes.forEach((node: D3Node, i) => {
-      const nodeAngle = (2 * Math.PI * i) / cluster.nodes.length;
-      // node.x = clusterX + clusterRadius * Math.cos(nodeAngle);
-      // node.y = clusterY + clusterRadius * Math.sin(nodeAngle);
-      // // Set initial positions for force simulation
-      // node.fx = node.x;
-      // node.fy = node.y;
-      node.initialX = clusterX + clusterRadius * Math.cos(nodeAngle);
-      node.initialY = clusterY + clusterRadius * Math.sin(nodeAngle);
-      // Start with fixed positions
-      node.fx = node.initialX;
-      node.fy = node.initialY;
-    });
-
-    //angle += angleStep;  });
-  });
-
-  // Gradually release positions
-  const releaseSteps = 10;
-  for (let step = 0; step < releaseSteps; step++) {
-    setTimeout(() => {
-      const factor = Math.pow(1 - step / releaseSteps, 2); // Quadratic easing
-      props.nodes.forEach((node: D3Node) => {
-        if (node.fx !== null) {
-          node.fx = node.initialX! + (1 - factor) * (node.x! - node.initialX!);
-          node.fy = node.initialY! + (1 - factor) * (node.y! - node.initialY!);
-        }
-      });
-
-      // On last step, release completely
-      if (step === releaseSteps - 1) {
-        props.nodes.forEach((node: D3Node) => {
-          node.fx = undefined;
-          node.fy = undefined;
-          delete node.initialX;
-          delete node.initialY;
-        });
-      }
-    }, step * 100); // Spread over 2 seconds
+  if (restartSimulation && forceLayoutManager.value) {
+    forceLayoutManager.value.updateCollisionRadius();
   }
 }
 
 function getNodeSize(metricValue: number) {
   return Math.log(metricValue) * Math.log10(metricValue);
 }
+
 /**
  * Handled of selecting field to use as node size.
  * @param sizeField field name
@@ -739,10 +644,9 @@ function setSizeField(sizeField: string) {
 
 async function drawGraph() {
   if (!chartContainer.value) return;
-  if (simulation.value) {
-    simulation.value.stop();
-  }
-  console.log('drawGraph start, multiplier:', nodeSizeMultiplier.value);
+
+  // Clean up existing simulation
+  destroyForceLayout();
 
   d3.select(chartContainer.value).selectAll('*').remove();
   clusterIds.value = props.clusters.map((c) => c.id);
@@ -804,9 +708,6 @@ async function drawGraph() {
   // Separate size calculations for circles and images
   const { circleBaseSize, imageBaseSize } = calculateNodeSizes(
     props.nodes.length,
-  );
-  console.log(
-    `circleBaseSize: ${circleBaseSize}, imageBaseSize: ${imageBaseSize}`,
   );
 
   console.log('Creating links');
@@ -944,91 +845,45 @@ async function drawGraph() {
     });
 
   console.log('Setting up simulation');
-  // Pre-position nodes before simulation
-  prepositionNodes();
 
-  simulation.value = markRaw(
-    forceSimulation<D3Node>(props.nodes)
-      .force(
-        'link',
-        forceLink<D3Node, D3Edge>(props.edges as D3Edge[])
-          .id((d) => d.id)
-          .strength(0.2) // Very weak force
-          .distance(50), // Fixed distance for now
-      )
-      .force(
-        'charge',
-        forceManyBody()
-          .strength(-100)
-          .distanceMax(width / 3),
-      )
-      .force('center', forceCenter(width / 2, height / 2))
-      .force(
-        'collision',
-        forceCollide<D3Node>()
-          .radius((d) => {
-            const baseRadius =
-              showImages.value && d.image
-                ? Math.min(30, d.size * imageBaseSize * 1.5) / 2
-                : d.size * circleBaseSize;
-            return baseRadius * 2.5;
-          })
-          .strength(0.5),
-      )
-      .alphaDecay(0.01)
-      .velocityDecay(0.2)
-      .alpha(0.5)
-      .alphaTarget(0),
+  const getCollisionRadius = (d: D3Node) => {
+    const baseRadius =
+      showImages.value && d.image
+        ? (d.size * imageBaseSize) / 2
+        : d.size * circleBaseSize;
+    return baseRadius * 2;
+  };
+
+  // Initialize force layout with the selected strategy
+  simulation.value = initForceLayout(
+    props.nodes,
+    props.edges,
+    props.clusters,
+    {
+      physicsActive,
+      width,
+      height,
+      onTick: () => {
+        // Update link positions
+        link
+          .attr('x1', (d) => (d.source as D3Node).x!)
+          .attr('y1', (d) => (d.source as D3Node).y!)
+          .attr('x2', (d) => (d.target as D3Node).x!)
+          .attr('y2', (d) => (d.target as D3Node).y!);
+
+        // Update node positions
+        nodeGroup.attr('transform', (d: D3Node) => `translate(${d.x},${d.y})`);
+      },
+      getCollisionRadius,
+    },
+    layoutStrategy.value,
   );
-  if (!physicsActive.value) {
-    simulation.value
-      .force('link', null)
-      .force('charge', null)
-      .force('center', null)
-      .force('collision', null)
-      .stop();
-  }
-  if (props.edges.length < 500) {
-    setTimeout(() => {
-      console.log('Enhancing force layout...');
 
-      const baseDistance = 200;
-      const minDistance = 30;
-      const linkDistances = new Map();
-      props.edges.forEach((edge) => {
-        const similarity = edge.similarity || 0.5;
-        const distance = Math.max(
-          minDistance,
-          baseDistance * (1 - similarity) + minDistance,
-        );
-        linkDistances.set(edge, isFinite(distance) ? distance : minDistance);
-      });
-      simulation.value!.force(
-        'charge',
-        forceManyBody().strength(-500).distanceMax(width),
-      );
-      simulation
-        .value!.force<ForceLink<D3Node, D3Edge>>('link')!
-        .strength(0.5)
-        .distance((link) => linkDistances.get(link));
-      // Reheat simulation but not too much
-      simulation.value!.alpha(0.1).restart();
-    }, 3000);
+  if (forceLayoutManager.value) {
+    forceLayoutManager.value.updateCollisionRadius();
   }
 
-  updateNodeSizes(true);
-
-  console.log('Setting up tick handler');
-  simulation.value.on('tick', () => {
-    link
-      .attr('x1', (d) => (d.source as D3Node).x!)
-      .attr('y1', (d) => (d.source as D3Node).y!)
-      .attr('x2', (d) => (d.target as D3Node).x!)
-      .attr('y2', (d) => (d.target as D3Node).y!);
-
-    nodeGroup.attr('transform', (d: D3Node) => `translate(${d.x},${d.y})`);
-  });
-
+  // Set up zoom behavior
   zoomBehavior.value = zoom<SVGSVGElement, unknown>()
     .scaleExtent([0.001, 10])
     .on('zoom', (event) => {
@@ -1037,48 +892,17 @@ async function drawGraph() {
 
   svg.call(zoomBehavior.value);
 
-  // After the simulation has been created and nodes positioned,
-  // calculate the bounds and set initial zoom:
-  /*
-      simulation.value.on('end', () => {
-        // Get the bounds of all nodes
-        const nodes = g.selectAll('g.node-group');
-        let minX = Infinity,
-          maxX = -Infinity,
-          minY = Infinity,
-          maxY = -Infinity;
+  // Optional: fit graph after initial layout
+  setTimeout(() => {
+    fitGraph();
+  }, 1000);
 
-        nodes.each(function () {
-          const node = d3.select(this).datum();
-          minX = Math.min(minX, node.x);
-          maxX = Math.max(maxX, node.x);
-          minY = Math.min(minY, node.y);
-          maxY = Math.max(maxY, node.y);
-        });
-
-        // Add padding
-        const padding = 50;
-        minX -= padding;
-        maxX += padding;
-        minY -= padding;
-        maxY += padding;
-
-        // Calculate the scale and translate to fit the bounds
-        const scale =
-          Math.min(width / (maxX - minX), height / (maxY - minY)) * 0.95; // 0.95 adds a little margin
-
-        const transform = d3.zoomIdentity
-          .translate(
-            width / 2 - ((minX + maxX) / 2) * scale,
-            height / 2 - ((minY + maxY) / 2) * scale,
-          )
-          .scale(scale);
-
-        // Apply the transform smoothly
-        svg.transition().duration(750).call(zoom.transform, transform);
-      });
-      */
   console.log('drawGraph completed');
+}
+
+function changeLayoutStrategy(strategy: ForceLayoutStrategy) {
+  layoutStrategy.value = strategy;
+  drawGraph(); // Redraw with new strategy
 }
 
 function dragStarted(event: DragEvent, d: D3Node) {
@@ -1109,18 +933,6 @@ function dragStarted(event: DragEvent, d: D3Node) {
         .velocityDecay(0.7)
         .alpha(0.1)
         .restart();
-      // Alternative: reduced forced between nodes in cluster
-      // simulation.value
-      //   ?.force('charge', forceManyBody().strength(-10))
-      //   .force(
-      //     'link',
-      //     forceLink<D3Node, D3Edge>(props.edges as D3Edge[])
-      //       .id((d) => d.id)
-      //       .strength(0.01)
-      //       .distance(50),
-      //   )
-      //   .alphaTarget(0.05)
-      //   .restart();
     }
   }
 
@@ -1183,13 +995,9 @@ function dragEnded(event: DragEvent, d: D3Node) {
       });
 
       // Restore original forces but don't restart simulation
-      simulation.value?.force('charge', forceManyBody().strength(-100)).force(
-        'link',
-        forceLink<D3Node, D3Edge>(props.edges as D3Edge[])
-          .id((d) => d.id)
-          .strength(0.2)
-          .distance(50),
-      );
+      if (forceLayoutManager.value) {
+        forceLayoutManager.value.restoreDefaultForces();
+      }
     } else {
       // For single node - gentle release
       simulation.value?.alphaTarget(0).alpha(0.1);
@@ -1204,7 +1012,7 @@ function dragEnded(event: DragEvent, d: D3Node) {
 }
 
 function fitGraph() {
-  if (!chartContainer.value || !simulation.value) return;
+  if (!chartContainer.value) return;
 
   const g = d3.select(chartContainer.value).select('g');
   const nodes = g.selectAll('g.node-group');
@@ -1234,12 +1042,10 @@ function fitGraph() {
   const scale = Math.min(width / (maxX - minX), height / (maxY - minY)) * 0.95;
 
   const svg = d3.select(chartContainer.value).select('svg') as SVGSelection;
-
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
   const transform = zoomIdentity
-    .translate(
-      width / 2 - ((minX + maxX) / 2) * scale,
-      height / 2 - ((minY + maxY) / 2) * scale,
-    )
+    .translate(width / 2 - centerX * scale, height / 2 - centerY * scale)
     .scale(scale);
 
   (svg.transition() as SVGTransition)
@@ -1278,10 +1084,12 @@ function zoomOut() {
 }
 
 function relayoutGraph() {
-  prepositionNodes();
+  if (forceLayoutManager.value) {
+    forceLayoutManager.value.relayout();
+  }
 }
 
-function handleResize() {
+function handleWindowResize() {
   if (!chartContainer.value) return;
 
   const rect = chartContainer.value.getBoundingClientRect();
@@ -1294,10 +1102,9 @@ function handleResize() {
     .attr('width', width)
     .attr('height', height);
 
-  // Update force simulation center
-  if (simulation.value) {
-    simulation.value.force('center', forceCenter(width / 2, height / 2));
-    simulation.value.alpha(0.3).restart();
+  // Redraw graph if significant size change
+  if (forceLayoutManager.value && width > 0 && height > 0) {
+    forceLayoutManager.value.updateDimensions(width, height);
   }
 }
 
@@ -1309,11 +1116,11 @@ function handleSearchNodeSelect(node: Node) {
   selectNodes([node]);
   currentNode.value = node;
   emit('node-selected', node);
-  centerOnNode(node);
+  centerOnNode(node as D3Node);
 }
 
 onMounted(() => {
-  resizeObserver = new ResizeObserver(handleResize);
+  resizeObserver = new ResizeObserver(handleWindowResize);
   if (chartContainer.value) {
     resizeObserver.observe(chartContainer.value);
   }
@@ -1321,33 +1128,26 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (simulation.value) simulation.value.stop();
+  destroyForceLayout();
   resizeObserver.disconnect();
 });
 
-watch(
-  [() => props.nodes, () => props.edges, showLabels, showImages],
-  (newValues) => {
-    console.log('rerendering');
-    console.log(newValues);
-    drawGraph();
-  },
-  //{ deep: true },
-);
+watch([() => props.nodes, () => props.edges, showLabels, showImages], () => {
+  console.log('Redrawing graph due to data or display changes');
+  drawGraph();
+});
 
-watch(
-  () => physicsActive,
-  (newVal) => {
-    if (newVal.value) {
-      if (simulation.value) simulation.value.restart();
+watch(physicsActive, (newVal) => {
+  if (forceLayoutManager.value) {
+    if (newVal) {
+      forceLayoutManager.value.resumeSimulation();
     } else {
-      if (simulation.value) simulation.value.stop();
+      forceLayoutManager.value.pauseSimulation();
     }
-  },
-  { deep: true },
-);
+  }
+});
 
-watch(nodeSizeMultiplier, () => updateNodeSizes(true)); // restart when size changes
+watch(nodeSizeMultiplier, () => updateNodeSizes(true));
 
 onMounted(() => {
   const handleKeydown = (event: KeyboardEvent) => {

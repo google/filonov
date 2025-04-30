@@ -93,7 +93,6 @@ const series = computed(() => {
   selectedNodes.value.forEach((opt) => {
     const node = props.clusterNodes.find((n) => n.id === opt.id);
     if (node?.series) {
-      console.log(node.series);
       allSeries.push({
         name: `Node ${node.id}`,
         data: Object.entries(node.series)
