@@ -107,10 +107,15 @@ def main():  # noqa: D103
       args.db_uri
     )
   )
+  tagger = args.tagger
+  media_type = args.media_type
+  if args.source == 'youtube':
+    media_type = 'YOUTUBE_VIDEO'
+    tagger = 'gemini'
   request = filonov.CreativeMapGenerateRequest(
     source=args.source,
-    media_type='YOUTUBE_VIDEO' if args.source == 'youtube' else args.media_type,
-    tagger=args.tagger,
+    media_type=media_type,
+    tagger=tagger,
     tagger_parameters=extra_parameters.get('tagger'),
     similarity_parameters={
       'normalize': args.normalize,
