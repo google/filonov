@@ -27,6 +27,8 @@ import garf_core
 import pandas as pd
 import pydantic
 
+from media_tagging import exceptions
+
 
 class TaggingOutput(pydantic.BaseModel):
   """Base class."""
@@ -110,6 +112,12 @@ class TaggingResult(pydantic.BaseModel):
   tagging_details: dict[str, Any] | None = pydantic.Field(
     description='Additional details used during tagging', default=None
   )
+
+  def trim_tags(self, value: float) -> None:
+    """Removes tags from tagging result with low scores."""
+    if isinstance(self.content, Description):
+      raise exceptions.MediaTaggingError('Trimming is only supported for tags.')
+    self.content = [tag for tag in self.content if tag.score > value]
 
   def __hash__(self):  # noqa: D105
     return hash(
