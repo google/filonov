@@ -48,7 +48,7 @@ class MediaTaggingRequest(pydantic.BaseModel):
 
   model_config = pydantic.ConfigDict(extra='ignore')
 
-  tagger_type: Literal['google-cloud', 'gemini']
+  tagger_type: str
   media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO']
   media_paths: set[str] | Sequence[os.PathLike[str] | str]
   tagging_options: base_tagger.TaggingOptions = base_tagger.TaggingOptions()
@@ -99,6 +99,9 @@ class MediaTaggingResponse(pydantic.BaseModel):
 
   def to_pandas(self):
     return tagging_result.to_pandas(self.results)
+
+  def __bool__(self) -> bool:
+    return bool(self.results)
 
 
 def discover_taggers(

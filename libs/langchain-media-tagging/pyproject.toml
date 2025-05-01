@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "media-tagging-langchain"
+dependencies = [
+  "media_tagging",
+  "langchain",
+  "langchain-core",
+  "langchain-community",
+]
+authors = [
+  {name = "Google Inc. (gTech gPS CSE team)", email = "no-reply@google.com"},
+]
+license = {text = "Apache 2.0"}
+requires-python = ">=3.10"
+description = "Langchain plugin for media-tagging library"
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: Apache Software License",
+]
+
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = {attr = "media_tagging_langchain.__version__"}
+
+
+[project.entry-points.media_tagger]
+langchain = "media_tagging_langchain.tagger"
