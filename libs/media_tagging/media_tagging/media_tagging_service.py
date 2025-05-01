@@ -55,8 +55,13 @@ class MediaTaggingRequest(pydantic.BaseModel):
 
   @property
   def tagger(self):
-    if tagger_class := TAGGERS.get(self.tagger_type):
-      return tagger_class(
+    if builtin_tagger_class := TAGGERS.get(self.tagger_type):
+      return builtin_tagger_class(
+        **self.tagging_options.dict(),
+      )
+    plugin_taggers = discover_taggers(TAGGERS.keys())
+    if plugin_tagger_class := plugin_taggers.get(self.tagger_type):
+      return plugin_tagger_class(
         **self.tagging_options.dict(),
       )
     raise base_tagger.TaggerError(

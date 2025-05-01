@@ -48,28 +48,15 @@ google-cloud-videointelligence=[
 google-cloud=[
   "media-tagging[google-cloud-vision,google-cloud-videointelligence]",
 ]
-langchain=[
-  "langchain==0.3.15",
-  "langchain-core==0.3.31",
-  "langchain-community==0.3.15",
-]
-google-genai=[
-  "media-tagging[langchain]",
-  "langchain-google-genai==2.0.9",
-]
-google-vertexai=[
-  "media-tagging[langchain]",
-  "langchain-google-vertexai==2.0.11",
-]
 gemini=[
-  "media-tagging[google-genai,google-vertexai]"
+  "google-genai==1.13.0",
 ]
 server = [
   "fastapi==0.111.0",
   "pydantic-settings",
 ]
 all = [
-  "media-tagging[google-cloud,langchain,gemini,server]"
+  "media-tagging[google-cloud,gemini,server]"
 ]
 
 [project.entry-points.creative_assistant]

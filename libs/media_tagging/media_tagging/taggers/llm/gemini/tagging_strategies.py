@@ -19,16 +19,18 @@
 import functools
 import json
 import logging
+from typing import Final
 
 import pydantic
 import tenacity
 from google import genai
-from langchain_core import output_parsers
 from typing_extensions import override
 
 from media_tagging import media, tagging_result
 from media_tagging.taggers import base
-from media_tagging.taggers.llm import langchain_tagging_strategies, utils
+from media_tagging.taggers.llm import utils
+
+MAX_NUMBER_LLM_TAGS: Final[int] = 10
 
 
 class GeminiModelParameters(pydantic.BaseModel):
@@ -141,14 +143,10 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       self._prompt = custom_prompt
       return self._prompt
     prompt_file_name = 'tag' if output == tagging_result.Tag else 'description'
-    format_instructions = output_parsers.JsonOutputParser(
-      pydantic_object=output
-    ).get_format_instructions()
     prompt = utils.read_prompt_content(prompt_file_name)
     parameters = utils.get_invocation_parameters(
       media_type=media_type.name,
       tagging_options=tagging_options,
-      format_instructions=format_instructions,
     )
     self._prompt = prompt.format(**parameters)
     return self._prompt
@@ -161,9 +159,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
     if not tagging_options:
-      tagging_options = base.TaggingOptions(
-        n_tags=langchain_tagging_strategies.MAX_NUMBER_LLM_TAGS
-      )
+      tagging_options = base.TaggingOptions(n_tags=MAX_NUMBER_LLM_TAGS)
     result = self.get_llm_response(medium, tagging_result.Tag, tagging_options)
     tags = [
       tagging_result.Tag(name=r.get('name'), score=r.get('score'))
