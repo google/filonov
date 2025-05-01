@@ -16,10 +16,13 @@
 
 """Simplifies imports from inner modules."""
 
-from media_tagging.media_tagging_service import TAGGERS, MediaTaggingService
+from media_tagging.media_tagging_service import (
+  MediaTaggingRequest,
+  MediaTaggingService,
+)
 
 __all__ = [
   'MediaTaggingService',
-  'TAGGERS',
+  'MediaTaggingRequest',
 ]
 __version__ = '1.2.0'

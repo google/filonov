@@ -19,12 +19,10 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import json
-import os
 from collections.abc import Sequence
 from typing import Any, Literal
 
 import garf_core
-import pandas as pd
 import pydantic
 
 from media_tagging import exceptions
@@ -149,46 +147,6 @@ class TaggingResultsFileInput:
   identifier_name: str
   tag_name: str
   score_name: str
-
-
-def from_file(
-  path: os.PathLike[str],
-  file_column_input: TaggingResultsFileInput,
-  media_type: Literal['image', 'video', 'youtube_video'],
-  min_threshold: float = 0.0,
-) -> list[TaggingResult]:
-  """Build tagging results from a file.
-
-  Args:
-    path: Path to files with tags.
-    file_column_input: Identifiers for building tagging results.
-    media_type: Type of media found in a file.
-    min_threshold: Optional threshold for reducing output size.
-
-  Returns:
-    File content converted to Tagging results.
-
-  Raises:
-    ValueError: If file doesn't have all required input columns.
-  """
-  identifier, tag, score = (
-    file_column_input.identifier_name,
-    file_column_input.tag_name,
-    file_column_input.score_name,
-  )
-  data = pd.read_csv(path)
-  if missing_columns := {identifier, tag, score}.difference(set(data.columns)):
-    raise ValueError(f'Missing column(s) in {path}: {missing_columns}')
-  data = data[data[score] > min_threshold]
-  data['tag'] = data.apply(
-    lambda row: Tag(name=row[tag], score=row[score]),
-    axis=1,
-  )
-  grouped = data.groupby(identifier).tag.apply(list).reset_index()
-  return [
-    TaggingResult(identifier=row[identifier], type=media_type, content=row.tag)
-    for _, row in grouped.iterrows()
-  ]
 
 
 def convert_tagging_results_to_garf_report(

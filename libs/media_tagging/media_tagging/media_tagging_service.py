@@ -27,6 +27,7 @@ from typing import Literal
 import pydantic
 
 from media_tagging import exceptions, media, repositories, tagging_result
+from media_tagging.taggers import TAGGERS
 from media_tagging.taggers import base as base_tagger
 
 logger = logging.getLogger('media-tagger')
@@ -73,10 +74,14 @@ class MediaFetchingRequest(pydantic.BaseModel):
   tagger_type: str = 'loader'
 
 
-def _load_taggers():
+def discover_taggers(
+  existing_taggers: Sequence[str],
+) -> dict[str, base_tagger.BaseTagger]:
   """Loads all taggers exposed as `media_tagger` plugin."""
   taggers = {}
   for media_tagger in entry_points(group='media_tagger'):
+    if media_tagger.name in existing_taggers:
+      continue
     try:
       tagger_module = media_tagger.load()
       for name, obj in inspect.getmembers(tagger_module):
@@ -85,9 +90,6 @@ def _load_taggers():
     except ModuleNotFoundError:
       continue
   return taggers
-
-
-TAGGERS = _load_taggers()
 
 
 class MediaTaggingService:
@@ -99,10 +101,14 @@ class MediaTaggingService:
 
   def __init__(
     self,
-    tagging_results_repository: repositories.BaseTaggingResultsRepository,
+    tagging_results_repository: repositories.BaseTaggingResultsRepository
+    | None = None,
   ) -> None:
     """Initializes MediaTaggingService."""
-    self.repo = tagging_results_repository
+    self.repo = (
+      tagging_results_repository
+      or repositories.SqlAlchemyTaggingResultsRepository()
+    )
 
   def get_media(
     self,
