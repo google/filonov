@@ -22,8 +22,9 @@ import json
 from collections.abc import Sequence
 from typing import Any, Literal
 
-import garf_core
+import pandas as pd
 import pydantic
+from garf_core import report
 
 from media_tagging import exceptions
 
@@ -149,9 +150,9 @@ class TaggingResultsFileInput:
   score_name: str
 
 
-def convert_tagging_results_to_garf_report(
+def to_garf_report(
   tagging_results: Sequence[TaggingResult],
-) -> garf_core.report.GarfReport:
+) -> report.GarfReport:
   """Converts results of tagging to GarfReport for further writing."""
   results = []
   column_names = [
@@ -173,4 +174,11 @@ def convert_tagging_results_to_garf_report(
     else:
       parsed_result.append({tag.name: tag.score for tag in result.content})
     results.append(parsed_result)
-  return garf_core.report.GarfReport(results=results, column_names=column_names)
+  return report.GarfReport(results=results, column_names=column_names)
+
+
+def to_pandas(
+  tagging_results: Sequence[TaggingResult],
+) -> pd.DataFrame:
+  """Converts results of tagging to pandas DataFrame."""
+  return to_garf_report(tagging_results).to_pandas()

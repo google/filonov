@@ -13,7 +13,7 @@ dependencies = [
     "pydantic",
     "SQLalchemy>=2.0.0",
     "tenacity",
-    "pandas",
+    "google-genai==1.13.0",
 ]
 authors = [
   {name = "Google Inc. (gTech gPS CSE team)", email = "no-reply@google.com"},
@@ -48,15 +48,12 @@ google-cloud-videointelligence=[
 google-cloud=[
   "media-tagging[google-cloud-vision,google-cloud-videointelligence]",
 ]
-gemini=[
-  "google-genai==1.13.0",
-]
 server = [
   "fastapi==0.111.0",
   "pydantic-settings",
 ]
 all = [
-  "media-tagging[google-cloud,gemini,server]"
+  "media-tagging[google-cloud,server]"
 ]
 
 [project.entry-points.creative_assistant]
