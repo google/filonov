@@ -313,7 +313,7 @@
                     </q-item-section>
                     <q-item-section side>
                       <q-chip size="sm" color="primary" text-color="white">
-                        {{ tagInfo.freq }}
+                        {{ tagInfo.avgScore.toFixed(2) }} ({{ tagInfo.freq }})
                       </q-chip>
                     </q-item-section>
                   </q-item>
@@ -699,15 +699,19 @@ function unloadData() {
  * Collect tags from nodes.
  */
 function collectTags(nodes: Node[]): TagStats[] {
-  const tagsMap = new Map<string, { freq: number; nodes: Node[] }>();
+  const tagsMap = new Map<
+    string,
+    { freq: number; avgScore: number; nodes: Node[] }
+  >();
 
   nodes.forEach((node: Node) => {
     node.tags?.forEach((tagInfo) => {
       if (!tagsMap.has(tagInfo.tag)) {
-        tagsMap.set(tagInfo.tag, { freq: 0, nodes: [] });
+        tagsMap.set(tagInfo.tag, { freq: 0, nodes: [], avgScore: 0 });
       }
       const stats = tagsMap.get(tagInfo.tag)!;
       stats.freq += 1;
+      stats.avgScore += tagInfo.score;
       stats.nodes.push(node);
     });
   });
@@ -716,9 +720,10 @@ function collectTags(nodes: Node[]): TagStats[] {
     .map(([tag, stats]) => ({
       tag,
       freq: stats.freq,
+      avgScore: stats.avgScore / stats.nodes.length,
       nodes: stats.nodes,
     }))
-    .sort((a, b) => b.freq - a.freq); // Sort by frequency descending
+    .sort((a, b) => b.avgScore - a.avgScore); // Sort by svg. score descending
 }
 
 function selectNodesByTag(tagStat: TagStats) {

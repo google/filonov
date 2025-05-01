@@ -121,6 +121,7 @@ export interface ClusterInfo {
 export interface TagStats {
   tag: string;
   freq: number;
+  avgScore: number;
   nodes: Node[];
 }
 

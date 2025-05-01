@@ -185,6 +185,7 @@ const tagsMetrics = computed(() => {
     return {
       tag: tagStat.tag,
       freq: tagStat.freq,
+      avgScore: tagStat.avgScore,
       metrics: metricValues,
       nodes: tagStat.nodes,
     };
@@ -205,6 +206,14 @@ const columns = computed<QTableColumn[]>(() => {
       name: 'freq',
       label: 'Frequency',
       field: 'freq',
+      align: 'right',
+      sortable: true,
+      format: (val) => val.toLocaleString(),
+    },
+    {
+      name: 'avgScore',
+      label: 'Avg. Score',
+      field: 'avgScore',
       align: 'right',
       sortable: true,
       format: (val) => val.toLocaleString(),
