@@ -72,13 +72,11 @@ def streamlit_app():
         )
         if end_date < start_date:
           st.error('End date cannot be less than start_date')
-      google_ads_config = st.text_input('Google Ads YAML location', '')
       input_parameters = {
         'account': account,
         'campaign_types': campaign_type,
         'start_date': start_date.strftime('%Y-%m-%d'),
         'end_date': end_date.strftime('%Y-%m-%d'),
-        'ads_config_path': google_ads_config,
       }
     else:
       media_type = 'YOUTUBE_VIDEO'

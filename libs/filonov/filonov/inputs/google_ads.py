@@ -19,6 +19,7 @@
 import datetime
 import functools
 import operator
+import os
 import pathlib
 from collections.abc import Sequence
 from typing import Final, get_args
@@ -42,7 +43,10 @@ class GoogleAdsInputParameters(interfaces.InputParameters):
   ).strftime('%Y-%m-%d')
 
   campaign_types: Sequence[queries.SupportedCampaignTypes] | str = ('app',)
-  ads_config_path: str = str(pathlib.Path.home() / 'google-ads.yaml')
+  ads_config_path: str = os.getenv(
+    'GOOGLE_ADS_CONFIGURATION_FILE_PATH',
+    str(pathlib.Path.home() / 'google-ads.yaml'),
+  )
 
   def model_post_init(self, __context):  # noqa: D105
     if self.campaign_types == 'all':
