@@ -95,6 +95,14 @@ export interface Edge {
  * A graph of nodes connected by similarity.
  */
 export interface GraphData {
+  /** Additional info about graph */
+  graph?: {
+    adaptive_threshold?: number;
+    period?: {
+      start_date: string;
+      end_date: string;
+    };
+  };
   /**
    * Nodes
    */

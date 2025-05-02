@@ -14,6 +14,8 @@
           {{ dataSourceDescription }}
           <q-badge class="q-ml-sm"> {{ nodes.length }} nodes </q-badge>
           <q-badge class="q-ml-sm"> {{ edges.length }} edges </q-badge>
+          <br />
+          {{ dataSourceAuxInfo }}
         </template>
         <span v-else class="text-grey">No data loaded</span>
       </div>
@@ -442,7 +444,8 @@ import {
 
 const d3GraphRef = ref<InstanceType<typeof D3Graph> | null>(null);
 const showLoadDataDialog = ref(false);
-const dataSourceDescription = ref('');
+const dataSourceDescription = ref(''); // description of data file (name/path)
+const dataSourceAuxInfo = ref(''); // additional info about loaded data
 const nodes = ref([] as Node[]);
 const edges = ref([] as Edge[]);
 const clusters = ref<ClusterInfo[]>([]);
@@ -509,6 +512,9 @@ async function onDataLoaded(args: {
   showLoadDataDialog.value = false;
   dataSourceDescription.value = args.origin || 'Custom data';
   const graphData: GraphData = args.data;
+  if (args.data.graph?.period) {
+    dataSourceAuxInfo.value = `period: ${args.data.graph?.period.start_date} - ${args.data.graph?.period.end_date}`;
+  }
   sortTags(graphData.nodes);
   console.log('threshold: ' + args.threshold);
   if (args.threshold !== undefined && args.threshold > 0) {
