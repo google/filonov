@@ -86,7 +86,7 @@ async def cluster_media(
     media_paths=request.media_paths,
   )
   clustering_results = dependencies.similarity_service.cluster_media(
-    tagging_results, normalize=request.normalize
+    tagging_results.results, normalize=request.normalize
   )
   return fastapi.responses.JSONResponse(
     content=fastapi.encoders.jsonable_encoder(clustering_results.clusters)

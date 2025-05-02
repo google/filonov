@@ -143,13 +143,14 @@ class MediaTaggingService:
   def get_media(
     self,
     fetching_request: MediaFetchingRequest,
-  ) -> list[tagging_result.TaggingResult]:
-    return self.repo.get(
+  ) -> MediaTaggingResponse:
+    results = self.repo.get(
       fetching_request.media_paths,
       fetching_request.media_type,
       fetching_request.tagger_type,
       fetching_request.output,
     )
+    return MediaTaggingResponse(results=results)
 
   def tag_media(
     self,

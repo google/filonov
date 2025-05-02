@@ -145,8 +145,8 @@ class FilonovService:
       )
 
     clustering_results = self.similarity_service.cluster_media(
-      tagging_results, **request.similarity_parameters
+      tagging_results.results, **request.similarity_parameters
     )
     return creative_map.CreativeMap.from_clustering(
-      clustering_results, tagging_results, media_info, context
+      clustering_results, tagging_results.results, media_info, context
     )
