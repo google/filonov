@@ -132,7 +132,9 @@ export interface TagStats {
   avgScore: number;
   nodes: Node[];
 }
-
+export interface TagStatsWithMetrics extends TagStats {
+  metrics: MetricsObject;
+}
 /**
  * An abstract node (not necessary an asset node)
  * with id and info object with metric values.

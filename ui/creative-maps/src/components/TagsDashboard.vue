@@ -86,6 +86,173 @@
               label="Select tags"
             />
           </div>
+          <div class="col-auto q-mt-md">
+            <q-btn
+              label="Clear Chart"
+              flat
+              @click="selectedTags = []"
+              icon="clear"
+              :disable="selectedTags.length === 0"
+            />
+          </div>
+        </div>
+        <div class="row q-col-gutter-md q-mb-md">
+          <div class="col-12">
+            <q-expansion-item
+              expand-separator
+              icon="trending_up"
+              label="Trend Detection"
+              default-opened
+            >
+              <div class="q-pa-md">
+                <div class="row q-col-gutter-md">
+                  <div class="col-auto">
+                    <q-select
+                      v-model="trendType"
+                      :options="[
+                        { label: 'All Trends', value: 'all' },
+                        { label: 'Growth', value: 'growth' },
+                        { label: 'Decline', value: 'decline' },
+                      ]"
+                      option-value="value"
+                      label="Trend Type"
+                      dense
+                      options-dense
+                      style="width: 120px"
+                    />
+                  </div>
+                  <div class="col-auto">
+                    <q-input
+                      v-model.number="thresholdPercent"
+                      type="number"
+                      label="Threshold %"
+                      min="1"
+                      max="100"
+                      dense
+                      style="width: 120px"
+                    />
+                  </div>
+                  <div class="col-auto">
+                    <q-input
+                      v-model.number="maWindowSize"
+                      type="number"
+                      label="MA window size"
+                      min="1"
+                      max="30"
+                      title="Controls how many days are used to calculate moving average. Smaller values detect shorter trends, larger values filter out noise."
+                      dense
+                      style="width: 120px"
+                    />
+                  </div>
+                  <div class="col-auto">
+                    <q-input
+                      v-model.number="maxTrendsToShow"
+                      type="number"
+                      label="Max Trends"
+                      min="1"
+                      dense
+                      style="width: 120px"
+                    />
+                  </div>
+                  <div class="col-auto self-end">
+                    <q-btn
+                      color="primary"
+                      label="Detect Trends"
+                      @click="detectTrends"
+                      :loading="detectingTrends"
+                      icon="search"
+                    />
+                  </div>
+                </div>
+
+                <div v-if="topTrends.length > 0" class="q-mt-md">
+                  <q-table
+                    :rows="topTrends"
+                    :columns="trendColumns"
+                    row-key="tag"
+                    dense
+                    class="trend-table"
+                    :pagination="{ rowsPerPage: 10 }"
+                  >
+                    <template #body-cell-tag="props">
+                      <q-td :props="props">
+                        <div class="row items-center">
+                          <q-checkbox
+                            v-model="selectedTrendTags"
+                            :val="props.row.tag"
+                            class="q-mr-sm"
+                          />
+                          {{ props.value }}
+                        </div>
+                      </q-td>
+                    </template>
+                    <template #body-cell-trendType="props">
+                      <q-td :props="props">
+                        <q-chip
+                          :color="
+                            props.value === 'growth' ? 'positive' : 'negative'
+                          "
+                          text-color="white"
+                          dense
+                          class="q-px-sm"
+                        >
+                          <q-icon
+                            :name="
+                              props.value === 'growth'
+                                ? 'trending_up'
+                                : 'trending_down'
+                            "
+                            class="q-mr-xs"
+                          />
+                          {{ capitalize(props.value) }}
+                        </q-chip>
+                      </q-td>
+                    </template>
+                    <template #body-cell-changePercent="props">
+                      <q-td :props="props">
+                        <span
+                          :class="
+                            props.value >= 0 ? 'text-positive' : 'text-negative'
+                          "
+                        >
+                          {{ props.value >= 0 ? '+' : ''
+                          }}{{ props.value.toFixed(2) }}%
+                        </span>
+                      </q-td>
+                    </template>
+                    <template #top>
+                      <div class="row full-width items-center">
+                        <div class="col-auto text-subtitle1">Top Trends</div>
+                        <div class="col-auto q-ml-md">
+                          <q-btn
+                            label="Add Selected to Chart"
+                            color="secondary"
+                            size="sm"
+                            @click="addSelectedTrendsToChart"
+                            icon="add_chart"
+                            :disable="selectedTrendTags.length === 0"
+                          />
+                        </div>
+                      </div>
+                    </template>
+                  </q-table>
+                </div>
+                <div v-else-if="detectingTrends" class="text-center q-py-md">
+                  <q-spinner color="primary" size="2em" />
+                  <div class="q-mt-sm text-caption">Analyzing trends...</div>
+                </div>
+                <div
+                  v-else-if="trendsDetectionRun && topTrends.length === 0"
+                  class="text-center q-py-md"
+                >
+                  <q-icon name="info" color="grey-7" size="2em" />
+                  <div class="q-mt-sm text-caption">
+                    No significant trends found with current settings
+                  </div>
+                </div>
+              </div>
+            </q-expansion-item>
+          </div>
         </div>
 
         <apexchart
@@ -100,7 +267,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, ComputedRef, onMounted } from 'vue';
+import { ref, computed, ComputedRef, onMounted, watch } from 'vue';
 import { useQuasar, QTableColumn } from 'quasar';
 import { TagStats } from './models';
 import { capitalize, assertIsError } from 'src/helpers/utils';
@@ -126,6 +293,16 @@ const $q = useQuasar();
 const isDynamicView = ref(false);
 const selectedTags = ref<string[]>([]);
 const selectedMetric = ref('');
+
+// Trend detection parameters
+const trendType = ref('all');
+const thresholdPercent = ref(15);
+const maWindowSize = ref(3);
+const maxTrendsToShow = ref(10);
+const detectingTrends = ref(false);
+const trendsDetectionRun = ref(false);
+const topTrends = ref<TrendResult[]>([]);
+const selectedTrendTags = ref<string[]>([]);
 
 // get a list of tags for dropdown
 const sortedTagOptions = computed(() => {
@@ -238,14 +415,52 @@ const columns = computed<QTableColumn[]>(() => {
   return [...baseColumns, ...metricColumns];
 });
 
-const onTagClick = (tagData: TagStats) => {
-  console.log(tagData);
+const trendColumns = computed<QTableColumn[]>(() => {
+  return [
+    {
+      name: 'tag',
+      label: 'Tag',
+      field: 'tag',
+      align: 'left',
+      sortable: true,
+    },
+    {
+      name: 'trendType',
+      label: 'Trend',
+      field: 'trendType',
+      align: 'center',
+      sortable: false,
+    },
+    {
+      name: 'changePercent',
+      label: 'Change %',
+      field: 'changePercent',
+      align: 'right',
+      sortable: true,
+    },
+    {
+      name: 'changeAbs',
+      label: 'Change abs.',
+      field: (row) => (row.endValue - row.startValue).toFixed(2),
+      align: 'right',
+      sortable: true,
+    },
+    {
+      name: 'period',
+      label: 'Period',
+      field: (row) =>
+        `${formatDate(row.startDate)} - ${formatDate(row.endDate)}`,
+      align: 'right',
+    },
+  ];
+});
+
+function onTagClick(tagData: TagStats) {
   emit('select-tag', tagData);
-};
+}
 
 const chartSeries = computed(() => {
   return selectedTags.value.map((tag) => {
-    console.log('selected: ' + JSON.stringify(tag));
     const tagData = props.tagsStats.find((t) => t.tag === tag);
     if (!tagData) return { name: tag, data: [] };
 
@@ -279,7 +494,11 @@ const chartSeries = computed(() => {
 const chartOptions = computed(() => ({
   chart: {
     type: 'line',
-    zoom: { enabled: true },
+    animations: {
+      enabled: true,
+      easing: 'easeinout',
+      speed: 800,
+    },
   },
   xaxis: {
     type: 'datetime',
@@ -290,6 +509,27 @@ const chartOptions = computed(() => ({
     },
     labels: {
       formatter: (val: number) => val.toFixed(2),
+    },
+  },
+  tooltip: {
+    shared: true,
+    intersect: false,
+    x: {
+      format: 'yyyy-MM-dd',
+    },
+  },
+  legend: {
+    position: 'bottom',
+    horizontalAlign: 'right',
+  },
+  stroke: {
+    width: 2,
+    curve: 'smooth',
+  },
+  markers: {
+    size: 4,
+    hover: {
+      size: 6,
     },
   },
 }));
@@ -312,4 +552,255 @@ function handleExport() {
     });
   }
 }
+
+// Trend Detection Functions
+interface TrendResult {
+  tag: string;
+  metric: string;
+  trendType: 'growth' | 'decline' | 'stable';
+  changePercent: number;
+  startValue: number;
+  endValue: number;
+  startDate: Date;
+  endDate: Date;
+}
+
+// For each tag, construct a properly ordered time series with no gaps
+function prepareTimeSeriesData(
+  tagData: TagStats,
+  metric: string,
+): { date: Date; value: number }[] {
+  // Collect all dates from nodes with their values
+  const dateValues = new Map<string, number>();
+
+  tagData.nodes.forEach((node) => {
+    if (!node.series) return;
+
+    Object.entries(node.series).forEach(([dateStr, metrics]) => {
+      const value = (metrics[metric] as number) || 0;
+      dateValues.set(dateStr, (dateValues.get(dateStr) || 0) + value);
+    });
+  });
+
+  // Convert to sorted array
+  const sortedData = Array.from(dateValues.entries())
+    .map(([dateStr, value]) => ({
+      date: new Date(dateStr),
+      value,
+    }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  return sortedData;
+}
+
+function calculateMovingAverage(
+  data: { date: Date; value: number }[],
+  windowSize: number,
+): { date: Date; value: number; ma: number }[] {
+  return data.map((point, index) => {
+    // Calculate the start index for the window
+    const startIdx = Math.max(0, index - windowSize + 1);
+    // Get the window of data points
+    const window = data.slice(startIdx, index + 1);
+    // Calculate average
+    const sum = window.reduce((acc, curr) => acc + curr.value, 0);
+    const ma = window.length > 0 ? sum / window.length : point.value;
+
+    return {
+      date: point.date,
+      value: point.value,
+      ma,
+    };
+  });
+}
+
+/**
+ * Simple trend detection using moving averages
+ */
+function detectTrend(
+  tagData: TagStats,
+  metric: string,
+  thresholdPercent: number = 15,
+  maWindow = 3,
+): TrendResult | null {
+  // Get prepared time series data
+  const timeSeriesData = prepareTimeSeriesData(tagData, metric);
+
+  // Need at least 5 data points for reliable detection
+  if (timeSeriesData.length < 5) {
+    return null;
+  }
+
+  // Sort data by date
+  const sortedData = [...timeSeriesData].sort(
+    (a, b) => a.date.getTime() - b.date.getTime(),
+  );
+
+  // Calculate moving average (3-day window)
+  const smoothedData = calculateMovingAverage(sortedData, maWindow);
+
+  // We need at least 5 points with moving averages
+  if (smoothedData.length < 5) {
+    return null;
+  }
+
+  // Find the most significant trend within the data
+  // Look at all possible periods of at least 3 days
+  let maxChangePercent = 0;
+  let trendStartIndex = 2; // Start from 3rd point (first with reliable MA)
+  let trendEndIndex = smoothedData.length - 1;
+
+  // Examine all possible periods looking for the most significant change
+  for (let startIdx = 2; startIdx < smoothedData.length - 2; startIdx++) {
+    for (let endIdx = startIdx + 2; endIdx < smoothedData.length; endIdx++) {
+      const periodStartValue = smoothedData[startIdx].ma;
+      const periodEndValue = smoothedData[endIdx].ma;
+
+      // Skip if start value is zero to avoid division by zero
+      if (periodStartValue === 0) continue;
+
+      const periodChangePercent =
+        ((periodEndValue - periodStartValue) / periodStartValue) * 100;
+
+      // If we found a more significant change, record it
+      if (Math.abs(periodChangePercent) > Math.abs(maxChangePercent)) {
+        maxChangePercent = periodChangePercent;
+        trendStartIndex = startIdx;
+        trendEndIndex = endIdx;
+      }
+    }
+  }
+
+  // Get the start and end points of the most significant period
+  const startPoint = smoothedData[trendStartIndex];
+  const endPoint = smoothedData[trendEndIndex];
+
+  // Calculate change for the most significant period
+  const startValue = startPoint.ma;
+  const endValue = endPoint.ma;
+  const changePercent = maxChangePercent;
+
+  // Determine trend type
+  let trendType: 'growth' | 'decline' | 'stable' = 'stable';
+  if (Math.abs(changePercent) >= thresholdPercent) {
+    trendType = changePercent > 0 ? 'growth' : 'decline';
+  }
+
+  return {
+    tag: tagData.tag,
+    metric,
+    trendType,
+    changePercent,
+    startValue,
+    endValue,
+    startDate: startPoint.date,
+    endDate: endPoint.date,
+  };
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+async function detectTrends() {
+  detectingTrends.value = true;
+  trendsDetectionRun.value = true;
+  selectedTrendTags.value = [];
+
+  try {
+    console.log(
+      `Starting trend detection with type filter: ${trendType.value}`,
+    );
+    console.log(`Threshold: ${thresholdPercent.value}%`);
+
+    // Get trends for all tags using our simplified algorithm
+    const allTrends = props.tagsStats
+      .map((tagData) =>
+        detectTrend(
+          tagData,
+          selectedMetric.value,
+          thresholdPercent.value,
+          maWindowSize.value,
+        ),
+      )
+      .filter((trend): trend is TrendResult => trend !== null);
+
+    console.log(`Found ${allTrends.length} trends in total`);
+
+    // Apply filter based on selected trend type
+    let filteredTrends = allTrends;
+    if (trendType.value !== 'all') {
+      // Extract the string value from the object if needed
+      const filterValue =
+        typeof trendType.value === 'object' && trendType.value !== null
+          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (trendType.value as any).value // Get the value property from the object
+          : trendType.value;
+
+      filteredTrends = allTrends.filter(
+        (trend) => trend.trendType === filterValue,
+      );
+    }
+
+    // Sort by absolute percentage change
+    // const sortedTrends = filteredTrends.sort(
+    //   (a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent),
+    // );
+    const sortedTrends = filteredTrends.sort(
+      (a, b) =>
+        Math.abs(b.endValue - b.startValue) -
+        Math.abs(a.endValue - a.startValue),
+    );
+    // Get top trends
+    topTrends.value = sortedTrends.slice(0, maxTrendsToShow.value);
+    console.log(`Showing top ${topTrends.value.length} trends`);
+
+    // Log the trends being displayed
+    if (topTrends.value.length > 0) {
+      topTrends.value.forEach((trend) => {
+        console.log(
+          `${trend.tag}: ${trend.trendType}, ${trend.changePercent.toFixed(2)}%, ${trend.endValue - trend.startValue}`,
+        );
+      });
+    } else {
+      console.log('No trends to display after filtering');
+    }
+  } catch (error) {
+    console.error('Error detecting trends:', error);
+    $q.notify({
+      color: 'negative',
+      message: 'Error detecting trends',
+      icon: 'error',
+    });
+  } finally {
+    detectingTrends.value = false;
+  }
+}
+
+function addSelectedTrendsToChart() {
+  // Get current selected tags
+  const currentTags = new Set(selectedTags.value);
+
+  // Add selected trend tags
+  selectedTrendTags.value.forEach((tag) => {
+    currentTags.add(tag);
+  });
+
+  selectedTags.value = Array.from(currentTags);
+
+  // Clear selected trend tags
+  selectedTrendTags.value = [];
+}
+
+// Reset trends when metric changes
+watch(selectedMetric, () => {
+  topTrends.value = [];
+  trendsDetectionRun.value = false;
+});
 </script>
+<style>
+.trend-table .q-table__top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+</style>
