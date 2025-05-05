@@ -28,7 +28,7 @@ from media_tagging import media
 import filonov
 from filonov.entrypoints import utils
 
-AVAILABLE_TAGGERS = list(media_tagging.TAGGERS.keys())
+AVAILABLE_TAGGERS = list(media_tagging.taggers.TAGGERS.keys())
 
 
 def main():  # noqa: D103
