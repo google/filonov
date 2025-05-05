@@ -16,15 +16,19 @@
 
 """Built-in taggers."""
 
-from media_tagging.taggers.google_cloud.tagger import GoogleCloudTagger
+import contextlib
+
 from media_tagging.taggers.llm.gemini.tagger import GeminiTagger
 
 __all__ = [
-  'GoogleCloudTagger',
   'GeminiTagger',
 ]
-
 TAGGERS = {
   'gemini': GeminiTagger,
-  'google-cloud': GoogleCloudTagger,
 }
+
+with contextlib.suppress(ImportError):
+  from media_tagging.taggers.google_cloud.tagger import GoogleCloudTagger
+
+  __all__.append('GoogleCloudTagger')
+  TAGGERS['google-cloud'] = GoogleCloudTagger
