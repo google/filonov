@@ -364,6 +364,7 @@
               <TagsDashboard
                 :tags-stats="sortedTags"
                 @select-tag="onTagDashboardSelect"
+                @select-nodes="selectNodes"
               />
             </q-dialog>
             <!-- Clusters Comparison Dialog -->
@@ -535,7 +536,7 @@ async function onDataLoaded(args: {
       0,
     );
     console.log(
-      `Graph optimized: edges originally ${graphData.edges.length} optimized to ${optimizedEdges.length}`,
+      `Graph has been optimized: originally ${graphData.edges.length} edges optimized to ${optimizedEdges.length}`,
     );
     edges.value = optimizedEdges;
   } else {
@@ -778,6 +779,12 @@ function selectNode(nodeId: number) {
     // NOTE: selectNodes won't trigger 'select-node' event
     selectedNode.value = node;
   }
+}
+
+/** Handler of clicking on 'View Nodes' for a tag in 'Tags Dashboard' dialog. */
+function selectNodes(nodes: Node[]) {
+  showTagsDashboardDialog.value = false;
+  d3GraphRef.value?.selectNodes(nodes);
 }
 
 function getHistogramData(metric: string) {

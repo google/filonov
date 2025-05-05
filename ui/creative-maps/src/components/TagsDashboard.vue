@@ -255,23 +255,159 @@
           </div>
         </div>
 
-        <apexchart
-          type="line"
-          :options="chartOptions"
-          :series="chartSeries"
-          height="400"
-        />
+        <apexchart :options="chartOptions" :series="chartSeries" height="400" />
+
+        <div class="q-mt-lg">
+          <div class="row items-center q-mb-md">
+            <div class="text-subtitle1">Selected Tags Details</div>
+            <q-space />
+          </div>
+          <div class="row q-gutter-md q-mt-sm">
+            <div v-for="tag in selectedTags" :key="tag" class="col-auto">
+              <TagCard
+                :tagData="getTagData(tag)"
+                :selectedMetric="selectedMetric"
+                @remove="removeTag(tag)"
+                @view-nodes="viewTagNodesInGraph(tag)"
+              />
+            </div>
+          </div>
+          <div
+            v-if="selectedTags.length === 0"
+            class="text-center q-py-lg text-grey"
+          >
+            <q-icon name="info" size="2em" />
+            <div class="q-mt-sm">
+              Select tags from the dropdown above to view details
+            </div>
+          </div>
+        </div>
+
+        <!-- Common Nodes Analysis Panel -->
+        <q-card v-if="selectedTags.length > 0" class="q-mt-md">
+          <q-card-section class="bg-grey-2">
+            <div class="row items-center">
+              <div class="text-subtitle1">Common Nodes Analysis</div>
+              <q-space />
+            </div>
+          </q-card-section>
+
+          <q-card-section>
+            <div class="row items-center q-mb-md">
+              <div class="col text-body1">
+                <span class="text-weight-bold">{{ commonNodes.length }}</span>
+                common nodes found in selected tags:
+                <q-chip
+                  v-for="tag in selectedTags"
+                  :key="tag"
+                  color="primary"
+                  text-color="white"
+                  dense
+                  class="q-ml-xs"
+                >
+                  {{ tag }}
+                </q-chip>
+              </div>
+              <div class="col-auto">
+                <q-btn
+                  color="primary"
+                  icon="visibility"
+                  label="View In Graph"
+                  :disable="commonNodes.length === 0"
+                  @click="viewCommonNodesInGraph"
+                />
+              </div>
+            </div>
+
+            <!-- Mini table of common nodes -->
+            <q-table
+              v-if="commonNodes.length > 0"
+              :rows="commonNodes"
+              :columns="commonNodesColumns"
+              row-key="id"
+              dense
+              :pagination="{ rowsPerPage: 5 }"
+            >
+              <template #top-left>
+                <div class="row items-center q-mb-md">
+                  <q-toggle
+                    v-model="showImages"
+                    label="Show previews"
+                    color="primary"
+                  />
+                </div>
+              </template>
+              <template v-if="showImages" #body-cell-image="props">
+                <q-td :props="props">
+                  <q-img
+                    :src="props.value"
+                    spinner-color="primary"
+                    style="height: 50px; width: 50px; cursor: pointer"
+                    @click="openPreview(props.row)"
+                    fit="contain"
+                  >
+                    <template #error>
+                      <div
+                        class="absolute-full flex flex-center bg-negative text-white"
+                      >
+                        Error
+                      </div>
+                    </template>
+                  </q-img>
+                </q-td>
+              </template>
+              <template #body-cell-label="props">
+                <q-td :props="props">
+                  <a
+                    href="#"
+                    class="text-primary"
+                    @click.prevent="selectNode(props.row)"
+                  >
+                    {{ props.value }}
+                  </a>
+                </q-td>
+              </template>
+              <template v-if="selectedMetric" #body-cell-metric="props">
+                <q-td :props="props">
+                  {{
+                    formatMetricValue(
+                      props.row.info?.[selectedMetric] || 0,
+                      selectedMetric,
+                    )
+                  }}
+                </q-td>
+              </template>
+            </q-table>
+
+            <div v-else class="text-center q-py-md text-grey">
+              <q-icon name="info" size="2em" />
+              <div class="q-mt-sm">
+                No common nodes found between selected tags
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
       </template>
     </q-card-section>
   </q-card>
+  <q-dialog v-model="showPreview" maximized>
+    <CreativePreview
+      v-if="previewData"
+      :image="previewData.image"
+      :media_path="previewData.media_path"
+    />
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, ComputedRef, onMounted, watch } from 'vue';
 import { useQuasar, QTableColumn } from 'quasar';
-import { TagStats } from './models';
+import { TagStats, TagStatsWithMetrics, Node } from './models';
 import { capitalize, assertIsError } from 'src/helpers/utils';
 import { exportTable } from 'src/helpers/export';
+import TagCard from 'components/TagCard.vue';
+import CreativePreview from './CreativePreview.vue';
+
 import {
   aggregateNodesMetrics,
   formatMetricValue,
@@ -286,6 +422,7 @@ interface Props {
 const props = defineProps<Props>();
 const emit = defineEmits<{
   (e: 'select-tag', tagData: TagStats): void;
+  (e: 'select-nodes', nodes: Node[]): void;
 }>();
 
 const $q = useQuasar();
@@ -293,6 +430,9 @@ const $q = useQuasar();
 const isDynamicView = ref(false);
 const selectedTags = ref<string[]>([]);
 const selectedMetric = ref('');
+const showImages = ref(false);
+const showPreview = ref(false);
+const previewData = ref<{ image: string; media_path: string } | null>(null);
 
 // Trend detection parameters
 const trendType = ref('all');
@@ -350,12 +490,12 @@ onMounted(() => {
     selectedMetric.value = metrics.value[0];
   }
   if (props.tagsStats.length) {
-    selectedTags.value = [props.tagsStats[0].tag];
+    selectedTags.value = [sortedTagOptions.value[0]];
   }
 });
 
 // Calculate metrics for each tag
-const tagsMetrics = computed(() => {
+const tagsMetrics = computed<TagStatsWithMetrics[]>(() => {
   return props.tagsStats.map((tagStat) => {
     const metricValues = aggregateNodesMetrics(tagStat.nodes);
 
@@ -368,6 +508,14 @@ const tagsMetrics = computed(() => {
     };
   });
 });
+
+function openPreview(row: Node) {
+  previewData.value = {
+    image: row.image as string,
+    media_path: row.media_path as string,
+  };
+  showPreview.value = true;
+}
 
 // Define columns dynamically based on metrics
 const columns = computed<QTableColumn[]>(() => {
@@ -457,6 +605,80 @@ const trendColumns = computed<QTableColumn[]>(() => {
 
 function onTagClick(tagData: TagStats) {
   emit('select-tag', tagData);
+}
+
+function getTagData(tagName: string): TagStatsWithMetrics {
+  return tagsMetrics.value.find((t) => t.tag === tagName)!;
+}
+
+// Compute common nodes between selected tags
+const commonNodes = computed((): Node[] => {
+  if (selectedTags.value.length === 0) return [];
+
+  // Get nodes from the first selected tag
+  const firstTagNodes = getTagData(selectedTags.value[0]).nodes;
+
+  if (selectedTags.value.length === 1) return firstTagNodes;
+
+  // Find intersection with other selected tags
+  return firstTagNodes.filter((node) => {
+    return selectedTags.value.slice(1).every((tag) => {
+      const tagData = getTagData(tag);
+      return tagData.nodes.some((n) => n.id === node.id);
+    });
+  });
+});
+
+// Columns for the common nodes table
+const commonNodesColumns = computed((): QTableColumn[] => {
+  const columns: QTableColumn[] = [
+    {
+      name: 'image',
+      label: 'Preview',
+      field: 'image',
+      align: 'left',
+    },
+    {
+      name: 'label',
+      label: 'Name',
+      field: 'label',
+      align: 'left',
+      sortable: true,
+    },
+  ];
+
+  // Add column for selected metric
+  if (selectedMetric.value) {
+    columns.push({
+      name: 'metric',
+      label: capitalize(selectedMetric.value),
+      field: (row: Node) => row.info?.[selectedMetric.value] || 0,
+      align: 'right',
+      sortable: true,
+    });
+  }
+
+  return columns;
+});
+
+// remove a tag from the selected tags
+function removeTag(tagName: string) {
+  selectedTags.value = selectedTags.value.filter((tag) => tag !== tagName);
+}
+
+// View nodes for a specific tag in the main graph
+function viewTagNodesInGraph(tagName: string) {
+  const tagData = getTagData(tagName);
+  emit('select-tag', tagData);
+}
+
+// View common nodes in the main graph
+function viewCommonNodesInGraph() {
+  emit('select-nodes', commonNodes.value);
+}
+
+function selectNode(node: Node) {
+  emit('select-nodes', [node]);
 }
 
 const chartSeries = computed(() => {
