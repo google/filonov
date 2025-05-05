@@ -42,6 +42,9 @@ from media_similarity import (
 BATCH_SIZE: Final[int] = 1_000
 
 
+logger = logging.getLogger('media-similarity')
+
+
 def _batched(iterable: Iterable[media_pair.MediaPair], chunk_size: int):
   iterator = iter(iterable)
   while chunk := tuple(itertools.islice(iterator, chunk_size)):
@@ -143,7 +146,7 @@ def _create_similarity_pairs(
   batch_idx: int,
   total_batches: int,
 ) -> list[media_pair.SimilarityPair]:
-  logging.info('processing index %d of %d', batch_idx, total_batches)
+  logger.info('processing index %d of %d', batch_idx, total_batches)
   return [pair.calculate_similarity(idf_tag_context) for pair in pairs]
 
 
@@ -192,10 +195,10 @@ class MediaSimilarityService:
     if not tagging_results:
       raise exceptions.MediaSimilarityError('No tagging results found.')
     tagger = tagging_results[0].tagger
-    logging.info('calculating context...')
+    logger.info('calculating context...')
     idf_tag_context = idf_context.calculate_idf_context(tagging_results)
     similarity_pairs = []
-    logging.info('generating media pairs...')
+    logger.info('generating media pairs...')
     media_pairs = list(media_pair.build_media_pairs(tagging_results))
     uncalculated_media_pairs = media_pairs
     calculated_similarity_pairs = []
@@ -212,7 +215,7 @@ class MediaSimilarityService:
       ]
 
     if not uncalculated_media_pairs:
-      logging.info('calculating threshold...')
+      logger.info('calculating threshold...')
       if not custom_threshold:
         threshold = adaptive_threshold.compute_adaptive_threshold(
           similarity_scores=calculated_similarity_pairs, normalize=normalize
@@ -221,8 +224,8 @@ class MediaSimilarityService:
         threshold = adaptive_threshold.AdaptiveThreshold(
           custom_threshold, num_pairs=None
         )
-      logging.info('threshold is %.2f', threshold.threshold)
-      logging.info('assigning clusters...')
+      logger.info('threshold is %.2f', threshold.threshold)
+      logger.info('assigning clusters...')
       return _calculate_cluster_assignments(
         calculated_similarity_pairs, threshold
       )
@@ -234,8 +237,8 @@ class MediaSimilarityService:
         else total_batches // BATCH_SIZE + 1
       )
 
-      logging.info('calculating similarity...')
-      logging.debug(
+      logger.info('calculating similarity...')
+      logger.debug(
         'running similarity calculation for %s batches (to process %s pairs '
         'in total)',
         total_batches,
@@ -265,7 +268,7 @@ class MediaSimilarityService:
       similarity_pairs = list(itertools.chain.from_iterable(similarity_pairs))
       similarity_pairs = similarity_pairs + calculated_similarity_pairs
     else:
-      logging.info('calculating similarity...')
+      logger.info('calculating similarity...')
       similarity_pairs = [
         pair.calculate_similarity(idf_tag_context)
         for pair in uncalculated_media_pairs
@@ -273,7 +276,7 @@ class MediaSimilarityService:
       if self.repo:
         self.repo.add(similarity_pairs)
 
-    logging.info('calculating threshold...')
+    logger.info('calculating threshold...')
     if not custom_threshold:
       threshold = adaptive_threshold.compute_adaptive_threshold(
         similarity_scores=similarity_pairs, normalize=normalize
@@ -282,8 +285,8 @@ class MediaSimilarityService:
       threshold = adaptive_threshold.AdaptiveThreshold(
         custom_threshold, num_pairs=None
       )
-    logging.info('threshold is %.2f', threshold.threshold)
-    logging.info('assigning clusters...')
+    logger.info('threshold is %.2f', threshold.threshold)
+    logger.info('assigning clusters...')
     return _calculate_cluster_assignments(similarity_pairs, threshold)
 
   def find_similar_media(

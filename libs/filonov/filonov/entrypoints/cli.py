@@ -83,6 +83,19 @@ def main():  # noqa: D103
     type=int,
     help='Number of parallel processes to perform media tagging',
   )
+  parser.add_argument(
+    '--loglevel',
+    dest='loglevel',
+    default='INFO',
+    help='Log level',
+  )
+  parser.add_argument(
+    '--logger',
+    dest='logger',
+    default='rich',
+    choices=['local', 'rich'],
+    help='Type of logger',
+  )
   parser.add_argument('--normalize', dest='normalize', action='store_true')
   parser.add_argument('--no-normalize', dest='normalize', action='store_false')
   parser.add_argument('-v', '--version', dest='version', action='store_true')
@@ -93,7 +106,7 @@ def main():  # noqa: D103
     print(f'filonov version: {filonov.__version__}')
     sys.exit()
 
-  _ = gaarf_utils.init_logging(loglevel='INFO', logger_type='rich')
+  _ = gaarf_utils.init_logging(loglevel=args.loglevel, logger_type=args.logger)
   extra_parameters = gaarf_utils.ParamsParser([args.source, 'tagger']).parse(
     kwargs
   )

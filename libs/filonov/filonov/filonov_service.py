@@ -16,6 +16,7 @@
 
 """Handles creative map generation."""
 
+import logging
 from collections.abc import Sequence
 from typing import ClassVar, Literal
 
@@ -29,6 +30,8 @@ from media_tagging.media_tagging_service import (
 
 from filonov import creative_map, exceptions
 from filonov.inputs import input_service
+
+logger = logging.getLogger('filonov')
 
 
 class OutputParameters(pydantic.BaseModel):
@@ -113,6 +116,11 @@ class FilonovService:
       if isinstance(request.input_parameters, pydantic.BaseModel)
       else request.input_parameters
     )
+    logger.info(
+      'Fetching input from source %s with parameters: %s',
+      request.media_type,
+      request.input_parameters,
+    )
     media_info, context = input_service.MediaInputService(
       source
     ).generate_media_info(request.media_type, input_parameters)
@@ -122,6 +130,7 @@ class FilonovService:
       )
     media_urls = {media.media_path for media in media_info.values()}
     if not request.tagger:
+      logger.info('Tagger not specified, getting data from DB')
       tagging_results = self.tagging_service.get_media(
         MediaFetchingRequest(
           media_type=request.media_type,
@@ -130,7 +139,14 @@ class FilonovService:
           tagger_type='loader',
         )
       )
+      if not tagging_results:
+        raise exceptions.FilonovError('Failed to get tagging results from DB')
     else:
+      logger.info(
+        'Performing tagging with tagger %s and  parameters: %s',
+        request.tagger,
+        request.tagger_parameters,
+      )
       tagging_results = self.tagging_service.tag_media(
         MediaTaggingRequest(
           tagger_type=request.tagger,
@@ -144,9 +160,14 @@ class FilonovService:
         f'Failed to perform media tagging for the context: {context}'
       )
 
+    logger.info(
+      'Performing similarity detection with parameters: %s',
+      request.similarity_parameters,
+    )
     clustering_results = self.similarity_service.cluster_media(
       tagging_results.results, **request.similarity_parameters
     )
+    logger.info('Generating creative map...')
     return creative_map.CreativeMap.from_clustering(
       clustering_results, tagging_results.results, media_info, context
     )

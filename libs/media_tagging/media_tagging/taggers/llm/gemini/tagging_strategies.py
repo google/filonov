@@ -33,6 +33,10 @@ from media_tagging.taggers.llm import utils
 MAX_NUMBER_LLM_TAGS: Final[int] = 10
 
 
+logging.getLogger('google_genai.models').setLevel(logging.WARNING)
+logging.getLogger('httpx').setLevel(logging.WARNING)
+
+
 class GeminiModelParameters(pydantic.BaseModel):
   temperature: float | None = None
   top_p: float | None = None
