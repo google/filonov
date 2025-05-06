@@ -282,18 +282,8 @@ class MediaTaggingService:
       Results of tagging for all media.
     """
     results = []
-    output = 'description' if action == 'describe' else 'tag'
-    tagger_type = concrete_tagger.alias
     for path in media_paths:
       medium = media.Medium(path, media_type)
-      if self.repo and (
-        tagging_results := self.repo.get(
-          [medium.name], media_type, tagger_type, output
-        )
-      ):
-        logger.debug('Getting media from repository: %s', path)
-        results.extend(tagging_results)
-        continue
       logger.info('Processing media: %s', path)
       try:
         tagging_results = getattr(concrete_tagger, action)(
