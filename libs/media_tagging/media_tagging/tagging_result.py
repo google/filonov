@@ -19,13 +19,14 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import json
-import os
 from collections.abc import Sequence
 from typing import Any, Literal
 
-import garf_core
 import pandas as pd
 import pydantic
+from garf_core import report
+
+from media_tagging import exceptions
 
 
 class TaggingOutput(pydantic.BaseModel):
@@ -111,6 +112,12 @@ class TaggingResult(pydantic.BaseModel):
     description='Additional details used during tagging', default=None
   )
 
+  def trim_tags(self, value: float) -> None:
+    """Removes tags from tagging result with low scores."""
+    if isinstance(self.content, Description):
+      raise exceptions.MediaTaggingError('Trimming is only supported for tags.')
+    self.content = [tag for tag in self.content if tag.score > value]
+
   def __hash__(self):  # noqa: D105
     return hash(
       (self.identifier, self.type, self.content, self.tagger, self.output)
@@ -143,49 +150,9 @@ class TaggingResultsFileInput:
   score_name: str
 
 
-def from_file(
-  path: os.PathLike[str],
-  file_column_input: TaggingResultsFileInput,
-  media_type: Literal['image', 'video', 'youtube_video'],
-  min_threshold: float = 0.0,
-) -> list[TaggingResult]:
-  """Build tagging results from a file.
-
-  Args:
-    path: Path to files with tags.
-    file_column_input: Identifiers for building tagging results.
-    media_type: Type of media found in a file.
-    min_threshold: Optional threshold for reducing output size.
-
-  Returns:
-    File content converted to Tagging results.
-
-  Raises:
-    ValueError: If file doesn't have all required input columns.
-  """
-  identifier, tag, score = (
-    file_column_input.identifier_name,
-    file_column_input.tag_name,
-    file_column_input.score_name,
-  )
-  data = pd.read_csv(path)
-  if missing_columns := {identifier, tag, score}.difference(set(data.columns)):
-    raise ValueError(f'Missing column(s) in {path}: {missing_columns}')
-  data = data[data[score] > min_threshold]
-  data['tag'] = data.apply(
-    lambda row: Tag(name=row[tag], score=row[score]),
-    axis=1,
-  )
-  grouped = data.groupby(identifier).tag.apply(list).reset_index()
-  return [
-    TaggingResult(identifier=row[identifier], type=media_type, content=row.tag)
-    for _, row in grouped.iterrows()
-  ]
-
-
-def convert_tagging_results_to_garf_report(
+def to_garf_report(
   tagging_results: Sequence[TaggingResult],
-) -> garf_core.report.GarfReport:
+) -> report.GarfReport:
   """Converts results of tagging to GarfReport for further writing."""
   results = []
   column_names = [
@@ -207,4 +174,11 @@ def convert_tagging_results_to_garf_report(
     else:
       parsed_result.append({tag.name: tag.score for tag in result.content})
     results.append(parsed_result)
-  return garf_core.report.GarfReport(results=results, column_names=column_names)
+  return report.GarfReport(results=results, column_names=column_names)
+
+
+def to_pandas(
+  tagging_results: Sequence[TaggingResult],
+) -> pd.DataFrame:
+  """Converts results of tagging to pandas DataFrame."""
+  return to_garf_report(tagging_results).to_pandas()

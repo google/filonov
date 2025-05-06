@@ -17,7 +17,6 @@
 import pytest
 from media_tagging import (
   media_tagging_service,
-  repositories,
   tagging_result,
 )
 
@@ -25,9 +24,7 @@ from media_tagging import (
 class TestMediaTaggingService:
   @pytest.fixture
   def service(self):
-    return media_tagging_service.MediaTaggingService(
-      repositories.SqlAlchemyTaggingResultsRepository()
-    )
+    return media_tagging_service.MediaTaggingService()
 
   def test_tag_media_saves_tagging_results_to_repository(self, service, mocker):
     expected_result = tagging_result.TaggingResult(
@@ -51,4 +48,6 @@ class TestMediaTaggingService:
       )
     )
 
-    assert test_tagging_result == [expected_result]
+    assert test_tagging_result == media_tagging_service.MediaTaggingResponse(
+      results=[expected_result]
+    )

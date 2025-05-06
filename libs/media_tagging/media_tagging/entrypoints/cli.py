@@ -23,12 +23,7 @@ from garf_executors.entrypoints import utils as garf_utils
 from garf_io import writer as garf_writer
 
 import media_tagging
-from media_tagging import (
-  media,
-  media_tagging_service,
-  repositories,
-  tagging_result,
-)
+from media_tagging import media, media_tagging_service, repositories
 from media_tagging.entrypoints import utils
 
 
@@ -57,7 +52,6 @@ def main():
   parser.add_argument(
     '--tagger',
     dest='tagger',
-    choices=list(media_tagging_service.TAGGERS.keys()),
     default='gemini',
     help='Type of tagger',
   )
@@ -124,12 +118,9 @@ def main():
     logging.error('No tagging tagging results found.')
     sys.exit()
 
-  report = tagging_result.convert_tagging_results_to_garf_report(
-    tagging_results
-  )
   writer_parameters = extra_parameters.get(args.writer) or {}
   garf_writer.create_writer(args.writer, **writer_parameters).write(
-    report, args.output
+    tagging_results.to_garf_report(), args.output
   )
 
 

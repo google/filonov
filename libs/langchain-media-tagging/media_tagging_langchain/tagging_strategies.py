@@ -25,11 +25,10 @@ from langchain_core import (
   prompts,
   runnables,
 )
-from typing_extensions import override
-
 from media_tagging import media, tagging_result
 from media_tagging.taggers import base
-from media_tagging.taggers.llm import utils
+from media_tagging.taggers.llm import utils as media_tagging_llm_utils
+from typing_extensions import override
 
 MAX_NUMBER_LLM_TAGS: Final[int] = 10
 
@@ -73,7 +72,8 @@ class LLMTaggingStrategy(base.TaggingStrategy):
       return _build_prompt_template(custom_prompt, include_media_data)
     prompt_file_name = 'tag' if output == tagging_result.Tag else 'description'
     return _build_prompt_template(
-      utils.read_prompt_content(prompt_file_name), include_media_data
+      media_tagging_llm_utils.read_prompt_content(prompt_file_name),
+      include_media_data,
     )
 
   def convert_medium_to_encoded_string(self, medium) -> str:
@@ -115,12 +115,14 @@ class LLMTaggingStrategy(base.TaggingStrategy):
       include_media_data=include_media_data,
       custom_prompt=tagging_options.custom_prompt,
     )
-    invocation_parameters = utils.get_invocation_parameters(
+    invocation_parameters = media_tagging_llm_utils.get_invocation_parameters(
       media_type=medium.type.name,
-      format_instructions=parser.get_format_instructions(),
       tagging_options=tagging_options,
-      image_data=image_data,
     )
+    invocation_parameters['format_instructions'] = (
+      parser.get_format_instructions()
+    )
+    invocation_parameters['image_data'] = image_data
     response = chain.invoke(invocation_parameters)
     if hasattr(response, 'usage_metadata'):
       logging.debug(

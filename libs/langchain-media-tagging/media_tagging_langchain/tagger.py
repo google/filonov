@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,18 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Module for performing media tagging with LLMs."""
+"""Module for performing media tagging with Langchain."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 import importlib
 import inspect
 
 from langchain_core import language_models
-from typing_extensions import override
-
 from media_tagging import media
 from media_tagging.taggers import base
-from media_tagging.taggers.llm import langchain_tagging_strategies as ts
+from typing_extensions import override
+
+from media_tagging_langchain import tagging_strategies as ts
 
 
 def load_llm(full_path: str) -> type[language_models.BaseLanguageModel]:

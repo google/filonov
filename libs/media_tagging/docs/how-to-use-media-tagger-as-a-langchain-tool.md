@@ -2,7 +2,7 @@
 
 `media-tagger` can be exposed as a Langchain tool.
 
-1. Install `media-tagger` with `pip install media-tagging` command.
+1. Install `media-tagger` with `pip install media-tagging[all]` command.
 
 2. Import tool with
 ```

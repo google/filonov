@@ -12,14 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=C0330, g-bad-import-order, g-multiple-import
+"""Handles tagging media via Langchain supported multimodal LLMs."""
 
-"""Simplifies imports from inner modules."""
-
-from media_similarity.media_similarity_service import MediaSimilarityService
-
-__all__ = [
-  'MediaSimilarityService',
-]
-
-__version__ = '0.3.0'
+__version__ = '0.1.0'

@@ -19,21 +19,22 @@
 import functools
 import json
 import logging
-import tempfile
+from typing import Final
 
-import google.generativeai as google_genai
-import langchain_google_genai as genai
-import proto
 import pydantic
 import tenacity
-from google.api_core import exceptions as google_api_exceptions
-from langchain_core import output_parsers
+from google import genai
 from typing_extensions import override
-from vertexai import generative_models as google_generative_models
 
-from media_tagging import exceptions, media, tagging_result
+from media_tagging import media, tagging_result
 from media_tagging.taggers import base
-from media_tagging.taggers.llm import langchain_tagging_strategies, utils
+from media_tagging.taggers.llm import utils
+
+MAX_NUMBER_LLM_TAGS: Final[int] = 10
+
+
+logging.getLogger('google_genai.models').setLevel(logging.WARNING)
+logging.getLogger('httpx').setLevel(logging.WARNING)
 
 
 class GeminiModelParameters(pydantic.BaseModel):
@@ -44,22 +45,6 @@ class GeminiModelParameters(pydantic.BaseModel):
 
   def dict(self) -> dict[str, float | int]:
     return {k: v for k, v in self.model_dump().items() if v}
-
-
-class ImageTaggingStrategy(langchain_tagging_strategies.ImageTaggingStrategy):
-  """Defines Gemini specific tagging strategy for images."""
-
-  @override
-  def __init__(
-    self,
-    model_name: str,
-    model_parameters: GeminiModelParameters,
-  ) -> None:
-    super().__init__(
-      llm=genai.ChatGoogleGenerativeAI(
-        model=model_name, **model_parameters.dict()
-      )
-    )
 
 
 class GeminiTaggingStrategy(base.TaggingStrategy):
@@ -78,54 +63,76 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     """
     self.model_name = model_name
     self.model_parameters = model_parameters
-    self._model = None
+    self._client = None
     self._prompt = ''
     self._response_schema = None
+
+  @functools.cached_property
+  def client(self) -> genai.Client:
+    """Initializes GenerativeModel."""
+    if not self._client:
+      self._client = genai.Client()
+    return self._client
 
   def get_response_schema(self, output):
     """Generates correct response schema based on type of output."""
     if self._response_schema:
       return self._response_schema
     if output == tagging_result.Description:
-      response_schema = {
-        'type': 'object',
-        'properties': {'text': {'type': 'string'}},
-      }
+      response_schema = output
     else:
-      tag_descriptions = tagging_result.Tag.field_descriptions()
-      response_schema = {
-        'type': 'array',
-        'items': {
-          'type': 'object',
-          'properties': {
-            'name': {
-              'type': 'STRING',
-              'description': tag_descriptions.get('name'),
-            },
-            'score': {
-              'type': 'NUMBER',
-              'description': tag_descriptions.get('score'),
-            },
-          },
-        },
-      }
+      response_schema = list[output]
     self._response_schema = response_schema
     return self._response_schema
 
+  def build_content(self, medium: media.Medium):
+    """Specifies how media content is converted to Part."""
+    raise NotImplementedError
+
+  @override
+  @tenacity.retry(
+    stop=tenacity.stop_after_attempt(3),
+    wait=tenacity.wait_exponential(),
+    retry=tenacity.retry_if_exception_type(json.decoder.JSONDecodeError),
+    reraise=True,
+  )
   def get_llm_response(
     self,
     medium: media.Medium,
-    output: type[tagging_result.TaggingOutput],
+    output: tagging_result.TaggingOutput,
     tagging_options: base.TaggingOptions = base.TaggingOptions(),
   ):
-    """Defines how to interact with Gemini to perform media tagging.
+    """Sends request to Gemini for tagging image file.
 
     Args:
       medium: Instantiated media object.
       output: Type of output to request from Gemini.
       tagging_options: Additional parameters to fine-tune tagging.
+
+    Returns:
+      Formatted response from Gemini.
     """
-    raise NotImplementedError
+    logging.debug('Tagging %s "%s"', medium.type, medium.name)
+    prompt = self.build_prompt(medium.type, output, tagging_options)
+    media_content = self.build_content(medium)
+    response = self.client.models.generate_content(
+      model=self.model_name,
+      contents=[
+        media_content,
+        prompt,
+      ],
+      config=genai.types.GenerateContentConfig(
+        response_mime_type='application/json',
+        response_schema=self.get_response_schema(output),
+      ),
+    )
+    if hasattr(response, 'usage_metadata'):
+      logging.debug(
+        'usage_metadata for media %s: %s',
+        medium.name,
+        response.usage_metadata.dict(),
+      )
+    return response
 
   def build_prompt(
     self,
@@ -140,14 +147,10 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       self._prompt = custom_prompt
       return self._prompt
     prompt_file_name = 'tag' if output == tagging_result.Tag else 'description'
-    format_instructions = output_parsers.JsonOutputParser(
-      pydantic_object=output
-    ).get_format_instructions()
     prompt = utils.read_prompt_content(prompt_file_name)
     parameters = utils.get_invocation_parameters(
       media_type=media_type.name,
       tagging_options=tagging_options,
-      format_instructions=format_instructions,
     )
     self._prompt = prompt.format(**parameters)
     return self._prompt
@@ -160,9 +163,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
     if not tagging_options:
-      tagging_options = base.TaggingOptions(
-        n_tags=langchain_tagging_strategies.MAX_NUMBER_LLM_TAGS
-      )
+      tagging_options = base.TaggingOptions(n_tags=MAX_NUMBER_LLM_TAGS)
     result = self.get_llm_response(medium, tagging_result.Tag, tagging_options)
     tags = [
       tagging_result.Tag(name=r.get('name'), score=r.get('score'))
@@ -190,163 +191,32 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     )
 
 
+class ImageTaggingStrategy(GeminiTaggingStrategy):
+  """Defines Gemini specific tagging strategy for images."""
+
+  def build_content(self, medium):
+    return genai.types.Part.from_bytes(
+      data=medium.content, mime_type='image/jpeg'
+    )
+
+
 class VideoTaggingStrategy(GeminiTaggingStrategy):
   """Defines handling of LLM interaction for video files."""
 
-  @functools.cached_property
-  def model(self) -> google_genai.GenerativeModel:
-    """Initializes GenerativeModel."""
-    if not self._model:
-      self._model = google_genai.GenerativeModel(
-        model_name=self.model_name,
-        generation_config=self.model_parameters.dict(),
-      )
-    return self._model
-
-  @tenacity.retry(
-    stop=tenacity.stop_after_attempt(3),
-    wait=tenacity.wait_exponential(),
-    retry=tenacity.retry_if_exception_type(json.decoder.JSONDecodeError),
-    reraise=True,
-  )
-  def get_llm_response(
-    self,
-    medium: media.Medium,
-    output: tagging_result.TaggingOutput,
-    tagging_options: base.TaggingOptions = base.TaggingOptions(),
-  ):
-    """Sends request to Gemini for tagging video file.
-
-    Args:
-      medium: Instantiated media object.
-      output: Type of output to request from Gemini.
-      tagging_options: Additional parameters to fine-tune tagging.
-
-    Returns:
-      Formatted response from Gemini.
-
-    Raises:
-      FailedTaggingError: When video wasn't successfully uploaded.
-    """
-    logging.debug('Tagging video "%s"', medium.name)
-    with tempfile.NamedTemporaryFile(suffix='.mp4') as f:
-      f.write(medium.content)
-      try:
-        video_file = google_genai.upload_file(f.name)
-        video_file = _get_active_file(video_file)
-        prompt = self.build_prompt(medium.type, output, tagging_options)
-        response = self.model.generate_content(
-          [
-            video_file,
-            '\n\n',
-            prompt,
-          ],
-          generation_config=google_genai.GenerationConfig(
-            response_mime_type='application/json',
-            response_schema=self.get_response_schema(output),
-          ),
-        )
-        if hasattr(response, 'usage_metadata'):
-          logging.debug(
-            'usage_metadata for media %s: %s',
-            medium.name,
-            proto.Message.to_dict(response.usage_metadata),
-          )
-        return response
-      except FailedProcessFileApiError as e:
-        raise exceptions.FailedTaggingError(
-          f'Unable to process media: {medium.name}'
-        ) from e
-      finally:
-        video_file.delete()
+  def build_content(self, medium):
+    return genai.types.Part(
+      inline_data=genai.types.Blob(data=medium.content, mime_type='video/mp4')
+    )
 
 
-class YouTubeVideoTaggingStrategy(VideoTaggingStrategy):
+class YouTubeVideoTaggingStrategy(GeminiTaggingStrategy):
   """Defines handling of LLM interaction for YouTube links."""
 
-  def __init__(
-    self, model_name: str, model_parameters: GeminiModelParameters
-  ) -> None:
-    """Initializes YouTubeVideoTaggingStrategy."""
-    super().__init__(model_name, model_parameters)
-    self._genai_model = None
-
-  @functools.cached_property
-  def genai_model(self) -> google_genai.GenerativeModel:
-    """Initializes GenerativeModel."""
-    if not self._genai_model:
-      self._genai_model = google_generative_models.GenerativeModel(
-        model_name=self.model_name,
-        generation_config=self.model_parameters.dict(),
-      )
-    return self._genai_model
-
-  @override
-  @tenacity.retry(
-    stop=tenacity.stop_after_attempt(3),
-    wait=tenacity.wait_exponential(),
-    retry=tenacity.retry_if_exception_type(json.decoder.JSONDecodeError),
-    reraise=True,
-  )
-  def get_llm_response(
-    self,
-    medium: media.Medium,
-    output: type[tagging_result.TaggingOutput],
-    tagging_options: base.TaggingOptions = base.TaggingOptions(),
-  ):
-    logging.debug('Tagging video "%s"', medium.name)
+  def build_content(self, medium):
     if not medium.content:
-      video_file = google_generative_models.Part.from_uri(
-        uri=medium.media_path, mime_type='video/*'
+      return genai.types.Part(
+        file_data=genai.types.FileData(file_uri=medium.media_path)
       )
-      try:
-        prompt = self.build_prompt(medium.type, output, tagging_options)
-        return self.genai_model.generate_content(
-          [
-            video_file,
-            '\n\n',
-            prompt,
-          ],
-          generation_config=google_generative_models.GenerationConfig(
-            response_mime_type='application/json',
-            response_schema=self.get_response_schema(output),
-          ),
-        )
-      except google_api_exceptions.PermissionDenied as e:
-        logging.error('Cannot access video %s', medium.media_path)
-        raise exceptions.FailedTaggingError(
-          f'Unable to process media: {medium.name}'
-          'Reason: Cannot access YouTube video',
-        ) from e
-      except Exception as e:
-        logging.error('Failed to get response from Gemini: %s', e)
-        raise exceptions.FailedTaggingError(
-          f'Unable to process media: {medium.name}, Reason: {str(e)}',
-        ) from e
-    return super().get_llm_response(medium, output, tagging_options)
-
-
-class UnprocessedFileApiError(Exception):
-  """Raised when file wasn't processed via File API."""
-
-
-class FailedProcessFileApiError(Exception):
-  """Raised when file wasn't processed via File API."""
-
-
-@tenacity.retry(
-  stop=tenacity.stop_after_attempt(3),
-  wait=tenacity.wait_fixed(5),
-  retry=tenacity.retry_if_exception(UnprocessedFileApiError),
-  reraise=True,
-)
-def _get_active_file(
-  video_file: google_genai.types.File,
-) -> google_genai.types.File:
-  """Polls status of video file and returns it if status is ACTIVE."""
-  video_file = google_genai.get_file(video_file.name)
-  if video_file.state.name == 'ACTIVE':
-    return video_file
-  if video_file.state.name == 'FAILED':
-    raise FailedProcessFileApiError
-  raise UnprocessedFileApiError
+    return genai.types.Part(
+      inline_data=genai.types.Blob(data=medium.content, mime_type='video/mp4')
+    )

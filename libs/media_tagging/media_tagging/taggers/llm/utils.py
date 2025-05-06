@@ -24,15 +24,12 @@ from media_tagging.taggers import base
 
 def get_invocation_parameters(
   media_type: str,
-  format_instructions: str,
   tagging_options: base.TaggingOptions,
-  image_data: str | None = None,
 ) -> dict[str, str | int]:
   """Prepares necessary parameters for LLM prompt.
 
   Args:
     media_type: Type of media.
-    format_instructions: Instructions for LLM to format output.
     tagging_options: Parameters to refine the tagging results.
     image_data: Optional base64 encoded image.
 
@@ -41,10 +38,7 @@ def get_invocation_parameters(
   """
   parameters = {
     'media_type': media_type,
-    'format_instructions': format_instructions,
   }
-  if image_data is not None:
-    parameters['image_data'] = image_data
   if n_tags := tagging_options.n_tags:
     parameters['n_tags'] = n_tags
   if tags := tagging_options.tags:

@@ -27,15 +27,28 @@ from typing import Literal
 import pydantic
 
 from media_tagging import exceptions, media, repositories, tagging_result
+from media_tagging.taggers import TAGGERS
 from media_tagging.taggers import base as base_tagger
 
 logger = logging.getLogger('media-tagger')
 
 
 class MediaTaggingRequest(pydantic.BaseModel):
+  """Contains parameters to perform media tagging.
+
+  Attributes:
+    tagger_type: Type of tagger to be used.
+    media_type: Type of media to tag.
+    media_paths: Paths or URLs where media are located.
+    tagging_options: Tagging specific parameters.
+    parallel_threshold: Maximum number of parallel tagging operations.
+    media_type_enum: Converted media type.
+    tagger: Initialized tagger.
+  """
+
   model_config = pydantic.ConfigDict(extra='ignore')
 
-  tagger_type: Literal['google-cloud', 'gemini', 'langchain']
+  tagger_type: str
   media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO']
   media_paths: set[str] | Sequence[os.PathLike[str] | str]
   tagging_options: base_tagger.TaggingOptions = base_tagger.TaggingOptions()
@@ -54,8 +67,13 @@ class MediaTaggingRequest(pydantic.BaseModel):
 
   @property
   def tagger(self):
-    if tagger_class := TAGGERS.get(self.tagger_type):
-      return tagger_class(
+    if builtin_tagger_class := TAGGERS.get(self.tagger_type):
+      return builtin_tagger_class(
+        **self.tagging_options.dict(),
+      )
+    plugin_taggers = discover_taggers(TAGGERS.keys())
+    if plugin_tagger_class := plugin_taggers.get(self.tagger_type):
+      return plugin_tagger_class(
         **self.tagging_options.dict(),
       )
     raise base_tagger.TaggerError(
@@ -73,10 +91,27 @@ class MediaFetchingRequest(pydantic.BaseModel):
   tagger_type: str = 'loader'
 
 
-def _load_taggers():
+class MediaTaggingResponse(pydantic.BaseModel):
+  results: list[tagging_result.TaggingResult]
+
+  def to_garf_report(self):
+    return tagging_result.to_garf_report(self.results)
+
+  def to_pandas(self):
+    return tagging_result.to_pandas(self.results)
+
+  def __bool__(self) -> bool:
+    return bool(self.results)
+
+
+def discover_taggers(
+  existing_taggers: Sequence[str],
+) -> dict[str, base_tagger.BaseTagger]:
   """Loads all taggers exposed as `media_tagger` plugin."""
   taggers = {}
   for media_tagger in entry_points(group='media_tagger'):
+    if media_tagger.name in existing_taggers:
+      continue
     try:
       tagger_module = media_tagger.load()
       for name, obj in inspect.getmembers(tagger_module):
@@ -85,9 +120,6 @@ def _load_taggers():
     except ModuleNotFoundError:
       continue
   return taggers
-
-
-TAGGERS = _load_taggers()
 
 
 class MediaTaggingService:
@@ -99,26 +131,31 @@ class MediaTaggingService:
 
   def __init__(
     self,
-    tagging_results_repository: repositories.BaseTaggingResultsRepository,
+    tagging_results_repository: repositories.BaseTaggingResultsRepository
+    | None = None,
   ) -> None:
     """Initializes MediaTaggingService."""
-    self.repo = tagging_results_repository
+    self.repo = (
+      tagging_results_repository
+      or repositories.SqlAlchemyTaggingResultsRepository()
+    )
 
   def get_media(
     self,
     fetching_request: MediaFetchingRequest,
-  ) -> list[tagging_result.TaggingResult]:
-    return self.repo.get(
+  ) -> MediaTaggingResponse:
+    results = self.repo.get(
       fetching_request.media_paths,
       fetching_request.media_type,
       fetching_request.tagger_type,
       fetching_request.output,
     )
+    return MediaTaggingResponse(results=results)
 
   def tag_media(
     self,
     tagging_request: MediaTaggingRequest,
-  ) -> list[tagging_result.TaggingResult]:
+  ) -> MediaTaggingResponse:
     """Tags media based on requested tagger.
 
     Args:
@@ -132,7 +169,7 @@ class MediaTaggingService:
   def describe_media(
     self,
     tagging_request: MediaTaggingRequest,
-  ) -> list[tagging_result.TaggingResult]:
+  ) -> MediaTaggingResponse:
     """Tags media based on requested tagger.
 
     Args:
@@ -147,7 +184,7 @@ class MediaTaggingService:
     self,
     action: Literal['tag', 'describe'],
     tagging_request: MediaTaggingRequest,
-  ) -> list[tagging_result.TaggingResult]:
+  ) -> MediaTaggingResponse:
     """Gets media information based on tagger and output type.
 
     Args:
@@ -187,10 +224,10 @@ class MediaTaggingService:
         ):
           untagged_media.add(media_path)
     if not untagged_media:
-      return tagged_media
+      return MediaTaggingResponse(results=tagged_media)
 
     if not tagging_request.parallel_threshold:
-      return (
+      results = (
         self._process_media_sequentially(
           action,
           concrete_tagger,
@@ -200,6 +237,7 @@ class MediaTaggingService:
         )
         + tagged_media
       )
+      return MediaTaggingResponse(results=results)
     with futures.ThreadPoolExecutor(
       max_workers=tagging_request.parallel_threshold
     ) as executor:
@@ -220,7 +258,8 @@ class MediaTaggingService:
           for future in futures.as_completed(future_to_media_path)
         ]
       )
-      return list(untagged_media) + tagged_media
+      results = list(untagged_media) + tagged_media
+      return MediaTaggingResponse(results=results)
 
   def _process_media_sequentially(
     self,

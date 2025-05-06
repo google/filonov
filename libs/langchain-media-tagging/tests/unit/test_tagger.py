@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@
 import json
 from collections.abc import Sequence
 
-import media_tagging.taggers.llm.langchain_tagger as tagger
 import pytest
 from langchain_core import language_models
 from media_tagging import media, tagging_result
 from media_tagging.taggers import base
+from media_tagging_langchain import tagger
 
 _TAGS_RESPONSE = [
   {'name': 'test', 'score': 1.0},

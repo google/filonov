@@ -28,7 +28,7 @@ from media_tagging import media
 import filonov
 from filonov.entrypoints import utils
 
-AVAILABLE_TAGGERS = list(media_tagging.TAGGERS.keys())
+AVAILABLE_TAGGERS = list(media_tagging.taggers.TAGGERS.keys())
 
 
 def main():  # noqa: D103
@@ -83,6 +83,19 @@ def main():  # noqa: D103
     type=int,
     help='Number of parallel processes to perform media tagging',
   )
+  parser.add_argument(
+    '--loglevel',
+    dest='loglevel',
+    default='INFO',
+    help='Log level',
+  )
+  parser.add_argument(
+    '--logger',
+    dest='logger',
+    default='rich',
+    choices=['local', 'rich'],
+    help='Type of logger',
+  )
   parser.add_argument('--normalize', dest='normalize', action='store_true')
   parser.add_argument('--no-normalize', dest='normalize', action='store_false')
   parser.add_argument('-v', '--version', dest='version', action='store_true')
@@ -93,7 +106,7 @@ def main():  # noqa: D103
     print(f'filonov version: {filonov.__version__}')
     sys.exit()
 
-  _ = gaarf_utils.init_logging(loglevel='INFO', logger_type='rich')
+  _ = gaarf_utils.init_logging(loglevel=args.loglevel, logger_type=args.logger)
   extra_parameters = gaarf_utils.ParamsParser([args.source, 'tagger']).parse(
     kwargs
   )
@@ -107,10 +120,15 @@ def main():  # noqa: D103
       args.db_uri
     )
   )
+  tagger = args.tagger
+  media_type = args.media_type
+  if args.source == 'youtube':
+    media_type = 'YOUTUBE_VIDEO'
+    tagger = 'gemini'
   request = filonov.CreativeMapGenerateRequest(
     source=args.source,
-    media_type='YOUTUBE_VIDEO' if args.source == 'youtube' else args.media_type,
-    tagger=args.tagger,
+    media_type=media_type,
+    tagger=tagger,
     tagger_parameters=extra_parameters.get('tagger'),
     similarity_parameters={
       'normalize': args.normalize,

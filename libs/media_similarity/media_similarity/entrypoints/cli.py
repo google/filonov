@@ -116,7 +116,7 @@ def main():  # noqa: D103
         media_paths=media_paths,
       )
     clustering_results = similarity_service.cluster_media(
-      tagging_results,
+      tagging_results.results,
       normalize=args.normalize,
       parallel_threshold=args.parallel_threshold,
     )
