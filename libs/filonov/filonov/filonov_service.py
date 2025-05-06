@@ -58,6 +58,7 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
     similarity_parameters: Parameters to similarity matching.
     input_parameters: Parameters to get data from the source of creative map.
     output_parameters: Parameters for saving creative maps data.
+    parallel_threshold: Tagging and similarity detecting threshold.
   """
 
   default_tagger_parameters: ClassVar[dict[str, int]] = {'n_tags': 100}
@@ -72,6 +73,7 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   }
   input_parameters: dict[str, str | Sequence[str]] = {}
   output_parameters: OutputParameters = OutputParameters()
+  parallel_threshold: int = 10
 
   def model_post_init(self, __context):  # noqa: D105
     if not self.tagger_parameters or 'n_tags' not in self.tagger_parameters:
@@ -153,6 +155,7 @@ class FilonovService:
           media_type=request.media_type,
           tagging_parameters=request.tagger_parameters,
           media_paths=media_urls,
+          parallel_threshold=request.parallel_threshold,
         )
       )
     if not tagging_results:
@@ -165,7 +168,9 @@ class FilonovService:
       request.similarity_parameters,
     )
     clustering_results = self.similarity_service.cluster_media(
-      tagging_results.results, **request.similarity_parameters
+      tagging_results=tagging_results.results,
+      parallel_threshold=request.parallel_threshold,
+      **request.similarity_parameters,
     )
     logger.info('Generating creative map...')
     return creative_map.CreativeMap.from_clustering(

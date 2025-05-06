@@ -138,6 +138,7 @@ def main():  # noqa: D103
     output_parameters=filonov.filonov_service.OutputParameters(
       output_name=args.output_name
     ),
+    parallel_threshold=args.parallel_threshold,
   )
   generated_map = filonov.FilonovService(
     tagging_service, similarity_service
