@@ -77,6 +77,13 @@ def main():  # noqa: D103
     help='Custom threshold of identifying similar media',
   )
   parser.add_argument(
+    '--trim-tags-threshold',
+    dest='trim_tags_threshold',
+    default=None,
+    type=float,
+    help='Min allowed score for tags',
+  )
+  parser.add_argument(
     '--parallel-threshold',
     dest='parallel_threshold',
     default=10,
@@ -139,6 +146,7 @@ def main():  # noqa: D103
       output_name=args.output_name
     ),
     parallel_threshold=args.parallel_threshold,
+    trim_tags_threshold=args.trim_tags_threshold,
   )
   generated_map = filonov.FilonovService(
     tagging_service, similarity_service

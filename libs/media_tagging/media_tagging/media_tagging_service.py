@@ -83,6 +83,15 @@ class MediaTaggingRequest(pydantic.BaseModel):
 
 
 class MediaFetchingRequest(pydantic.BaseModel):
+  """Contains parameters to fetching media tagging results from DB.
+
+  Attributes:
+    media_type: Type of media to tag.
+    media_paths: Paths or URLs where media are located.
+    output: Output of tagging: tag or description.
+    tagger_type: Type of tagger to be used.
+  """
+
   model_config = pydantic.ConfigDict(extra='ignore')
 
   media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO']
@@ -92,7 +101,18 @@ class MediaFetchingRequest(pydantic.BaseModel):
 
 
 class MediaTaggingResponse(pydantic.BaseModel):
+  """Contains results of tagging.
+
+  Attributes:
+    results: Tagging results.
+  """
+
   results: list[tagging_result.TaggingResult]
+
+  def trim(self, min_score: float) -> None:
+    """Removes tags from tagging results with scores below threshold."""
+    for result in self.results:
+      result.trim_tags(min_score)
 
   def to_garf_report(self):
     return tagging_result.to_garf_report(self.results)

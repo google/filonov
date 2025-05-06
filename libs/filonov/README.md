@@ -1,5 +1,7 @@
 # Filonov library & CLI tool
 
+[![PyPI](https://img.shields.io/pypi/v/filonov?logo=pypi&logoColor=white&style=flat-square)](https://pypi.org/project/filonov)
+
 ## Prerequisites
 
 - Python 3.8+
@@ -49,6 +51,7 @@ filonov --source googleads --media-type <MEDIA_TYPE> \
   --googleads.start-date=YYYY-MM-DD \
   --googleads.end-date=YYYY-MM-DD  \
   --size-base=cost \
+  --trim-tags-threshold <TAG_TRIM_THRESHOLD> \
   --parallel-threshold <N_THREADS> \
   --output-name <FILE_NAME>
 ```
@@ -62,6 +65,7 @@ where:
   (i.e. `sqlite:///tagging.db`). Make sure that DB exists.
   > To create an empty Sqlite DB call `touch database.db`.
 - `<PATH-TO-GOOGLE-ADS-YAML>` - path to `google-ads.yaml`.
+- `<TAG_TRIM_THRESHOLD>` - Remove all tags with score lower than provided threshold.
 - `<FILE_NAME>` - Path to store results of running `filonov`. By default results are stored in the same folder where `filonov` is run, but you can provide any custom path (including remote one).
 
 **Examples**
