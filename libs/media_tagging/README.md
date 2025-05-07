@@ -1,5 +1,8 @@
 # Media Tagger
 
+[![PyPI](https://img.shields.io/pypi/v/media-tagging?logo=pypi&logoColor=white&style=flat-square)](https://pypi.org/project/media-tagging)
+[![Open in Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google/filonov/blob/main/libs/media_tagging/media_tagging_demo.ipynb)
+
 ## Problem statement
 
 When analyzing large amount of creatives of any nature (being images and videos)
