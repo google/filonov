@@ -4,22 +4,8 @@
 
 ## Prerequisites
 
-- Python 3.8+
-- A GCP project with billing account attached
-- Either [Video Intelligence API](https://console.cloud.google.com/apis/library/videointelligence.googleapis.com) or [Vision API](https://console.cloud.google.com/apis/library/vision.googleapis.com) enabled (depending on type of media you want to analyze).
-- [Vertex AI API](https://pantheon.corp.google.com/apis/library/aiplatform.googleapis.com) enabled if you want to tag media via Vertex API AI.
-- [Service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) created and [service account key](https://cloud.google.com/iam/docs/creating-managing-service-account-keys#creating) downloaded in order to write data to interact with Vision / Video Intelligence API.
-
-  - Once you downloaded service account key export it as an environmental variable
-
-    ```
-    export GOOGLE_APPLICATION_CREDENTIALS=path/to/service_account.json
-    ```
-
-  - If authenticating via service account is not possible you can authenticate with the following command:
-    ```
-    gcloud auth application-default login
-    ```
+- Python 3.10+
+- [Prerequisites](../media_tagging/README.md#prerequisites) for `media-tagging` library satisfied
 
 ## Installation
 
@@ -59,7 +45,7 @@ where:
 
 - `<MEDIA_TYPE>` - one of `IMAGE` or `YOUTUBE_VIDEO`
 - `<CAMPAIGN_TYPE>` - all possible combinations `app`, `pmax`, `demandgen`, `display`, `video` separated by commas.
-- `<TAGGER_TYPE>` - one of possible media taggers listed [here](../media_tagging/README.md')
+- `<TAGGER_TYPE>` - one of possible media taggers listed [here](../media_tagging/README.md#supported-taggers')
 - `<ACCOUNT_ID>` - Google Ads Account Id in 1234567890 format. Can be MCC.
 - `<CONNECTION_STRING>` - Connection string to the database with tagging results
   (i.e. `sqlite:///tagging.db`). Make sure that DB exists.

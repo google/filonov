@@ -9,7 +9,7 @@ dependencies = [
   "garf-youtube-data-api",
   "google-ads-api-report-fetcher==1.15.4",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 description = "AI Creative Concept Analysis library"
 readme = "README.md"
 classifiers = [
