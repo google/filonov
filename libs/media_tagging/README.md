@@ -100,7 +100,7 @@ where:
 | `gemini` | `image`, `video`, `youtube_video`| `tag`, `description`| `n-tags=10` |
 
 > `langchain` and `gemini` taggers can use `custom-prompt` parameter to adjust built-in prompts.\
-> Simply `--tagger.custom-prompt=YOUR_PROMPT_HERE`
+> Add `--tagger.custom-prompt=YOUR_PROMPT_HERE`, where YOUR_PROMPT_HERE is either prompt or a file path (local or remote).
 
 #### Loading tagging results
 
