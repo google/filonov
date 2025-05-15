@@ -31,6 +31,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { useQuasar } from 'quasar';
 import type { ApexOptions } from 'apexcharts';
 import { Node } from 'components/models';
 
@@ -39,6 +40,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const $q = useQuasar();
 const selectedMetric = ref<string>('');
 
 const availableMetrics = computed(() => {
@@ -87,6 +89,7 @@ const chartOptions = computed<ApexOptions>(() => ({
     width: 2,
   },
   tooltip: {
+    theme: $q.dark.isActive ? 'dark' : 'light',
     x: {
       format: 'yyyy-MM-dd',
     },
@@ -98,14 +101,28 @@ const chartOptions = computed<ApexOptions>(() => ({
     type: 'datetime',
     title: {
       text: 'Date',
+      style: {
+        color: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
+    },
+    labels: {
+      style: {
+        colors: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
     },
   },
   yaxis: {
     title: {
       text: selectedMetric.value,
+      style: {
+        color: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
     },
     labels: {
       formatter: (val: number) => val.toFixed(2),
+      style: {
+        colors: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
     },
   },
 }));

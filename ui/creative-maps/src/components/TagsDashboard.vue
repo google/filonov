@@ -32,7 +32,13 @@
               {{ col.label }}
             </q-th>
           </q-tr>
-          <q-tr class="bg-grey-2 text-weight-bold">
+          <q-tr
+            :class="
+              $q.dark.isActive
+                ? 'bg-grey-9 text-white'
+                : 'bg-white text-dark text-weight-bold'
+            "
+          >
             <q-td v-for="col in props.cols" :key="col.name" :props="props">
               <template v-if="col.name === 'tag'">Totals</template>
               <template
@@ -285,7 +291,13 @@
 
         <!-- Common Nodes Analysis Panel -->
         <q-card v-if="selectedTags.length > 0" class="q-mt-md">
-          <q-card-section class="bg-grey-2">
+          <q-card-section
+            :class="
+              $q.dark.isActive
+                ? 'bg-grey-9 text-white'
+                : 'bg-white text-dark text-weight-bold'
+            "
+          >
             <div class="row items-center">
               <div class="text-subtitle1">Common Nodes Analysis</div>
               <q-space />
@@ -414,6 +426,7 @@ import {
   formatMetricWithProportion,
   getTotalsRow,
 } from 'src/helpers/graph';
+import { ApexOptions } from 'apexcharts';
 
 interface Props {
   tagsStats: TagStats[];
@@ -713,7 +726,7 @@ const chartSeries = computed(() => {
   });
 });
 
-const chartOptions = computed(() => ({
+const chartOptions = computed<ApexOptions>(() => ({
   chart: {
     type: 'line',
     animations: {
@@ -724,13 +737,29 @@ const chartOptions = computed(() => ({
   },
   xaxis: {
     type: 'datetime',
+    labels: {
+      style: {
+        colors: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
+    },
+    title: {
+      style: {
+        color: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
+    },
   },
   yaxis: {
     title: {
       text: selectedMetric.value,
+      style: {
+        color: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
     },
     labels: {
       formatter: (val: number) => val.toFixed(2),
+      style: {
+        colors: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
     },
   },
   tooltip: {
@@ -739,6 +768,7 @@ const chartOptions = computed(() => ({
     x: {
       format: 'yyyy-MM-dd',
     },
+    theme: $q.dark.isActive ? 'dark' : 'light',
   },
   legend: {
     position: 'bottom',

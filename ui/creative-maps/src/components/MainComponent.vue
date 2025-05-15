@@ -1,6 +1,6 @@
 <template>
   <div class="main-component q-pa-md">
-    <div class="row items-center q-pa-sm bg-grey-2 controls-bar">
+    <div class="row items-center q-pa-sm controls-bar" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
       <q-btn
         class="q-mr-md"
         icon="upload_file"
@@ -414,6 +414,7 @@
 
 <script setup lang="ts">
 import { ref, computed, ComputedRef } from 'vue';
+import { useQuasar } from 'quasar';
 import * as d3 from 'd3';
 import D3Graph from 'components/D3Graph.vue';
 import JsonFileSelector from 'components/JsonFileSelector.vue';
@@ -443,6 +444,7 @@ import {
   formatMetricValue,
 } from 'src/helpers/graph';
 
+const $q = useQuasar();
 const d3GraphRef = ref<InstanceType<typeof D3Graph> | null>(null);
 const showLoadDataDialog = ref(false);
 const dataSourceDescription = ref(''); // description of data file (name/path)

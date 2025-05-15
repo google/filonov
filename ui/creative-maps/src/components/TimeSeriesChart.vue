@@ -41,6 +41,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useQuasar } from 'quasar';
 import { ApexOptions } from 'apexcharts';
 import { ComputedRef } from 'vue';
 import { Node } from 'components/models';
@@ -63,6 +64,7 @@ const props = withDefaults(defineProps<Props>(), {
   height: 300,
 });
 
+const $q = useQuasar();
 const selectedNodes = ref<SelectOption[]>([]);
 
 const availableNodes = computed(() =>
@@ -111,40 +113,45 @@ const series = computed(() => {
 const chartOptions: ComputedRef<ApexOptions> = computed(() => ({
   chart: {
     type: 'line',
-    zoom: {
-      enabled: true,
+  },
+  xaxis: {
+    type: 'datetime',
+    labels: {
+      style: {
+        colors: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
     },
   },
-  markers: {
-    size: 4,
-    hover: {
-      size: 6,
+  yaxis: {
+    title: {
+      text: props.metric,
+      style: {
+        color: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
+    },
+    labels: {
+      formatter: (val) => val.toFixed(2),
+      style: {
+        colors: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
+    },
+  },
+  tooltip: {
+    shared: true,
+    intersect: false,
+    theme: $q.dark.isActive ? 'dark' : 'light',
+    x: {
+      format: 'yyyy-MM-dd',
     },
   },
   stroke: {
     curve: 'smooth',
     width: 2,
   },
-  tooltip: {
-    x: {
-      format: 'yyyy-MM-dd',
-    },
-    y: {
-      formatter: (value) => value.toFixed(2),
-    },
-  },
-  xaxis: {
-    type: 'datetime',
-    title: {
-      text: 'Date',
-    },
-  },
-  yaxis: {
-    title: {
-      text: props.metric,
-    },
-    labels: {
-      formatter: (val) => val.toFixed(2),
+  markers: {
+    size: 4,
+    hover: {
+      size: 6,
     },
   },
 }));
@@ -163,6 +170,5 @@ function removeNode(nodeId: number) {
 <style scoped>
 .time-series-chart {
   width: 100%;
-  background: white;
 }
 </style>

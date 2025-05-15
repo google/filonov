@@ -87,7 +87,13 @@
                 {{ col.label }}
               </q-th>
             </q-tr>
-            <q-tr class="bg-grey-2 text-weight-bold">
+            <q-tr
+              :class="
+                $q.dark.isActive
+                  ? 'bg-grey-9 text-white text-weight-bold'
+                  : 'bg-white text-dark text-weight-bold'
+              "
+            >
               <q-td v-for="col in props.cols" :key="col.name" :props="props">
                 <template v-if="col.name === 'name'">Totals</template>
                 <template
@@ -330,25 +336,44 @@ const chartSeries = computed(() => {
   });
 });
 
-const chartOptions = computed(
-  (): ApexOptions => ({
-    chart: {
-      type: 'line',
-      zoom: { enabled: true },
-    },
-    xaxis: {
-      type: 'datetime',
-    },
-    yaxis: {
-      title: {
-        text: selectedMetric.value,
-      },
-      labels: {
-        formatter: (val: number) => val.toFixed(2),
+const chartOptions = computed<ApexOptions>(() => ({
+  chart: {
+    type: 'line',
+    zoom: { enabled: true },
+  },
+  xaxis: {
+    type: 'datetime',
+    labels: {
+      style: {
+        colors: $q.dark.isActive ? '#FFFFFF' : '#333333',
       },
     },
-  }),
-);
+    title: {
+      style: {
+        color: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
+    },
+  },
+  yaxis: {
+    title: {
+      text: selectedMetric.value,
+      style: {
+        color: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
+    },
+    labels: {
+      formatter: (val: number) => val.toFixed(2),
+      style: {
+        colors: $q.dark.isActive ? '#FFFFFF' : '#333333',
+      },
+    },
+  },
+  tooltip: {
+    shared: true,
+    intersect: false,
+    theme: $q.dark.isActive ? 'dark' : 'light',
+  },
+}));
 
 function removeNode(nodeId: number) {
   selectedNodeIds.value = selectedNodeIds.value.filter(
