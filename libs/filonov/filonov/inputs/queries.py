@@ -227,6 +227,9 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
   WHERE
     campaign.advertising_channel_type =  DEMAND_GEN
     AND asset.type = IMAGE
+    AND ad_group_ad_asset_view.field_type NOT IN (
+      BUSINESS_LOGO, LANDSCAPE_LOGO,  LOGO
+    )
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
     AND metrics.cost_micros > {min_cost}
   """
