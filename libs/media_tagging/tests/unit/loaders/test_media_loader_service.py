@@ -53,10 +53,10 @@ class TestMediaLoaderService:
       media_type='IMAGE',
       location=location,
     )
-    assert (
-      service.repo.get(['test_media'], 'image', 'loader', 'tag')[0]
-      == expected_result
+    found_tagging_results = service.repo.get(
+      ['test_media'], 'image', 'loader', 'tag'
     )
+    assert found_tagging_results[0] == expected_result
 
   def test_load_media_description_returns_correct_results(
     self, service, tmp_path
@@ -83,7 +83,7 @@ class TestMediaLoaderService:
       media_type='IMAGE',
       location=location,
     )
-    assert (
-      service.repo.get(['test_media'], 'image', 'loader', 'description')[0]
-      == expected_result
+    found_tagging_results = service.repo.get(
+      ['test_media'], 'image', 'loader', 'description'
     )
+    assert found_tagging_results[0] == expected_result

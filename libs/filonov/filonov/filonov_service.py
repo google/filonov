@@ -140,7 +140,7 @@ class FilonovService:
           media_type=request.media_type,
           media_paths=list(media_urls),
           output='tag',
-          tagger_type='loader',
+          deduplicate=True,
         )
       )
       if not tagging_results:
@@ -158,6 +158,7 @@ class FilonovService:
           tagging_parameters=request.tagger_parameters,
           media_paths=media_urls,
           parallel_threshold=request.parallel_threshold,
+          deduplicate=True,
         )
       )
     if not tagging_results:

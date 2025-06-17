@@ -33,7 +33,6 @@ class TestMediaTaggingService:
       output='tag',
       type='image',
       content=tagging_result.Description(text='Test description.'),
-      tagging_details={},
     )
     mocker.patch(
       'media_tagging.taggers.google_cloud.tagger.GoogleCloudTagger.tag',

@@ -70,6 +70,7 @@ def main():
   )
   parser.add_argument('--loglevel', dest='loglevel', default='INFO')
   parser.add_argument('--no-parallel', dest='parallel', action='store_false')
+  parser.add_argument('--deduplicate', dest='deduplicate', action='store_true')
   parser.add_argument(
     '--parallel-threshold',
     dest='parallel_threshold',
@@ -79,6 +80,7 @@ def main():
   )
   parser.add_argument('-v', '--version', dest='version', action='store_true')
   parser.set_defaults(parallel=True)
+  parser.set_defaults(deduplicate=False)
   args, kwargs = parser.parse_known_args()
 
   if args.version:
