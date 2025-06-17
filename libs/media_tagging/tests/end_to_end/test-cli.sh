@@ -39,9 +39,10 @@ for tagger in 'gemini' 'google-cloud' 'langchain'; do
         --tagger.model=gemini-2.0-flash
     elif [[ $tagger = 'gemini' ]]; then
       tag $tagger $media_type "${!media_type}" \
-        --tagger.temperature=0.1
+        --tagger.temperature=0.1 --tagger.fps=5
       describe $tagger $media_type "${!media_type}" \
-        --tagger.custom_prompt="Is this an advertising video? Answer only TRUE or FALSE"
+        --tagger.custom_prompt="Is this an advertising video? Answer only TRUE or FALSE" \
+        --tagger.fps=5
     else
       tag $tagger $media_type "${!media_type}"
       describe $tagger $media_type "${!media_type}"

@@ -85,7 +85,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     self._response_schema = response_schema
     return self._response_schema
 
-  def build_content(self, medium: media.Medium):
+  def build_content(self, medium: media.Medium, **kwargs: str):
     """Specifies how media content is converted to Part."""
     raise NotImplementedError
 
@@ -114,7 +114,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     """
     logging.debug('Tagging %s "%s"', medium.type, medium.name)
     prompt = self.build_prompt(medium.type, output, tagging_options)
-    media_content = self.build_content(medium)
+    media_content = self.build_content(medium, **tagging_options.model_dump())
     response = self.client.models.generate_content(
       model=self.model_name,
       contents=[
@@ -163,7 +163,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
     if not tagging_options:
-      tagging_options = base.TaggingOptions(n_tags=MAX_NUMBER_LLM_TAGS)
+      tagging_options.n_tags = MAX_NUMBER_LLM_TAGS
     result = self.get_llm_response(medium, tagging_result.Tag, tagging_options)
     tags = [
       tagging_result.Tag(name=r.get('name'), score=r.get('score'))
@@ -194,7 +194,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
 class ImageTaggingStrategy(GeminiTaggingStrategy):
   """Defines Gemini specific tagging strategy for images."""
 
-  def build_content(self, medium):
+  def build_content(self, medium, **kwargs):
     return genai.types.Part.from_bytes(
       data=medium.content, mime_type='image/jpeg'
     )
@@ -203,20 +203,32 @@ class ImageTaggingStrategy(GeminiTaggingStrategy):
 class VideoTaggingStrategy(GeminiTaggingStrategy):
   """Defines handling of LLM interaction for video files."""
 
-  def build_content(self, medium):
+  def build_content(self, medium, **kwargs):
     return genai.types.Part(
-      inline_data=genai.types.Blob(data=medium.content, mime_type='video/mp4')
+      inline_data=genai.types.Blob(data=medium.content, mime_type='video/mp4'),
+      video_metadata=_get_video_metadata(**kwargs),
     )
 
 
 class YouTubeVideoTaggingStrategy(GeminiTaggingStrategy):
   """Defines handling of LLM interaction for YouTube links."""
 
-  def build_content(self, medium):
+  def build_content(self, medium, **kwargs):
     if not medium.content:
       return genai.types.Part(
-        file_data=genai.types.FileData(file_uri=medium.media_path)
+        file_data=genai.types.FileData(file_uri=medium.media_path),
+        video_metadata=_get_video_metadata(**kwargs),
       )
     return genai.types.Part(
-      inline_data=genai.types.Blob(data=medium.content, mime_type='video/mp4')
+      inline_data=genai.types.Blob(data=medium.content, mime_type='video/mp4'),
+      video_metadata=_get_video_metadata(**kwargs),
     )
+
+
+def _get_video_metadata(**kwargs: str) -> genai.types.VideoMetadata:
+  d = {
+    k: v
+    for k, v in kwargs.items()
+    if k in genai.types.VideoMetadata.model_fields
+  }
+  return genai.types.VideoMetadata(**d)

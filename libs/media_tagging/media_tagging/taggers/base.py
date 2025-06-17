@@ -58,7 +58,7 @@ class TaggingOptions(pydantic.BaseModel):
 
   def dict(self):
     """Converts TaggingOptions to dict."""
-    return self.model_dump()
+    return {k: v for k, v in self.model_dump().items() if v is not None}
 
   def __bool__(self) -> bool:  # noqa: D105
     return bool(self.n_tags or self.tags or self.custom_prompt)

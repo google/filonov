@@ -8,12 +8,12 @@ dependencies = [
     "pillow",
     "smart_open",
     "jq",
-    "garf-executors==0.0.2",
+    "garf-executors",
     "pandas",
     "pydantic",
     "SQLalchemy>=2.0.0",
     "tenacity",
-    "google-genai==1.13.0",
+    "google-genai",
 ]
 authors = [
   {name = "Google Inc. (gTech gPS CSE team)", email = "no-reply@google.com"},
@@ -49,7 +49,7 @@ google-cloud=[
   "media-tagging[google-cloud-vision,google-cloud-videointelligence]",
 ]
 server = [
-  "fastapi==0.111.0",
+  "fastapi",
   "pydantic-settings",
 ]
 all = [

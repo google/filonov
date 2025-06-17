@@ -99,8 +99,13 @@ where:
 | `langchain` | `image`, `video`| `tag`, `description` | `n-tags=10`, `tags=tag1,tag2,tag3` |
 | `gemini` | `image`, `video`, `youtube_video`| `tag`, `description`| `n-tags=10` |
 
-> `langchain` and `gemini` taggers can use `custom-prompt` parameter to adjust built-in prompts.\
-> Add `--tagger.custom-prompt=YOUR_PROMPT_HERE`, where YOUR_PROMPT_HERE is either prompt or a file path (local or remote).
+#### Tagger customizations
+
+* `langchain` and `gemini` taggers can use `custom-prompt` parameter to adjust built-in prompts.\
+ Add `--tagger.custom-prompt=YOUR_PROMPT_HERE`, where YOUR_PROMPT_HERE is either prompt or a file path (local or remote).
+     > Example: `--tagger.custom_prompt="Is this an advertising? Answer yes or no'`
+* `gemini` tagger for `video` and `youtube_video` media types supports specifying `VideoMetadata` parameters (`fps`, `start_offset`, `end_offset`)
+     > Example: `--tagger.fps=5`
 
 #### Loading tagging results
 
