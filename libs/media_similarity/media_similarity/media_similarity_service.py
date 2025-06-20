@@ -17,7 +17,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 import itertools
 import logging
 import os
@@ -26,10 +25,10 @@ from concurrent import futures
 from typing import Final
 
 import igraph
+import media_tagging
 import pandas as pd
 import pydantic
 from garf_core import report
-from media_tagging import tagging_result
 
 from media_similarity import (
   adaptive_threshold,
@@ -51,14 +50,30 @@ def _batched(iterable: Iterable[media_pair.MediaPair], chunk_size: int):
     yield chunk
 
 
-@dataclasses.dataclass
-class GraphInfo:
+class GraphInfo(pydantic.BaseModel):
+  """Stores information of media and their relationships."""
+
   nodes: list[dict[str, str]]
   edges: set[tuple[str, str, float]]
 
 
-@dataclasses.dataclass
-class ClusteringResults:
+class MediaClusteringRequest(pydantic.BaseModel):
+  """Specifies structure of request for clustering media.
+
+  Attributes:
+    media_paths: Identifiers or media to cluster (file names or links).
+    media_type: Type of media found in media_paths.
+    tagger_type: Type of tagger to use if media tags are not found.
+    normalize: Whether to apply normalization threshold.
+  """
+
+  media_paths: list[str]
+  media_type: str
+  tagger_type: str | None = 'gemini'
+  normalize: bool = True
+
+
+class ClusteringResults(pydantic.BaseModel):
   """Contains results of clustering.
 
   Attributes:
@@ -77,6 +92,34 @@ class ClusteringResults:
     for media_url, cluster_id in self.clusters.items():
       results.append([cluster_id, media_url])
     return report.GarfReport(results, column_names=['cluster_id', 'media_url'])
+
+
+class MediaSimilaritySearchRequest(pydantic.BaseModel):
+  """Request for performing similarity search.
+
+  Attributes:
+    media_paths: Paths to media intended for search.
+    media_type: Types of media to find.
+    n_results: Maximum number of results to return for each media path.
+  """
+
+  media_paths: list[os.PathLike[str] | str] | str
+  media_type: str = 'UNKNOWN'
+  n_results: int = 10
+
+  def model_post_init(self, __context__) -> None:
+    if isinstance(self.media_paths, str):
+      self.media_paths = [self.media_paths]
+
+  @property
+  def media_identifiers(self) -> set[str]:
+    """Normalized media identifiers based on media type."""
+    return {
+      media_tagging.media.convert_path_to_media_name(
+        media_path, self.media_type
+      )
+      for media_path in self.media_paths
+    }
 
 
 class SimilaritySearchResults(pydantic.BaseModel):
@@ -99,6 +142,28 @@ class SimilaritySearchResults(pydantic.BaseModel):
       results,
       column_names=['seed_media_identifier', 'media_identifier', 'score'],
     )
+
+
+class MediaSimilarityComparisonRequest(pydantic.BaseModel):
+  """Request for performing media comparison.
+
+  Attributes:
+    media_paths: Paths to media intended for search.
+    media_type: Types of media to find.
+  """
+
+  media_paths: list[os.PathLike[str] | str]
+  media_type: str = 'UNKNOWN'
+
+  @property
+  def media_identifiers(self) -> set[str]:
+    """Normalized media identifiers based on media type."""
+    return {
+      media_tagging.media.convert_path_to_media_name(
+        media_path, self.media_type
+      )
+      for media_path in self.media_paths
+    }
 
 
 class MediaSimilarityComparisonResult(pydantic.BaseModel):
@@ -173,7 +238,7 @@ class MediaSimilarityService:
 
   def cluster_media(
     self,
-    tagging_results: Sequence[tagging_result.TaggingResult],
+    tagging_results: Sequence[media_tagging.tagging_result.TaggingResult],
     normalize: bool = True,
     custom_threshold: float | None = None,
     parallel_threshold: int = 10,
@@ -291,23 +356,19 @@ class MediaSimilarityService:
 
   def find_similar_media(
     self,
-    seed_media_identifiers: Sequence[os.PathLike[str] | str] | str,
-    n_results: int = 10,
+    request: MediaSimilaritySearchRequest,
   ) -> list[SimilaritySearchResults]:
     """Finds top similar media for multiple seed media identifiers.
 
     Args:
-      seed_media_identifiers: File names or links.
-      n_results: Maximum number of results to return for each identifier.
+      request: Similarity search request.
 
     Returns:
       Similar media for each seed identifier.
     """
-    if isinstance(seed_media_identifiers, str):
-      seed_media_identifiers = [seed_media_identifiers]
     return [
-      self._find_similar_media(identifier, n_results)
-      for identifier in seed_media_identifiers
+      self._find_similar_media(identifier, request.n_results)
+      for identifier in request.media_identifiers
     ]
 
   def _find_similar_media(
@@ -330,19 +391,19 @@ class MediaSimilarityService:
 
   def compare_media(
     self,
-    *media_identifiers: os.PathLike[str] | str,
+    request: MediaSimilarityComparisonRequest,
   ) -> list[MediaSimilarityComparisonResult]:
     """Returns results of similarity detection between pair of media.
 
     Args:
-     *media_identifiers: Media to compare.
+     request: Similarity comparison request.
 
     Returns:
       Sequence of results of comparison.
     """
     results = []
     for media_identifier_1, media_identifier_2 in itertools.combinations(
-      set(media_identifiers), 2
+      request.media_identifiers, 2
     ):
       if media_identifier_1 != media_identifier_2:
         key = (

@@ -17,7 +17,6 @@
 
 import fastapi
 import media_tagging
-import pydantic
 import uvicorn
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
@@ -58,33 +57,27 @@ class Dependencies:
     )
 
 
-class MediaClusteringPostRequest(pydantic.BaseModel):
-  """Specifies structure of request for tagging media.
-
-  Attributes:
-    media_paths: Identifiers or media to cluster (file names or links).
-    media_type: Type of media found in media_paths.
-    tagger_type: Type of tagger to use if media tags are not found.
-    normalize: Whether to apply normalization threshold.
-  """
-
-  media_paths: list[str]
-  media_type: str
-  tagger_type: str = 'gemini'
-  normalize: bool = True
-
-
 @router.post('/cluster')
 async def cluster_media(
-  request: MediaClusteringPostRequest,
+  request: media_similarity.MediaClusteringRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
-) -> dict[str, int]:
+) -> fastapi.responses.JSONResponse:
   """Performs media clustering."""
-  tagging_results = dependencies.tagging_service.tag_media(
-    tagger_type=request.tagger_type,
-    media_type=request.media_type,
-    media_paths=request.media_paths,
-  )
+  if not request.tagger_type:
+    tagging_results = dependencies.tagging_service.get_media(
+      media_type=request.tagger_type,
+      media_paths=request.media_paths,
+      output='tag',
+    )
+  else:
+    tagging_results = dependencies.tagging_service.tag_media(
+      media_tagging.MediaTaggingRequest(
+        tagger_type=request.tagger_type,
+        media_type=request.media_type,
+        media_paths=request.media_paths,
+        deduplicate=True,
+      )
+    )
   clustering_results = dependencies.similarity_service.cluster_media(
     tagging_results.results, normalize=request.normalize
   )
@@ -99,7 +92,7 @@ async def search_media(
   seed_media_identifiers: str,
   media_type: str = 'UNKNOWN',
   n_results: int = 10,
-) -> dict[str, str]:
+) -> fastapi.responses.JSONResponse:
   """Searches for similar media based on provided seed media identifiers.
 
   Args:
@@ -111,16 +104,12 @@ async def search_media(
   Returns:
     Top n identifiers for similar media.
   """
-  seed_media_identifiers = [
-    media_tagging.media.convert_path_to_media_name(
-      seed_media_identifier.strip(),
-      media_type,
-    )
-    for seed_media_identifier in seed_media_identifiers.split(',')
-  ]
-  similar_media = dependencies.similarity_service.find_similar_media(
-    seed_media_identifiers, n_results
+  request = media_similarity.MediaSimilaritySearchRequest(
+    media_paths=seed_media_identifiers.split(','),
+    media_type=media_type,
+    n_results=n_results,
   )
+  similar_media = dependencies.similarity_service.find_similar_media(request)
   results = {
     result.seed_media_identifier: result.results for result in similar_media
   }
@@ -131,20 +120,20 @@ async def search_media(
 
 @router.post('/compare')
 async def compare_media(
+  request: media_similarity.MediaSimilarityComparisonRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
-  media_identifiers: str,
-  media_type: str = 'UNKNOWN',
-) -> dict[str, int]:
-  """Performs media clustering."""
-  media_identifiers = [
-    media_tagging.media.convert_path_to_media_name(
-      media_identifiers.strip(),
-      media_type,
-    )
-    for media_identifiers in media_identifiers.split(',')
-  ]
+) -> fastapi.responses.JSONResponse:
+  """Performs comparison between all media pairs.
+
+  Args:
+    request: Request for performing media comparison.
+    dependencies: Common dependencies injected.
+
+  Returns:
+    Top n identifiers for similar media.
+  """
   media_comparison_results = dependencies.similarity_service.compare_media(
-    *media_identifiers
+    request
   )
   results = {
     result.media_pair_identifier: result.similarity_score.model_dump()

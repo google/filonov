@@ -16,10 +16,18 @@
 
 """Simplifies imports from inner modules."""
 
-from media_similarity.media_similarity_service import MediaSimilarityService
+from media_similarity.media_similarity_service import (
+  MediaClusteringRequest,
+  MediaSimilarityComparisonRequest,
+  MediaSimilaritySearchRequest,
+  MediaSimilarityService,
+)
 
 __all__ = [
   'MediaSimilarityService',
+  'MediaSimilarityComparisonRequest',
+  'MediaSimilaritySearchRequest',
+  'MediaClusteringRequest',
 ]
 
 __version__ = '0.3.0'

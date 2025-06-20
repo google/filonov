@@ -23,13 +23,23 @@ cluster() {
     media_paths[]=$FILONOV_MEDIA_IDENTIFIER_2 \
     media_paths[]=$FILONOV_MEDIA_IDENTIFIER_3 \
     media_type="YOUTUBE_VIDEO" \
-    tagger_type='gemini-youtube-video'
+    tagger_type='gemini'
 }
 
 search() {
-  http --print b \
-    localhost:8000/media_similarity/search?seed_media_identifier=$FILONOV_MEDIA_IDENTIFIER_1
+  http --print b GET \
+    localhost:8000/media_similarity/search?seed_media_identifiers=$FILONOV_MEDIA_IDENTIFIER_1&media_type='YOUTUBE_VIDEO'
 }
+
+compare() {
+  http --print b POST localhost:8000/media_similarity/compare \
+    media_paths[]=$FILONOV_MEDIA_IDENTIFIER_1 \
+    media_paths[]=$FILONOV_MEDIA_IDENTIFIER_2 \
+    media_paths[]=$FILONOV_MEDIA_IDENTIFIER_3 \
+    media_type="YOUTUBE_VIDEO"
+}
+
 
 cluster
 search
+compare

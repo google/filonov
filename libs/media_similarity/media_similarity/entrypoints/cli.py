@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,8 +28,6 @@ from media_tagging.entrypoints import utils as tagging_utils
 
 import media_similarity
 
-AVAILABLE_TAGGERS = list(media_tagging.TAGGERS.keys())
-
 
 def main():  # noqa: D103
   parser = argparse.ArgumentParser()
@@ -55,7 +53,6 @@ def main():  # noqa: D103
   parser.add_argument(
     '--tagger',
     dest='tagger',
-    choices=AVAILABLE_TAGGERS,
     default=None,
     help='Type of tagger',
   )
@@ -103,18 +100,24 @@ def main():  # noqa: D103
   writer_parameters = extra_parameters.get(args.writer) or {}
   writer = garf_writer.create_writer(args.writer, **writer_parameters)
   if args.action == 'cluster':
-    if not args.tagger:
+    request = media_similarity.MediaClusteringRequest(
+      media_paths=media_paths,
+      media_type=args.media_type,
+      tagger_type=args.tagger,
+      normalize=args.normalize,
+    )
+    if not request.tagger_type:
       tagging_results = tagging_service.get_media(
-        media_type=args.media_type,
-        media_paths=media_paths,
+        media_type=request.tagger_type,
+        media_paths=request.media_paths,
         output='tag',
       )
     else:
       tagging_results = tagging_service.tag_media(
         media_tagging.MediaTaggingRequest(
-          tagger_type=args.tagger,
-          media_type=args.media_type,
-          media_paths=media_paths,
+          tagger_type=request.tagger_type,
+          media_type=request.media_type,
+          media_paths=request.media_paths,
           deduplicate=True,
         )
       )
@@ -127,22 +130,21 @@ def main():  # noqa: D103
 
   elif args.action == 'compare':
     media_comparison_results = similarity_service.compare_media(
-      *args.media_paths
+      media_similarity.MediaSimilarityComparisonRequest(
+        media_paths=media_paths,
+        media_type=args.media_type,
+      )
     )
     report = functools.reduce(
       operator.add,
       [result.to_garf_report() for result in media_comparison_results],
     )
   elif args.action == 'search':
-    seed_media_identifiers = [
-      media_tagging.media.convert_path_to_media_name(
-        media_path,
-        args.media_type,
-      )
-      for media_path in args.media_paths
-    ]
     similarity_search_results = similarity_service.find_similar_media(
-      seed_media_identifiers
+      media_similarity.MediaSimilaritySearchRequest(
+        media_paths=media_paths,
+        media_type=args.media_type,
+      )
     )
     report = functools.reduce(
       operator.add,
