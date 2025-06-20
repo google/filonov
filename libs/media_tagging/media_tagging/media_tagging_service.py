@@ -278,15 +278,15 @@ class MediaTaggingService:
           [media_path],
           tagging_request.tagging_options,
         ): media_path
-        for media_path in tagging_request.media_paths
+        for media_path in untagged_media
       }
-      untagged_media = itertools.chain.from_iterable(
+      tagging_results = itertools.chain.from_iterable(
         [
           future.result()
           for future in futures.as_completed(future_to_media_path)
         ]
       )
-      results = list(untagged_media) + tagged_media
+      results = list(tagging_results) + tagged_media
       return MediaTaggingResponse(results=results)
 
   def _process_media_sequentially(
