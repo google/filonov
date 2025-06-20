@@ -42,6 +42,7 @@ class MediaTaggingRequest(pydantic.BaseModel):
     media_paths: Paths or URLs where media are located.
     tagging_options: Tagging specific parameters.
     parallel_threshold: Maximum number of parallel tagging operations.
+    deduplicate: Whether cached results of tagging should be deduplicated.
     media_type_enum: Converted media type.
     tagger: Initialized tagger.
   """
@@ -53,6 +54,7 @@ class MediaTaggingRequest(pydantic.BaseModel):
   media_paths: set[str] | Sequence[os.PathLike[str] | str]
   tagging_options: base_tagger.TaggingOptions = base_tagger.TaggingOptions()
   parallel_threshold: int = 10
+  deduplicate: bool = False
 
   def model_post_init(self, __context):
     if isinstance(self.media_paths, str):
@@ -90,6 +92,7 @@ class MediaFetchingRequest(pydantic.BaseModel):
     media_paths: Paths or URLs where media are located.
     output: Output of tagging: tag or description.
     tagger_type: Type of tagger to be used.
+    deduplicate: Whether fetched tagging results should be deduplicated.
   """
 
   model_config = pydantic.ConfigDict(extra='ignore')
@@ -98,6 +101,7 @@ class MediaFetchingRequest(pydantic.BaseModel):
   media_paths: Sequence[os.PathLike[str] | str]
   output: Literal['tag', 'description']
   tagger_type: str = 'loader'
+  deduplicate: bool = False
 
 
 class MediaTaggingResponse(pydantic.BaseModel):
@@ -169,6 +173,7 @@ class MediaTaggingService:
       fetching_request.media_type,
       fetching_request.tagger_type,
       fetching_request.output,
+      fetching_request.deduplicate,
     )
     return MediaTaggingResponse(results=results)
 
@@ -204,12 +209,14 @@ class MediaTaggingService:
     self,
     action: Literal['tag', 'describe'],
     tagging_request: MediaTaggingRequest,
+    deduplicate: bool = False,
   ) -> MediaTaggingResponse:
     """Gets media information based on tagger and output type.
 
     Args:
       action: Defines output of tagging: tags or description.
       tagging_request: Parameters for tagging.
+      deduplicate: Whether cached tagging results should be deduplicated.
 
     Returns:
       Results of tagging.
@@ -229,6 +236,7 @@ class MediaTaggingService:
         tagging_request.media_type,
         tagging_request.tagger_type,
         output,
+        deduplicate,
       )
     ):
       tagged_media_names = {

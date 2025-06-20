@@ -111,9 +111,12 @@ def main():  # noqa: D103
       )
     else:
       tagging_results = tagging_service.tag_media(
-        tagger_type=args.tagger,
-        media_type=args.media_type,
-        media_paths=media_paths,
+        media_tagging.MediaTaggingRequest(
+          tagger_type=args.tagger,
+          media_type=args.media_type,
+          media_paths=media_paths,
+          deduplicate=True,
+        )
       )
     clustering_results = similarity_service.cluster_media(
       tagging_results.results,

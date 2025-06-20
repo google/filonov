@@ -16,6 +16,8 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import abc
+import collections
+import itertools
 from collections.abc import Sequence
 
 import sqlalchemy
@@ -84,7 +86,7 @@ class TaggingResults(Base):
   """ORM model for persisting TaggingResult."""
 
   __tablename__ = 'tagging_results'
-  processed_at = sqlalchemy.Column(sqlalchemy.DateTime)
+  processed_at = sqlalchemy.Column(sqlalchemy.DateTime, primary_key=True)
   identifier = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
   output = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
   tagger = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
@@ -159,8 +161,11 @@ class SqlAlchemyTaggingResultsRepository(
     media_type: str,
     tagger_type: str | None = None,
     output: str | None = None,
+    deduplicate: bool = False,
   ) -> list[tagging_result.TaggingResult]:
     """Specifies get operations."""
+    if isinstance(media_paths, str):
+      media_paths = [media_paths]
     converted_media_paths = [
       media.convert_path_to_media_name(media_path, media_type)
       for media_path in media_paths
@@ -173,7 +178,22 @@ class SqlAlchemyTaggingResultsRepository(
         query = query.where(TaggingResults.output == output)
       if tagger_type:
         query = query.where(TaggingResults.tagger == tagger_type)
-      return [res.to_pydantic_model() for res in query.all()]
+      tagging_results = [res.to_pydantic_model() for res in query.all()]
+      if not deduplicate:
+        return tagging_results
+      dedup = collections.defaultdict(list)
+      for result in tagging_results:
+        dedup[result.identifier].append(set(result.content))
+      return [
+        tagging_result.TaggingResult(
+          identifier=media_path,
+          type=media_type.lower(),
+          tagger=tagger_type,
+          output=output if output == 'tag' else 'description',
+          content=set(itertools.chain(*dedup[media_path])),
+        )
+        for media_path in converted_media_paths
+      ]
 
   def add(
     self,
@@ -181,6 +201,8 @@ class SqlAlchemyTaggingResultsRepository(
     | Sequence[tagging_result.TaggingResult],
   ) -> None:
     """Specifies add operations."""
+    if isinstance(tagging_results, tagging_result.TaggingResult):
+      tagging_results = [tagging_results]
     with self.session() as session:
       for result in tagging_results:
         session.add(TaggingResults(**result.dict()))

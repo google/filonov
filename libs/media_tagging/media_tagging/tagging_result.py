@@ -99,7 +99,7 @@ class TaggingResult(pydantic.BaseModel):
   type: Literal['image', 'video', 'youtube_video'] = pydantic.Field(
     description='type of media'
   )
-  content: tuple[Tag, ...] | Description = pydantic.Field(
+  content: tuple[Tag, ...] | Description | list[Description] = pydantic.Field(
     description='tags or description in the result'
   )
   tagger: str | None = pydantic.Field(
@@ -162,6 +162,14 @@ def to_garf_report(
     'type',
     'content',
   ]
+  content_type = None
+  content_writer_fns = {
+    'description': lambda content: content.text,
+    'descriptions': lambda content: [
+      {'text': description.text} for description in content
+    ],
+    'tags': lambda content: {tag.name: tag.score for tag in content},
+  }
   for result in tagging_results:
     parsed_result = [
       result.identifier,
@@ -169,10 +177,19 @@ def to_garf_report(
       result.tagger,
       result.type,
     ]
-    if isinstance(result.content, Description):
-      parsed_result.append(result.content.text)
+
+    if not content_type:
+      if isinstance(result.content, Description):
+        content_type = 'description'
+      elif isinstance(result.content, Sequence):
+        if isinstance(result.content[0], Description):
+          content_type = 'descriptions'
+        elif isinstance(result.content[0], Tag):
+          content_type = 'tags'
+    if fn := content_writer_fns.get(content_type):
+      parsed_result.append(fn(result.content))
     else:
-      parsed_result.append({tag.name: tag.score for tag in result.content})
+      parsed_result.append(None)
     results.append(parsed_result)
   return report.GarfReport(results=results, column_names=column_names)
 
