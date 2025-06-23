@@ -31,13 +31,20 @@ class GeminiTagger(base.BaseTagger):
   alias = 'gemini'
 
   @override
-  def __init__(
-    self, model_name: str = DEFAULT_GEMINI_MODEL, **kwargs: str
-  ) -> None:
+  def __init__(self, model_name: str | None = None, **kwargs: str) -> None:
     """Initializes GeminiTagger based on model name."""
-    self.model_name = model_name
+    self.model_name = self._format_model_name(model_name or kwargs.get('model'))
     self.model_parameters = ts.GeminiModelParameters(**kwargs)
     super().__init__()
+
+  def _format_model_name(self, model_name: str | None) -> str:
+    if model_name:
+      return (
+        model_name
+        if model_name.startswith('models/')
+        else f'models/{model_name}'
+      )
+    return DEFAULT_GEMINI_MODEL
 
   @override
   def create_tagging_strategy(
