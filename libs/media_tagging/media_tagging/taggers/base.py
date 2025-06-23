@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import abc
-import contextlib
 import os
 from collections.abc import MutableSequence, Sequence
 from typing import Literal
@@ -51,10 +50,9 @@ class TaggingOptions(pydantic.BaseModel):
       self.n_tags = len(self.tags)
     if self.n_tags:
       self.n_tags = int(self.n_tags)
-    if self.custom_prompt:
-      with contextlib.suppress(FileNotFoundError):
-        with smart_open.open(self.custom_prompt, 'r', encoding='utf-8') as f:
-          self.custom_prompt = f.readlines()
+    if self.custom_prompt and str(self.custom_prompt).endswith('.txt'):
+      with smart_open.open(self.custom_prompt, 'r', encoding='utf-8') as f:
+        self.custom_prompt = '\n'.join(f.readlines())
 
   def dict(self):
     """Converts TaggingOptions to dict."""
