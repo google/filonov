@@ -25,4 +25,4 @@ __all__ = [
   'MediaTaggingService',
   'MediaTaggingRequest',
 ]
-__version__ = '1.3.1'
+__version__ = '1.4.0'
