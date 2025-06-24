@@ -239,6 +239,7 @@ class MediaTaggingService:
         deduplicate,
       )
     ):
+      logger.info('Reusing %d already tagged media', len(tagged_media))
       tagged_media_names = {
         tagged_medium.identifier for tagged_medium in tagged_media
       }
@@ -254,6 +255,7 @@ class MediaTaggingService:
     if not untagged_media:
       return MediaTaggingResponse(results=tagged_media)
 
+    logger.info('Processing %d media', len(untagged_media))
     if not tagging_request.parallel_threshold:
       results = (
         self._process_media_sequentially(
