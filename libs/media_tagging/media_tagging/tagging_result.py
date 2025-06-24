@@ -52,8 +52,8 @@ class Tag(TaggingOutput):
 
   model_config = pydantic.ConfigDict(frozen=True)
 
-  name: str = pydantic.Field(description='tag_name')
-  score: float = pydantic.Field(description='tag_score from 0 to 1')
+  name: str
+  score: float
 
   def __hash__(self) -> int:  # noqa: D105
     return hash(self.name)
@@ -69,7 +69,7 @@ class Description(TaggingOutput):
     text: Textual description of the media.
   """
 
-  text: str = pydantic.Field(description='brief description of the media')
+  text: str
 
   def __hash__(self) -> int:  # noqa: D105
     return hash(self.text)
