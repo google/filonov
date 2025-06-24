@@ -70,9 +70,10 @@ def main():  # noqa: D103
     type=int,
     help='Number of parallel processes to perform media similarity calculation',
   )
+  parser.add_argument('--normalize', dest='normalize', action='store_true')
   parser.add_argument('--no-normalize', dest='normalize', action='store_false')
   parser.add_argument('-v', '--version', dest='version', action='store_true')
-  parser.set_defaults(normalize=True)
+  parser.set_defaults(normalize=False)
   args, kwargs = parser.parse_known_args()
 
   if args.version:
@@ -120,6 +121,7 @@ def main():  # noqa: D103
           tagger_type=request.tagger_type,
           media_type=request.media_type,
           media_paths=request.media_paths,
+          parallel_threshold=args.parallel_threshold,
           deduplicate=True,
         )
       )
