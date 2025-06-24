@@ -108,9 +108,11 @@ def main():  # noqa: D103
     )
     if not request.tagger_type:
       tagging_results = tagging_service.get_media(
-        media_type=request.tagger_type,
-        media_paths=request.media_paths,
-        output='tag',
+        media_tagging.media_tagging_service.MediaFetchingRequest(
+          media_type=request.media_type,
+          media_paths=request.media_paths,
+          output='tag',
+        )
       )
     else:
       tagging_results = tagging_service.tag_media(
