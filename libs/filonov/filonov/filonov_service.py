@@ -155,7 +155,7 @@ class FilonovService:
         MediaTaggingRequest(
           tagger_type=request.tagger,
           media_type=request.media_type,
-          tagging_parameters=request.tagger_parameters,
+          tagging_options=request.tagger_parameters,
           media_paths=media_urls,
           parallel_threshold=request.parallel_threshold,
           deduplicate=True,
