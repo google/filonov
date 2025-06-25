@@ -20,7 +20,6 @@ import logging
 import sys
 
 from garf_executors.entrypoints import utils as garf_utils
-from garf_io import writer as garf_writer
 
 import media_tagging
 from media_tagging import media, media_tagging_service, repositories
@@ -121,9 +120,7 @@ def main():
     sys.exit()
 
   writer_parameters = extra_parameters.get(args.writer) or {}
-  garf_writer.create_writer(args.writer, **writer_parameters).write(
-    tagging_results.to_garf_report(), args.output
-  )
+  tagging_results.save(args.output, args.writer, **writer_parameters)
 
 
 if __name__ == '__main__':

@@ -25,6 +25,7 @@ from importlib.metadata import entry_points
 from typing import Literal
 
 import pydantic
+from garf_io import writer as garf_writer
 
 from media_tagging import exceptions, media, repositories, tagging_result
 from media_tagging.taggers import TAGGERS
@@ -117,6 +118,15 @@ class MediaTaggingResponse(pydantic.BaseModel):
     """Removes tags from tagging results with scores below threshold."""
     for result in self.results:
       result.trim_tags(min_score)
+
+  def save(
+    self, output: str | os.PathLike[str], writer: str, **writer_parameters: str
+  ) -> None:
+    """Saves results of tagging using provided writer."""
+    default_writer_parameters = {'array_handling': 'arrays'}
+    default_writer_parameters.update(writer_parameters)
+    writer = garf_writer.create_writer(writer, **default_writer_parameters)
+    writer.write(self.to_garf_report(), output)
 
   def to_garf_report(self):
     return tagging_result.to_garf_report(self.results)
