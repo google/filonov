@@ -102,7 +102,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     output: tagging_result.TaggingOutput,
     tagging_options: base.TaggingOptions = base.TaggingOptions(),
   ):
-    """Sends request to Gemini for tagging image file.
+    """Sends request to Gemini for tagging medium.
 
     Args:
       medium: Instantiated media object.
@@ -115,16 +115,18 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     logging.debug('Tagging %s "%s"', medium.type, medium.name)
     prompt = self.build_prompt(medium.type, output, tagging_options)
     media_content = self.build_content(medium, **tagging_options.model_dump())
+    prompt_config = genai.types.GenerateContentConfig(
+      response_mime_type='application/json',
+    )
+    if not tagging_options.no_schema:
+      prompt_config.response_schema = self.get_response_schema(output)
     response = self.client.models.generate_content(
       model=self.model_name,
       contents=[
         media_content,
         prompt,
       ],
-      config=genai.types.GenerateContentConfig(
-        response_mime_type='application/json',
-        response_schema=self.get_response_schema(output),
-      ),
+      config=prompt_config,
     )
     if hasattr(response, 'usage_metadata'):
       logging.debug(
@@ -165,10 +167,13 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     if not tagging_options:
       tagging_options.n_tags = MAX_NUMBER_LLM_TAGS
     result = self.get_llm_response(medium, tagging_result.Tag, tagging_options)
-    tags = [
-      tagging_result.Tag(name=r.get('name'), score=r.get('score'))
-      for r in json.loads(result.text)
-    ]
+    tags = json.loads(result.text)
+    if not tagging_options.no_schema:
+      tags = [
+        tagging_result.Tag(name=r.get('name'), score=r.get('score'))
+        for r in tags
+      ]
+
     return tagging_result.TaggingResult(
       identifier=medium.name, type=medium.type.name.lower(), content=tags
     )
@@ -183,7 +188,10 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     result = self.get_llm_response(
       medium, tagging_result.Description, tagging_options
     )
-    description = json.loads(result.text).get('text')
+
+    description = json.loads(result.text)
+    if not tagging_options.no_schema:
+      description = description.get('text')
     return tagging_result.TaggingResult(
       identifier=medium.name,
       type=medium.type.name.lower(),

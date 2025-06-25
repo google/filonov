@@ -35,6 +35,7 @@ class TaggingOptions(pydantic.BaseModel):
     n_tags: Max number of tags to return.
     tags: Particular tags to find in the media.
     custom_prompt: User provided prompt.
+    no_schema: Whether to avoid using built-in schema for response.
   """
 
   model_config = pydantic.ConfigDict(extra='allow')
@@ -42,6 +43,7 @@ class TaggingOptions(pydantic.BaseModel):
   n_tags: int | None = None
   tags: str | Sequence[str] | None = None
   custom_prompt: str | os.PathLike[str] | None = None
+  no_schema: str | bool = False
 
   def model_post_init(self, __context):  # noqa: D105
     if self.tags:
@@ -53,6 +55,9 @@ class TaggingOptions(pydantic.BaseModel):
     if self.custom_prompt and str(self.custom_prompt).endswith('.txt'):
       with smart_open.open(self.custom_prompt, 'r', encoding='utf-8') as f:
         self.custom_prompt = '\n'.join(f.readlines())
+
+    if isinstance(self.no_schema, str):
+      self.no_schema = self.no_schema.lower() in ['true', '1']
 
   def dict(self):
     """Converts TaggingOptions to dict."""
