@@ -1,6 +1,9 @@
 <template>
   <div class="main-component q-pa-md">
-    <div class="row items-center q-pa-sm controls-bar" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
+    <div
+      class="row items-center q-pa-sm controls-bar"
+      :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'"
+    >
       <q-btn
         class="q-mr-md"
         icon="upload_file"
@@ -87,9 +90,14 @@
             <q-item>
               <q-item-section>
                 <q-item-label>Creative count</q-item-label>
-                <q-item-label caption>{{
-                  selectedCluster?.nodes.length || nodes.length
-                }}</q-item-label>
+                <q-item-label
+                  caption
+                  class="cursor-pointer text-primary"
+                  style="text-decoration: underline"
+                  @click="showCreativesDialog = true"
+                >
+                  {{ selectedCluster?.nodes.length || nodes.length }}
+                </q-item-label>
               </q-item-section>
             </q-item>
 
@@ -409,6 +417,11 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+
+    <CreativesDialog
+      v-model="showCreativesDialog"
+      :nodes="selectedCluster?.nodes || nodes"
+    />
   </div>
 </template>
 
@@ -425,6 +438,7 @@ import TagsDashboard from './TagsDashboard.vue';
 import NodeCard from './NodeCard.vue';
 import ClusterComparison from './ClusterComparison.vue';
 import NodeComparison from './NodeComparison.vue';
+import CreativesDialog from './CreativesDialog.vue';
 import {
   Node,
   Edge,
@@ -463,6 +477,7 @@ const showTagsDashboardDialog = ref(false);
 const selectedMetric = ref('');
 let clusterForAllNodes: ClusterInfo | undefined;
 const tagSearchQuery = ref('');
+const showCreativesDialog = ref(false);
 
 const sortedTags = computed(() => {
   if (!selectedCluster.value) {
