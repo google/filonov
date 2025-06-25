@@ -148,6 +148,17 @@
                   </q-card-section>
                 </q-card>
 
+                <!-- Similarity distribution histogram -->
+                <q-card class="q-mt-md">
+                  <q-card-section>
+                    <div class="text-subtitle2">Similarity Distribution</div>
+                    <MetricHistogram
+                      :data="getSimilarityHistogramData"
+                      metric="Similarity"
+                    />
+                  </q-card-section>
+                </q-card>
+
                 <!-- Compare clusters button -->
                 <div class="row q-gutter-md">
                   <div class="col">
@@ -457,6 +468,7 @@ import {
   sortTags,
   formatMetricValue,
 } from 'src/helpers/graph';
+import { max, min } from 'lodash';
 
 const $q = useQuasar();
 const d3GraphRef = ref<InstanceType<typeof D3Graph> | null>(null);
@@ -535,6 +547,11 @@ async function onDataLoaded(args: {
   }
   sortTags(graphData.nodes);
   console.log('threshold: ' + args.threshold);
+  const similarityRange = graphData.edges.map((e) => e.similarity);
+
+  console.log(
+    `Similarity range: [${min(similarityRange)} : ${max(similarityRange)}], adaptive_threshold: ${graphData.graph?.adaptive_threshold}`,
+  );
   if (args.threshold !== undefined && args.threshold > 0) {
     // filter edges by threshold
     const threshold = args.threshold;
@@ -825,6 +842,15 @@ const getClusterSizesHistogramData = computed(() => {
   }));
 
   return createHistogramData(clusterSizeNodes, 'clusterSize');
+});
+
+const getSimilarityHistogramData = computed(() => {
+  const similarityEdges = edges.value.map((edge) => ({
+    info: { similarity: edge.similarity },
+    id: `${edge.from}-${edge.to}`,
+  }));
+
+  return createHistogramData(similarityEdges, 'similarity');
 });
 
 function createHistogramData(
