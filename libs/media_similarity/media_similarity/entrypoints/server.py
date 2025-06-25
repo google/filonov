@@ -16,7 +16,6 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import fastapi
-import media_tagging
 import uvicorn
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
@@ -43,11 +42,6 @@ class Dependencies:
   def __init__(self) -> None:
     """Initializes CommonDependencies."""
     settings = MediaSimilaritySettings()
-    self.tagging_service = media_tagging.MediaTaggingService(
-      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(
-        settings.media_tagging_db_url
-      )
-    )
     self.similarity_service = media_similarity.MediaSimilarityService(
       media_similarity_repository=(
         media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
@@ -63,26 +57,7 @@ async def cluster_media(
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
   """Performs media clustering."""
-  if not request.tagger_type:
-    tagging_results = dependencies.tagging_service.get_media(
-      media_tagging.media_tagging_service.MediaFetchingRequest(
-        media_type=request.media_type,
-        media_paths=request.media_paths,
-        output='tag',
-      )
-    )
-  else:
-    tagging_results = dependencies.tagging_service.tag_media(
-      media_tagging.MediaTaggingRequest(
-        tagger_type=request.tagger_type,
-        media_type=request.media_type,
-        media_paths=request.media_paths,
-        deduplicate=True,
-      )
-    )
-  clustering_results = dependencies.similarity_service.cluster_media(
-    tagging_results.results, normalize=request.normalize
-  )
+  clustering_results = dependencies.similarity_service.cluster_media(request)
   return fastapi.responses.JSONResponse(
     content=fastapi.encoders.jsonable_encoder(clustering_results.clusters)
   )

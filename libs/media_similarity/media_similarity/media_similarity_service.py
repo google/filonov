@@ -29,6 +29,7 @@ import media_tagging
 import pandas as pd
 import pydantic
 from garf_core import report
+from media_tagging.taggers import base as base_tagger
 
 from media_similarity import (
   adaptive_threshold,
@@ -64,13 +65,23 @@ class MediaClusteringRequest(pydantic.BaseModel):
     media_paths: Identifiers or media to cluster (file names or links).
     media_type: Type of media found in media_paths.
     tagger_type: Type of tagger to use if media tags are not found.
+    tagging_options: Tagging specific parameters.
     normalize: Whether to apply normalization threshold.
+    custom_threshold: Optional threshold to pre-filter similar media.
+    parallel_threshold:
+      Number of parallel process for tagging / similarity detection.
+
   """
 
   media_paths: list[str]
   media_type: str
   tagger_type: str | None = 'gemini'
+  tagging_options: base_tagger.TaggingOptions = base_tagger.TaggingOptions(
+    n_tags=100
+  )
   normalize: bool = True
+  custom_threshold: float | None = None
+  parallel_threshold: int = 10
 
 
 class ClusteringResults(pydantic.BaseModel):
@@ -220,14 +231,21 @@ class MediaSimilarityService:
 
   Attributes:
     repo: Repository that contains similarity pairs.
+    tagging_service: Initialized service for performing media tagging.
   """
 
   def __init__(
     self,
     media_similarity_repository: repositories.BaseSimilarityPairsRepository,
+    tagging_service: media_tagging.MediaTaggingService | None = None,
   ) -> None:
     """Initializes MediaSimilarityService."""
     self.repo = media_similarity_repository
+    self.tagging_service = tagging_service or media_tagging.MediaTaggingService(
+      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(
+        self.repo.db_url
+      )
+    )
 
   @classmethod
   def from_connection_string(cls, db_uri: str) -> MediaSimilarityService:
@@ -238,18 +256,12 @@ class MediaSimilarityService:
 
   def cluster_media(
     self,
-    tagging_results: Sequence[media_tagging.tagging_result.TaggingResult],
-    normalize: bool = True,
-    custom_threshold: float | None = None,
-    parallel_threshold: int = 10,
+    request: MediaClusteringRequest,
   ) -> ClusteringResults:
     """Assigns clusters number for each media.
 
     Args:
-      tagging_results: Results of tagging used for clustering.
-      normalize: Whether to normalize adaptive threshold.
-      custom_threshold: Don't calculated adaptive threshold but use custom one.
-      parallel_threshold: Max number of parallel executions.
+      request: Clustering request.
 
     Returns:
        Results of clustering that contain mapping between media identifier.
@@ -257,7 +269,25 @@ class MediaSimilarityService:
     Raises:
       MediaSimilarityError: When not tagging results were found.
     """
-    if not tagging_results:
+    if not request.tagger_type:
+      tagging_response = self.tagging_service.get_media(
+        media_tagging.media_tagging_service.MediaFetchingRequest(
+          media_type=request.media_type,
+          media_paths=request.media_paths,
+          output='tag',
+        )
+      )
+    else:
+      tagging_response = self.tagging_service.tag_media(
+        media_tagging.MediaTaggingRequest(
+          tagger_type=request.tagger_type,
+          tagging_options=request.tagging_options,
+          media_type=request.media_type,
+          media_paths=request.media_paths,
+          deduplicate=True,
+        )
+      )
+    if not (tagging_results := tagging_response.results):
       raise exceptions.MediaSimilarityError('No tagging results found.')
     tagger = tagging_results[0].tagger
     logger.info('calculating context...')
@@ -281,20 +311,15 @@ class MediaSimilarityService:
 
     if not uncalculated_media_pairs:
       logger.info('calculating threshold...')
-      if not custom_threshold:
-        threshold = adaptive_threshold.compute_adaptive_threshold(
-          similarity_scores=calculated_similarity_pairs, normalize=normalize
-        )
-      else:
-        threshold = adaptive_threshold.AdaptiveThreshold(
-          custom_threshold, num_pairs=None
-        )
+      threshold = _calculate_threshold(
+        similarity_pairs, request.custom_threshold, request.normalize
+      )
       logger.info('threshold is %.2f', threshold.threshold)
       logger.info('assigning clusters...')
       return _calculate_cluster_assignments(
         calculated_similarity_pairs, threshold
       )
-    if parallel_threshold > 1:
+    if request.parallel_threshold > 1:
       total_batches = len(uncalculated_media_pairs)
       total_batches = (
         total_batches // BATCH_SIZE
@@ -311,7 +336,7 @@ class MediaSimilarityService:
       )
 
       with futures.ThreadPoolExecutor(
-        max_workers=parallel_threshold
+        max_workers=request.parallel_threshold
       ) as executor:
         future_to_batch = {
           executor.submit(
@@ -342,14 +367,9 @@ class MediaSimilarityService:
         self.repo.add(similarity_pairs)
 
     logger.info('calculating threshold...')
-    if not custom_threshold:
-      threshold = adaptive_threshold.compute_adaptive_threshold(
-        similarity_scores=similarity_pairs, normalize=normalize
-      )
-    else:
-      threshold = adaptive_threshold.AdaptiveThreshold(
-        custom_threshold, num_pairs=None
-      )
+    threshold = _calculate_threshold(
+      similarity_pairs, request.custom_threshold, request.normalize
+    )
     logger.info('threshold is %.2f', threshold.threshold)
     logger.info('assigning clusters...')
     return _calculate_cluster_assignments(similarity_pairs, threshold)
@@ -420,6 +440,18 @@ class MediaSimilarityService:
           )
         )
     return results
+
+
+def _calculate_threshold(
+  similarity_scores: Sequence[media_pair.SimilarityScore],
+  custom_threshold: float | None,
+  normalize: bool,
+):
+  if not custom_threshold:
+    return adaptive_threshold.compute_adaptive_threshold(
+      similarity_scores, normalize
+    )
+  return adaptive_threshold.AdaptiveThreshold(custom_threshold, num_pairs=None)
 
 
 def _calculate_cluster_assignments(

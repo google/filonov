@@ -20,7 +20,6 @@ import functools
 import operator
 import sys
 
-import media_tagging
 from garf_executors.entrypoints import utils as garf_utils
 from garf_io import writer as garf_writer
 from media_tagging import media
@@ -70,6 +69,13 @@ def main():  # noqa: D103
     type=int,
     help='Number of parallel processes to perform media similarity calculation',
   )
+  parser.add_argument(
+    '--custom-threshold',
+    dest='custom_threshold',
+    default=None,
+    type=float,
+    help='Custom threshold of identifying similar media',
+  )
   parser.add_argument('--normalize', dest='normalize', action='store_true')
   parser.add_argument('--no-normalize', dest='normalize', action='store_false')
   parser.add_argument('-v', '--version', dest='version', action='store_true')
@@ -82,11 +88,6 @@ def main():  # noqa: D103
   garf_utils.init_logging(logger_type='rich')
   extra_parameters = garf_utils.ParamsParser([args.writer, 'input']).parse(
     kwargs
-  )
-  tagging_service = media_tagging.MediaTaggingService(
-    tagging_results_repository=(
-      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
-    ),
   )
   similarity_service = media_similarity.MediaSimilarityService(
     media_similarity_repository=(
@@ -106,30 +107,10 @@ def main():  # noqa: D103
       media_type=args.media_type,
       tagger_type=args.tagger,
       normalize=args.normalize,
-    )
-    if not request.tagger_type:
-      tagging_results = tagging_service.get_media(
-        media_tagging.media_tagging_service.MediaFetchingRequest(
-          media_type=request.media_type,
-          media_paths=request.media_paths,
-          output='tag',
-        )
-      )
-    else:
-      tagging_results = tagging_service.tag_media(
-        media_tagging.MediaTaggingRequest(
-          tagger_type=request.tagger_type,
-          media_type=request.media_type,
-          media_paths=request.media_paths,
-          parallel_threshold=args.parallel_threshold,
-          deduplicate=True,
-        )
-      )
-    clustering_results = similarity_service.cluster_media(
-      tagging_results.results,
-      normalize=args.normalize,
+      custom_threshold=args.custom_threshold,
       parallel_threshold=args.parallel_threshold,
     )
+    clustering_results = similarity_service.cluster_media(request)
     report = clustering_results.to_garf_report()
 
   elif args.action == 'compare':

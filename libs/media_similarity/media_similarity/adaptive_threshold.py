@@ -23,9 +23,12 @@ from __future__ import annotations
 
 import dataclasses
 import sys
+from collections.abc import Sequence
 from typing import Final
 
 import numpy as np
+
+from media_similarity import media_pair
 
 MINIMAL_ADAPTIVE_THRESHOLD: Final[float] = 1.85
 
@@ -61,7 +64,8 @@ class AdaptiveThreshold:
 
 
 def compute_adaptive_threshold(
-  similarity_scores: list, normalize: bool = False
+  similarity_scores: Sequence[media_pair.SimilarityPair],
+  normalize: bool = False,
 ) -> AdaptiveThreshold:
   """Calculates threshold based on provided similarity pairs.
 
