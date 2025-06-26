@@ -24,14 +24,23 @@
       <div class="text-body1 text-center q-ma-sm">
         &copy;&nbsp;Google gTech Ads, 2025. Built
         {{ formattedBuildTime }} (git#{{ GIT_HASH }}) (not an official Google
-        product)
+        product) | <a href="#" @click.prevent="openChangelog">Changelog</a>
       </div>
     </q-footer>
+    <ChangelogDialog ref="changelogDialog" />
   </q-layout>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import Logo from 'components/Logo.vue';
+import ChangelogDialog from 'components/ChangelogDialog.vue';
+
+const changelogDialog = ref<InstanceType<typeof ChangelogDialog> | null>(null);
+
+function openChangelog() {
+  changelogDialog.value?.open();
+}
 
 const BUILD_TIMESTAMP = process.env.BUILD_TIMESTAMP;
 const GIT_HASH = process.env.GIT_HASH;

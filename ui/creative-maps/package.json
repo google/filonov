@@ -13,23 +13,25 @@
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
     "build": "quasar build",
-    "deploy": "quasar build && firebase deploy"
+    "deploy": "quasar build && firebase deploy",
+    "build-dmg": "electron-installer-dmg ./dist/electron/Packaged/Filonov-darwin-arm64/Filonov.app Filonov --overwrite --out=./dist/electron/"
   },
   "dependencies": {
     "@quasar/extras": "^1.16.4",
-    "apexcharts": "^4.0.0",
+    "@types/marked": "^5.0.2",
+    "apexcharts": "^4.7.0",
     "axios": "^1.2.1",
     "d3": "^7.9.0",
     "lodash": "^4.17.21",
+    "marked": "^15.0.12",
     "pinia": "^2.0.11",
-    "plotly.js": "^2.35.2",
-    "plotly.js-dist": "^2.35.2",
     "quasar": "^2.16.0",
     "vue": "^3.4.18",
     "vue-router": "^4.0.12",
-    "vue3-apexcharts": "^1.7.0"
+    "vue3-apexcharts": "^1.8.0"
   },
   "devDependencies": {
+    "@electron/packager": "^18.3.6",
     "@quasar/app-vite": "^2.0.0-beta.12",
     "@types/d3": "^7.4.3",
     "@types/lodash": "^4.17.13",
@@ -37,6 +39,8 @@
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
     "autoprefixer": "^10.4.2",
+    "electron": "^34.0.2",
+    "electron-installer-dmg": "^5.0.1",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-vue": "^9.0.0",

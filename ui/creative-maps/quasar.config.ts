@@ -5,6 +5,9 @@
 
 import { configure } from 'quasar/wrappers';
 import { execSync } from 'child_process';
+import { copyFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 export default configure((/* ctx */) => {
   return {
@@ -76,6 +79,20 @@ export default configure((/* ctx */) => {
           { server: false },
         ],
       ],
+      afterBuild: () => {
+        try {
+          // Copy CHANGELOG.md to dist folder after build
+          const __filename = fileURLToPath(import.meta.url);
+          const __dirname = dirname(__filename);
+          copyFileSync(
+            join(__dirname, 'CHANGELOG.md'),
+            join(__dirname, 'dist/spa/CHANGELOG.md')
+          );
+          console.log('✓ CHANGELOG.md copied to dist/spa/');
+        } catch (error) {
+          console.error('Failed to copy CHANGELOG.md:', error);
+        }
+      }
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#devServer
