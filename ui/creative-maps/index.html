@@ -6,16 +6,150 @@
     <meta charset="utf-8">
     <meta name="description" content="<%= productDescription %>">
     <meta name="format-detection" content="telephone=no">
-    <meta name="msapplication-tap-highlight" content="no">
-    <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width<% if (ctx.mode.cordova || ctx.mode.capacitor) { %>, viewport-fit=cover<% } %>">
+  <meta name="msapplication-tap-highlight" content="no">
+  <meta name="viewport"
+    content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width<% if (ctx.mode.cordova || ctx.mode.capacitor) { %>, viewport-fit=cover<% } %>">
 
     <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48x48.png">
     <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
     <link rel="icon" type="image/ico" href="favicon.ico">
     <link rel="icon" sizes="any" type="image/svg+xml" href="favicon.svg">
-  </head>
-  <body>
-    <!-- quasar:entry-point -->
-  </body>
+  <style>
+    .consent-banner {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      font-size: 14px;
+      z-index: 1000;
+      margin-bottom: 40px;
+    }
+
+    .body--dark .consent-banner {
+      background-color: #393b3c;
+      box-shadow: 0 -1px 10px 0 #acabab4d;
+      /*0 -2px 10px rgba(0, 0, 0, 0.1);*/
+      color: white;
+    }
+
+    .body--light .consent-banner {
+      background-color: #f8f9fa;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+      color: black;
+    }
+
+    .consent-banner-title {
+      font-weight: 700;
+      font-size: 18px;
+      line-height: 24px;
+      margin: 0 0 12px 0;
+      overflow-wrap: break-word;
+    }
+
+    .consent-banner-group {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      line-height: 24px;
+      font-weight: 400;
+    }
+
+    .consent-banner-buttons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-left: 15px;
+    }
+
+    .consent-button {
+      border: none;
+      /* padding: 8px 16px; */
+      padding: 8px 27px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 14px;
+      /* margin: 4px 2px; */
+      margin: 0 8px 0 0;
+      line-height: 24px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .consent-button:hover {
+      box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .consent-button:active {
+      opacity: .5;
+    }
+
+    .consent-button.btn-success {
+      background-color: #34a853;
+      color: white;
+    }
+
+    .consent-button.btn-grayscale {
+      background-color: #dfe1e5;
+      color: black;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- quasar:entry-point -->
+  <div id="consent-banner" class="consent-banner">
+    <p class="consent-banner-title">We value your privacy</p>
+    <div class="consent-banner-group">
+      <p>We use cookies to provide you with the best possible experience. They also allow us to analyze user behavior in
+        order to constantly improve the website for you. We do not use cookies for ad personalization.<br>
+        By clicking "Accept", you consent to our use of cookies and tracking user activity.
+      </p>
+      <div class="consent-banner-buttons">
+        <button id="btn-accept-all" class="consent-button btn-success">Accept</button>
+        <button id="btn-reject-all" class="consent-button btn-grayscale">Reject</button>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function hideBanner() {
+      document.getElementById('consent-banner').style.display = 'none';
+    }
+    if (localStorage.getItem('consentMode') === null || window.location.search === '?consent-mode') {
+      document.getElementById('btn-accept-all').addEventListener('click', function () {
+        setConsent({
+          necessary: true,
+          analytics: true,
+          preferences: true,
+        });
+        hideBanner();
+      });
+      document.getElementById('btn-reject-all').addEventListener('click', function () {
+        setConsent({
+          necessary: false,
+          analytics: false,
+          preferences: false,
+        });
+        hideBanner();
+      });
+      document.getElementById('consent-banner').style.display = 'block';
+    }
+    function setConsent(consent) {
+      const consentMode = {
+        'functionality_storage': consent.necessary ? 'granted' : 'denied',
+        'security_storage': consent.necessary ? 'granted' : 'denied',
+        'analytics_storage': consent.analytics ? 'granted' : 'denied',
+        'personalization_storage': consent.preferences ? 'granted' : 'denied',
+      };
+      gtag('consent', 'update', consentMode);
+      localStorage.setItem('consentMode', JSON.stringify(consentMode));
+    }
+  </script>
+</body>
 </html>
