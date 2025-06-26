@@ -123,6 +123,11 @@ export interface ClusterInfo {
   nodes: Node[];
 }
 
+export enum ClusteringMethod {
+  predefined = 'predefined',
+  connected = 'connected',
+}
+
 /**
  * A tag description.
  */

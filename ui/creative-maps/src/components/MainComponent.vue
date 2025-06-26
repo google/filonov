@@ -460,6 +460,7 @@ import {
   HistogramData,
   MetricValue,
   ParetoHistogramData,
+  ClusteringMethod,
 } from 'components/models';
 import {
   aggregateNodesMetrics,
@@ -548,6 +549,7 @@ async function onDataLoaded(args: {
   origin: string;
   optimizeGraph: boolean;
   threshold?: number;
+  clusteringMethod: ClusteringMethod;
 }) {
   showLoadDataDialog.value = false;
   dataSourceDescription.value = args.origin || 'Custom data';
@@ -580,7 +582,12 @@ async function onDataLoaded(args: {
     );
     graphData.edges = edges;
   }
-  clusters.value = initClusters(graphData.nodes, graphData.edges, 'cost');
+  clusters.value = initClusters(
+    graphData.nodes,
+    graphData.edges,
+    'cost',
+    args.clusteringMethod,
+  );
   // optimize edges within each cluster
   if (args.optimizeGraph) {
     const optimizedEdges = optimizeGraphEdges(

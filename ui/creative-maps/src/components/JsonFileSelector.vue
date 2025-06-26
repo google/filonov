@@ -20,6 +20,29 @@
           >
           </q-input>
         </div>
+        <div class="row q-mt-md q-mb-md">
+          <q-select
+            v-model="clusteringMethod"
+            :options="clusteringMethodOptions"
+            label="Clustering Method"
+            dense
+            class="col"
+            filled
+            option-value="value"
+            option-label="label"
+            emit-value
+            map-options
+          >
+            <template v-slot:option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.label }}</q-item-label>
+                  <q-item-label caption>{{ scope.opt.hint }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+        </div>
         <q-separator></q-separator>
         <q-space></q-space>
         <!-- Source Selection -->
@@ -104,6 +127,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { api } from 'boot/axios';
+import { ClusteringMethod } from './models';
 
 // Type definitions
 interface TokenClientConfig {
@@ -176,6 +200,7 @@ interface JsonLoadedEvent {
   origin: string;
   optimizeGraph: boolean;
   threshold?: number;
+  clusteringMethod: ClusteringMethod;
 }
 
 // State
@@ -186,6 +211,19 @@ const error = ref<string | null>(null);
 const loading = ref(false);
 const optimizeGraph = ref(true);
 const threshold = ref('');
+const clusteringMethod = ref<ClusteringMethod>(ClusteringMethod.connected);
+const clusteringMethodOptions = [
+  {
+    value: ClusteringMethod.connected,
+    label: 'Connected Nodes',
+    hint: 'Finds clusters based on graph connectivity.',
+  },
+  {
+    value: ClusteringMethod.predefined,
+    label: 'Predefined',
+    hint: 'Uses the cluster ID from the source file.',
+  },
+];
 
 // Event emits
 const emit = defineEmits<{
@@ -483,6 +521,7 @@ const processJsonData = (jsonData: any, source: string) => {
     threshold: Number.isFinite(parseFloat(threshold.value))
       ? Number(threshold.value)
       : undefined,
+    clusteringMethod: clusteringMethod.value,
   });
 };
 </script>

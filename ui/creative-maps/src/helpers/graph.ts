@@ -1,5 +1,11 @@
 import { isNumber, isString } from 'lodash';
-import { ClusterInfo, Edge, MetricsObject, Node } from 'src/components/models';
+import {
+  ClusterInfo,
+  Edge,
+  MetricsObject,
+  Node,
+  ClusteringMethod,
+} from 'src/components/models';
 
 /**
  * Sort tags in nodes in order of score decreasing.
@@ -27,41 +33,41 @@ export function initClusters(
   edges: Edge[],
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   sortBy: string,
+  clusteringMethod: ClusteringMethod = ClusteringMethod.connected,
 ): ClusterInfo[] {
   const clusters = [] as ClusterInfo[];
 
-  /*
-  // This is implementation for clustering using cluster Ids from initial JSON:
-  const clusterIds = Array.from(
-    new Set(nodes.map((node) => node.cluster)),
-  );
-  clusterIds.forEach((id) => {
-    const clusterNodes = nodes.filter((node) => node.cluster === id);
-    const metrics = aggregateNodesMetrics(clusterNodes);
-    clusters.push({
-      id: id,
-      nodes: clusterNodes,
-      metrics,
-    });
-
-  });
-  */
-
-  // This is implementation for clustering using edges in the graph (and ignoring clusters):
-  const visited = new Set();
-  // Find all clusters
-  nodes.forEach((node) => {
-    if (!visited.has(node.id.toString())) {
-      const clusterNodes = findConnectedNodes(node, nodes, edges);
-      clusterNodes.forEach((n) => visited.add(n.id.toString()));
+  if (clusteringMethod === ClusteringMethod.predefined) {
+    // This is implementation for clustering using cluster Ids from initial JSON:
+    const clusterIds = Array.from(
+      new Set(nodes.map((node) => node.cluster)),
+    );
+    clusterIds.forEach((id) => {
+      const clusterNodes = nodes.filter((node) => node.cluster === id);
       const metrics = aggregateNodesMetrics(clusterNodes);
       clusters.push({
-        id: '',
+        id: id,
         nodes: clusterNodes,
         metrics,
       });
-    }
-  });
+    });
+  } else {
+    // This is implementation for clustering using edges in the graph (and ignoring clusters):
+    const visited = new Set();
+    // Find all clusters
+    nodes.forEach((node) => {
+      if (!visited.has(node.id.toString())) {
+        const clusterNodes = findConnectedNodes(node, nodes, edges);
+        clusterNodes.forEach((n) => visited.add(n.id.toString()));
+        const metrics = aggregateNodesMetrics(clusterNodes);
+        clusters.push({
+          id: '',
+          nodes: clusterNodes,
+          metrics,
+        });
+      }
+    });
+  }
   if (sortBy) {
     if (clusters.every((c) => isNumber(c.metrics[sortBy]))) {
       clusters.sort((a, b) => {
