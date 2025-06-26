@@ -491,6 +491,16 @@ let clusterForAllNodes: ClusterInfo | undefined;
 const tagSearchQuery = ref('');
 const showCreativesDialog = ref(false);
 
+declare global {
+  interface Window {
+    gtag: (
+      action: string,
+      event: string,
+      args?: Record<string, unknown>,
+    ) => void;
+  }
+}
+
 const sortedTags = computed(() => {
   if (!selectedCluster.value) {
     // Global scope - collect tags from all vertices
@@ -541,6 +551,15 @@ async function onDataLoaded(args: {
 }) {
   showLoadDataDialog.value = false;
   dataSourceDescription.value = args.origin || 'Custom data';
+  try {
+    if (window.gtag) {
+      window.gtag('event', 'load_graph', {
+        origin: origin,
+      });
+    }
+  } catch (e) {
+    console.log('Failed to send analytics: ', e);
+  }
   const graphData: GraphData = args.data;
   if (args.data.graph?.period) {
     dataSourceAuxInfo.value = `period: ${args.data.graph?.period.start_date} - ${args.data.graph?.period.end_date}`;

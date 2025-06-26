@@ -96,9 +96,6 @@
       </div>
     </div>
     <div ref="chartContainer" class="graph-content"></div>
-    <!-- <div v-if="debug" style="font-size: 12px; margin-top: 10px">
-      Vertices: {{ vertices.length }}, Edges: {{ edges.length }}
-    </div> -->
     <q-tooltip
       v-model="tooltipVisible"
       :target="tooltipTarget"
