@@ -103,7 +103,7 @@ class CreativeMap:
         node['type'] = 'image'
         node['image'] = node_extra_info.media_preview
         node['media_path'] = node_extra_info.media_path
-        node['label'] = node_extra_info.media_name
+        node['label'] = node_extra_info.media_name or 'Unknown'
         node['cluster'] = clustering_results.clusters.get(node_name)
         node['info'] = node_extra_info.info
         node['series'] = node_extra_info.series
