@@ -35,6 +35,7 @@ MAX_NUMBER_LLM_TAGS: Final[int] = 10
 
 logging.getLogger('google_genai.models').setLevel(logging.WARNING)
 logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger('google_genai._api_client').setLevel(logging.ERROR)
 
 
 class GeminiModelParameters(pydantic.BaseModel):
