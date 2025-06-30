@@ -26,6 +26,15 @@ import smart_open
 
 from media_tagging import exceptions
 
+_SUPPORTED_VIDEO_FILE_EXTENSIONS = (
+  '.mp4',
+  '.avi',
+  '.webm',
+  '.avi',
+  '.flv',
+  '.mov',
+)
+
 
 class MediaTypeEnum(enum.Enum):
   """Represents type of a Medium."""
@@ -79,7 +88,7 @@ class Medium:
     """Content of media as bytes."""
     if self._content or (
       self.type == MediaTypeEnum.YOUTUBE_VIDEO
-      and not str(self._media_path).endswith('.mp4')
+      and not str(self._media_path).endswith(_SUPPORTED_VIDEO_FILE_EXTENSIONS)
     ):
       return self._content
     try:
@@ -123,7 +132,7 @@ def convert_path_to_media_name(
   if isinstance(media_type, str):
     media_type = MediaTypeEnum[media_type.upper()]
   if media_type == MediaTypeEnum.YOUTUBE_VIDEO and not media_path.endswith(
-    '.mp4'
+    _SUPPORTED_VIDEO_FILE_EXTENSIONS
   ):
     return _convert_youtube_link_to_id(media_path)
   base_name = media_path.split('/')[-1]
