@@ -114,9 +114,9 @@ def main():  # noqa: D103
     sys.exit()
 
   _ = gaarf_utils.init_logging(loglevel=args.loglevel, logger_type=args.logger)
-  extra_parameters = gaarf_utils.ParamsParser([args.source, 'tagger']).parse(
-    kwargs
-  )
+  extra_parameters = gaarf_utils.ParamsParser(
+    [args.source, 'tagger', 'similarity']
+  ).parse(kwargs)
   tagging_service = media_tagging.MediaTaggingService(
     tagging_results_repository=(
       media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
@@ -137,10 +137,7 @@ def main():  # noqa: D103
     media_type=media_type,
     tagger=tagger,
     tagger_parameters=extra_parameters.get('tagger'),
-    similarity_parameters={
-      'normalize': args.normalize,
-      'custom_threshold': args.custom_threshold,
-    },
+    similarity_parameters=extra_parameters.get('similarity'),
     input_parameters=extra_parameters.get(args.source),
     output_parameters=filonov.filonov_service.OutputParameters(
       output_name=args.output_name

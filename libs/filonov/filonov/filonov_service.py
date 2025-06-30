@@ -34,6 +34,12 @@ from filonov.inputs import input_service
 logger = logging.getLogger('filonov')
 
 
+class SimilarityParameters(pydantic.BaseModel):
+  normalize: bool = False
+  custom_threshold: float | None = None
+  algorithm: str | None = None
+
+
 class OutputParameters(pydantic.BaseModel):
   """Parameters for saving creative maps data.
 
@@ -68,10 +74,7 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   media_type: Literal['IMAGE', 'YOUTUBE_VIDEO'] = 'IMAGE'
   tagger: Literal['gemini', 'google-cloud', 'langchain', 'loader', None] = None
   tagger_parameters: dict[str, str | int] = default_tagger_parameters
-  similarity_parameters: dict[str, float | bool | None] = {
-    'normalize': False,
-    'custom_threshold': None,
-  }
+  similarity_parameters: SimilarityParameters = SimilarityParameters()
   input_parameters: dict[str, str | Sequence[str]] = {}
   output_parameters: OutputParameters = OutputParameters()
   parallel_threshold: int = 10
@@ -135,7 +138,7 @@ class FilonovService:
     media_urls = {media.media_path for media in media_info.values()}
     if not request.tagger:
       logger.info('Tagger not specified, getting data from DB')
-      tagging_results = self.tagging_service.get_media(
+      tagging_response = self.tagging_service.get_media(
         MediaFetchingRequest(
           media_type=request.media_type,
           media_paths=list(media_urls),
@@ -143,7 +146,7 @@ class FilonovService:
           deduplicate=True,
         )
       )
-      if not tagging_results:
+      if not tagging_response:
         raise exceptions.FilonovError('Failed to get tagging results from DB')
     else:
       logger.info(
@@ -151,7 +154,7 @@ class FilonovService:
         request.tagger,
         request.tagger_parameters,
       )
-      tagging_results = self.tagging_service.tag_media(
+      tagging_response = self.tagging_service.tag_media(
         MediaTaggingRequest(
           tagger_type=request.tagger,
           media_type=request.media_type,
@@ -161,23 +164,30 @@ class FilonovService:
           deduplicate=True,
         )
       )
-    if not tagging_results:
+    if not tagging_response:
       raise exceptions.FilonovError(
         f'Failed to perform media tagging for the context: {context}'
       )
-
     logger.info(
       'Performing similarity detection with parameters: %s',
       request.similarity_parameters,
     )
-    clustering_results = self.similarity_service.cluster_media(
-      tagging_results=tagging_results.results,
+    clustering_request = media_similarity.MediaClusteringRequest(
+      media_paths=media_urls,
+      media_type=request.media_type,
+      tagger_type=request.tagger,
+      tagging_options=request.tagger_parameters,
+      normalize=request.similarity_parameters.normalize,
+      custom_threshold=request.similarity_parameters.custom_threshold,
+      algorithm=request.similarity_parameters.algorithm,
       parallel_threshold=request.parallel_threshold,
-      **request.similarity_parameters,
+    )
+    clustering_results = self.similarity_service.cluster_media(
+      clustering_request
     )
     logger.info('Generating creative map...')
     if trim_threshold := request.trim_tags_threshold:
-      tagging_results.trim(trim_threshold)
+      tagging_response.trim(trim_threshold)
     return creative_map.CreativeMap.from_clustering(
-      clustering_results, tagging_results.results, media_info, context
+      clustering_results, tagging_response.results, media_info, context
     )
