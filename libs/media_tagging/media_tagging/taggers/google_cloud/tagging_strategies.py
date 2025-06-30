@@ -77,7 +77,7 @@ class ImageTaggingStrategy(base.TaggingStrategy):
     medium: media.Medium,
     tagging_options: base.TaggingOptions = base.TaggingOptions(),
   ) -> tagging_result.TaggingResult:
-    raise base.UnsupportedMethodError
+    raise base.UnsupportedMethodError('describe method is not supported')
 
 
 class VideoTaggingStrategy(base.TaggingStrategy):
@@ -143,4 +143,4 @@ class VideoTaggingStrategy(base.TaggingStrategy):
     medium: media.Medium,
     tagging_options: base.TaggingOptions = base.TaggingOptions(),
   ) -> tagging_result.TaggingResult:
-    raise base.UnsupportedMethodError
+    raise base.UnsupportedMethodError('describe method is not supported')
