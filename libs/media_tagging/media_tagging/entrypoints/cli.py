@@ -117,7 +117,7 @@ def main():
     sys.exit()
   if not tagging_results:
     logging.error('No tagging tagging results found.')
-    sys.exit()
+    sys.exit(1)
 
   writer_parameters = extra_parameters.get(args.writer) or {}
   tagging_results.save(args.output, args.writer, **writer_parameters)

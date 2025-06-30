@@ -20,7 +20,7 @@ import uvicorn
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
-from media_tagging import media_tagging_service, repositories
+from media_tagging import exceptions, media_tagging_service, repositories
 
 
 class MediaTaggingSettings(BaseSettings):
@@ -64,10 +64,13 @@ async def tag(
   Returns:
     Json results of tagging.
   """
-  tagging_results = dependencies.tagging_service.tag_media(request)
-  return fastapi.responses.JSONResponse(
-    content=fastapi.encoders.jsonable_encoder(tagging_results)
-  )
+  try:
+    tagging_results = dependencies.tagging_service.tag_media(request)
+    return fastapi.responses.JSONResponse(
+      content=fastapi.encoders.jsonable_encoder(tagging_results)
+    )
+  except exceptions.MediaTaggingError as e:
+    raise fastapi.HTTPException(status_code=404, detail=str(e))
 
 
 @router.post('/describe')
@@ -84,10 +87,13 @@ async def describe(
   Returns:
     Json results of tagging.
   """
-  tagging_results = dependencies.tagging_service.describe_media(request)
-  return fastapi.responses.JSONResponse(
-    content=fastapi.encoders.jsonable_encoder(tagging_results)
-  )
+  try:
+    tagging_results = dependencies.tagging_service.describe_media(request)
+    return fastapi.responses.JSONResponse(
+      content=fastapi.encoders.jsonable_encoder(tagging_results)
+    )
+  except exceptions.MediaTaggingError as e:
+    raise fastapi.HTTPException(status_code=404, detail=str(e))
 
 
 if __name__ == '__main__':

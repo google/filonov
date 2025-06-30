@@ -25,7 +25,7 @@ import pydantic
 import smart_open
 import tenacity
 
-from media_tagging import media, tagging_result
+from media_tagging import exceptions, media, tagging_result
 
 
 class TaggingOptions(pydantic.BaseModel):
@@ -193,7 +193,7 @@ class BaseTagger(abc.ABC):
     return tagging_result.TaggingResult(**parameters)
 
 
-class TaggerError(Exception):
+class TaggerError(exceptions.MediaTaggingError):
   """Exception for incorrect taggers."""
 
 

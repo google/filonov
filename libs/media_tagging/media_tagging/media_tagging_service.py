@@ -337,6 +337,7 @@ class MediaTaggingService:
           self.repo.add([tagging_results])
       except base_tagger.TaggerError as e:
         logger.error('Tagger error: %s', str(e))
+        raise e
       except pydantic.ValidationError as e:
         logger.error('Failed to parse tagging results: %s', str(e))
       except exceptions.FailedTaggingError as e:
