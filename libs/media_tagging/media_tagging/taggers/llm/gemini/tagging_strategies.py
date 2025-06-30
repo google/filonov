@@ -212,10 +212,12 @@ class VideoTaggingStrategy(GeminiTaggingStrategy):
   """Defines handling of LLM interaction for video files."""
 
   def build_content(self, medium, **kwargs):
-    return genai.types.Part(
+    content = genai.types.Part(
       inline_data=genai.types.Blob(data=medium.content, mime_type='video/mp4'),
-      video_metadata=_get_video_metadata(**kwargs),
     )
+    if video_metadata := _get_video_metadata(**kwargs):
+      content.video_metadata = video_metadata
+    return content
 
 
 class YouTubeVideoTaggingStrategy(GeminiTaggingStrategy):
@@ -223,20 +225,24 @@ class YouTubeVideoTaggingStrategy(GeminiTaggingStrategy):
 
   def build_content(self, medium, **kwargs):
     if not medium.content:
-      return genai.types.Part(
+      content = genai.types.Part(
         file_data=genai.types.FileData(file_uri=medium.media_path),
-        video_metadata=_get_video_metadata(**kwargs),
       )
-    return genai.types.Part(
-      inline_data=genai.types.Blob(data=medium.content, mime_type='video/mp4'),
-      video_metadata=_get_video_metadata(**kwargs),
-    )
+    else:
+      content = genai.types.Part(
+        inline_data=genai.types.Blob(
+          data=medium.content, mime_type='video/mp4'
+        ),
+      )
+    if video_metadata := _get_video_metadata(**kwargs):
+      content.video_metadata = video_metadata
+    return content
 
 
-def _get_video_metadata(**kwargs: str) -> genai.types.VideoMetadata:
+def _get_video_metadata(**kwargs: str) -> genai.types.VideoMetadata | None:
   d = {
     k: v
     for k, v in kwargs.items()
     if k in genai.types.VideoMetadata.model_fields
   }
-  return genai.types.VideoMetadata(**d)
+  return genai.types.VideoMetadata(**d) if d else None
