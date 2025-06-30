@@ -312,7 +312,7 @@ class MediaSimilarityService:
     if not uncalculated_media_pairs:
       logger.info('calculating threshold...')
       threshold = _calculate_threshold(
-        similarity_pairs, request.custom_threshold, request.normalize
+        calculated_similarity_pairs, request.custom_threshold, request.normalize
       )
       logger.info('threshold is %.2f', threshold.threshold)
       logger.info('assigning clusters...')
