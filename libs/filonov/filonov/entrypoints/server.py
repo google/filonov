@@ -74,6 +74,13 @@ class CreativeMapGoogleAdsGenerateRequest(filonov.CreativeMapGenerateRequest):
   source: Literal['googleads'] = 'googleads'
 
 
+class CreativeMapFileGenerateRequest(filonov.CreativeMapGenerateRequest):
+  """Specifies Google Ads specific request for returning creative map."""
+
+  input_parameters: filonov.inputs.file.FileInputParameters
+  source: Literal['file'] = 'file'
+
+
 class CreativeMapYouTubeGenerateRequest(filonov.CreativeMapGenerateRequest):
   """Specifies YouTube specific request for returning creative map."""
 
@@ -81,6 +88,19 @@ class CreativeMapYouTubeGenerateRequest(filonov.CreativeMapGenerateRequest):
   source: Literal['youtube'] = 'youtube'
   media_type: Literal['YOUTUBE_VIDEO'] = 'YOUTUBE_VIDEO'
   tagger: Literal['gemini'] = 'gemini'
+
+
+@router.post('/generate:file')
+async def generate_creative_map_file(
+  request: CreativeMapFileGenerateRequest,
+  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
+) -> fastapi.responses.JSONResponse:
+  """Generates Json with creative map data."""
+  return generate_creative_map(
+    'file',
+    request,
+    dependencies,
+  )
 
 
 @router.post('/generate:googleads')
@@ -110,7 +130,7 @@ async def generate_creative_map_youtube(
 
 
 def generate_creative_map(
-  source: Literal['youtube', 'googleads'],
+  source: Literal['youtube', 'googleads', 'file'],
   request: filonov.CreativeMapGenerateRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> filonov.creative_map.CreativeMapJson:
