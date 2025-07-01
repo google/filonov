@@ -38,6 +38,20 @@ test =  [
   "pytest",
 ]
 
+[tool.pytest.ini_options]
+addopts = [
+  "-ra",
+]
+testpaths = [
+  "tests",
+]
+pythonpath = "filonov"
+markers = [
+  "file: File source",
+  "googleads: Google Ads source",
+  "youtube: YouTube source",
+]
+
 [project.scripts]
 filonov="filonov.entrypoints.cli:main"
 filonov-ui="filonov.entrypoints.streamlit_cli:main"

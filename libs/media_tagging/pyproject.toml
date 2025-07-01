@@ -68,8 +68,17 @@ file = "media_tagging.loaders.file"
 "*"= ["*.txt"]
 
 [tool.pytest.ini_options]
+addopts = [
+  "-ra",
+]
 testpaths = [
   "tests",
+]
+pythonpath = "media_tagging"
+markers = [
+  "tagger: Tagger tests",
+  "gemini: Gemini Tagger tests",
+  "google_cloud: Google Cloud Tagger tests",
 ]
 
 [project.scripts]

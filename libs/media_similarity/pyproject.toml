@@ -35,5 +35,17 @@ test =  [
   "pytest-cov"
 ]
 
+[tool.pytest.ini_options]
+addopts = [
+  "-ra",
+]
+testpaths = [
+  "tests",
+]
+pythonpath = "media_similarity"
+markers = [
+  "similarity: Tagger tests",
+]
+
 [project.scripts]
 media-similarity="media_similarity.entrypoints.cli:main"
