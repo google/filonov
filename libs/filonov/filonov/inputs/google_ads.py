@@ -22,7 +22,7 @@ import operator
 import os
 import pathlib
 from collections.abc import Sequence
-from typing import Final, get_args
+from typing import Final, Literal, get_args
 
 import gaarf
 import garf_youtube_data_api
@@ -34,7 +34,7 @@ class GoogleAdsInputParameters(interfaces.InputParameters):
   """Google Ads specific parameters for generating creative map."""
 
   account: str
-  media_type: str
+  media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO', None] = None
   start_date: str = (
     datetime.datetime.today() - datetime.timedelta(days=30)
   ).strftime('%Y-%m-%d')

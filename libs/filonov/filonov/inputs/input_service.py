@@ -52,15 +52,16 @@ class MediaInputService:
       fetching_request = youtube.YouTubeInputParameters(**input_parameters)
       fetcher = youtube.ExtraInfoFetcher()
     elif self.source == 'googleads':
-      fetching_request = google_ads.GoogleAdsInputParameters(
-        media_type=media_type, **input_parameters
-      )
+      fetching_request = google_ads.GoogleAdsInputParameters(**input_parameters)
       fetcher = google_ads.ExtraInfoFetcher()
     elif self.source == 'file':
-      fetching_request = file.FileInputParameters(
-        media_type=media_type, **input_parameters
-      )
+      fetching_request = file.FileInputParameters(**input_parameters)
       fetcher = file.ExtraInfoFetcher()
+    if (
+      hasattr(fetching_request, 'media_type')
+      and not fetching_request.media_type
+    ):
+      fetching_request.media_type = media_type
     return (fetcher, fetching_request)
 
   def fetch_input(

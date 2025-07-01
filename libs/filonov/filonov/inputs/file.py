@@ -30,7 +30,7 @@ class FileInputParameters(interfaces.InputParameters):
   """File specific parameters for generating creative map."""
 
   path: os.PathLike[str] | str
-  media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO']
+  media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO', None] = None
   media_identifier: str = 'media_url'
   media_name: str = 'media_name'
   metric_names: Sequence[str] | str = ('clicks', 'impressions')

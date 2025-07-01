@@ -71,8 +71,8 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   default_tagger_parameters: ClassVar[dict[str, int]] = {'n_tags': 100}
 
   source: input_service.InputSource
-  media_type: Literal['IMAGE', 'YOUTUBE_VIDEO'] = 'IMAGE'
-  tagger: Literal['gemini', 'google-cloud', 'langchain', 'loader', None] = None
+  media_type: Literal['IMAGE', 'YOUTUBE_VIDEO', 'VIDEO', None] = None
+  tagger: Literal['gemini', 'google-cloud', 'loader', None] = None
   tagger_parameters: dict[str, str | int] = default_tagger_parameters
   similarity_parameters: SimilarityParameters = SimilarityParameters()
   input_parameters: dict[str, str | Sequence[str]] = {}
@@ -83,6 +83,10 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   def model_post_init(self, __context):  # noqa: D105
     if not self.tagger_parameters or 'n_tags' not in self.tagger_parameters:
       self.tagger_parameters = self.default_tagger_parameters
+
+    if self.source == 'youtube':
+      self.media_type = 'YOUTUBE_VIDEO'
+      self.tagger = 'gemini'
 
 
 class FilonovService:
