@@ -107,6 +107,7 @@ where:
      * When passing custom prompt you can opt out of using built in schemas in `media-tagger` by using `--tagger.no-schema=True` or provide a [custom schema](https://ai.google.dev/gemini-api/docs/structured-output#json-schemas) via `--tagger.custom_schema=/path/to/schema.json` parameter.
 * `gemini` tagger for `video` and `youtube_video` media types supports specifying `VideoMetadata` parameters (`fps`, `start_offset`, `end_offset`)
      > Example: `--tagger.fps=5`
+* `gemini` tagger can use `n_runs=N` parameter to repeat tagging process `N` times, i.e. `--tagger.n_runs=10` will tag the same medium 10 times.
 
 #### Loading tagging results
 

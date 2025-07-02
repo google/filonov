@@ -33,6 +33,7 @@ class TaggingOptions(pydantic.BaseModel):
   """Specifies options to refine media tagging.
 
   Attributes:
+    n_runs: Number of times to run tagging for the same medium.
     n_tags: Max number of tags to return.
     tags: Particular tags to find in the media.
     custom_prompt: User provided prompt.
@@ -42,6 +43,7 @@ class TaggingOptions(pydantic.BaseModel):
 
   model_config = pydantic.ConfigDict(extra='allow')
 
+  n_runs: int | None = None
   n_tags: int | None = None
   tags: str | Sequence[str] | None = None
   custom_prompt: str | os.PathLike[str] | None = None

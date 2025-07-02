@@ -266,6 +266,10 @@ class MediaTaggingService:
       return MediaTaggingResponse(results=tagged_media)
 
     logger.info('Processing %d media', len(untagged_media))
+    if n_runs := tagging_request.tagging_options.n_runs:
+      untagged_media = itertools.chain.from_iterable(
+        itertools.repeat(untagged_media, n_runs)
+      )
     if not tagging_request.parallel_threshold:
       results = (
         self._process_media_sequentially(

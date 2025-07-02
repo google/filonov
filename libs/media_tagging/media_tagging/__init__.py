@@ -14,7 +14,7 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-"""Simplifies imports from inner modules."""
+"""Performs tagging of image and videos based on various taggers."""
 
 from media_tagging.media_tagging_service import (
   MediaTaggingRequest,
@@ -25,4 +25,4 @@ __all__ = [
   'MediaTaggingService',
   'MediaTaggingRequest',
 ]
-__version__ = '1.4.2'
+__version__ = '1.4.3'
