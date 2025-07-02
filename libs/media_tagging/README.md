@@ -104,7 +104,7 @@ where:
 * `langchain` and `gemini` taggers can use `custom-prompt` parameter to adjust built-in prompts.\
  Add `--tagger.custom-prompt=YOUR_PROMPT_HERE`, where YOUR_PROMPT_HERE is either prompt or a file path (local or remote) with `.txt` extension.
      > Example: `--tagger.custom_prompt="Is this an advertising? Answer yes or no'`
-     * When passing custom prompt you can opt out of using built in schemas in `media-tagger` by using `--tagger.no-schema=True`.
+     * When passing custom prompt you can opt out of using built in schemas in `media-tagger` by using `--tagger.no-schema=True` or provide a [custom schema](https://ai.google.dev/gemini-api/docs/structured-output#json-schemas) via `--tagger.custom_schema=/path/to/schema.json` parameter.
 * `gemini` tagger for `video` and `youtube_video` media types supports specifying `VideoMetadata` parameters (`fps`, `start_offset`, `end_offset`)
      > Example: `--tagger.fps=5`
 

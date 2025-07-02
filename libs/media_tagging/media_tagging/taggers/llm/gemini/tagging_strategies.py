@@ -19,6 +19,7 @@
 import functools
 import json
 import logging
+from collections.abc import Mapping
 from typing import Final
 
 import pydantic
@@ -120,7 +121,9 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       response_mime_type='application/json',
     )
     if not tagging_options.no_schema:
-      prompt_config.response_schema = self.get_response_schema(output)
+      prompt_config.response_schema = (
+        tagging_options.custom_schema or self.get_response_schema(output)
+      )
     response = self.client.models.generate_content(
       model=self.model_name,
       contents=[
@@ -169,7 +172,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       tagging_options.n_tags = MAX_NUMBER_LLM_TAGS
     result = self.get_llm_response(medium, tagging_result.Tag, tagging_options)
     tags = json.loads(result.text)
-    if not tagging_options.no_schema:
+    if not tagging_options.no_schema and not tagging_options.custom_schema:
       tags = [
         tagging_result.Tag(name=r.get('name'), score=r.get('score'))
         for r in tags
@@ -191,8 +194,10 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     )
 
     description = json.loads(result.text)
-    if not tagging_options.no_schema:
+    if not tagging_options.no_schema and not tagging_options.custom_schema:
       description = description.get('text')
+    if isinstance(description, Mapping):
+      description = [description]
     return tagging_result.TaggingResult(
       identifier=medium.name,
       type=medium.type.name.lower(),

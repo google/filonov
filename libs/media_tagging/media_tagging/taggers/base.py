@@ -17,9 +17,10 @@
 from __future__ import annotations
 
 import abc
+import json
 import os
 from collections.abc import MutableSequence, Sequence
-from typing import Literal
+from typing import Any, Dict, Literal
 
 import pydantic
 import smart_open
@@ -35,6 +36,7 @@ class TaggingOptions(pydantic.BaseModel):
     n_tags: Max number of tags to return.
     tags: Particular tags to find in the media.
     custom_prompt: User provided prompt.
+    custom_schema: User provided response_schema.
     no_schema: Whether to avoid using built-in schema for response.
   """
 
@@ -43,6 +45,7 @@ class TaggingOptions(pydantic.BaseModel):
   n_tags: int | None = None
   tags: str | Sequence[str] | None = None
   custom_prompt: str | os.PathLike[str] | None = None
+  custom_schema: str | os.PathLike[str] | Dict[str, Any] | None = None
   no_schema: str | bool = False
 
   def model_post_init(self, __context):  # noqa: D105
@@ -52,6 +55,9 @@ class TaggingOptions(pydantic.BaseModel):
       self.n_tags = len(self.tags)
     if self.n_tags:
       self.n_tags = int(self.n_tags)
+    if self.custom_schema and str(self.custom_schema).endswith('.json'):
+      with smart_open.open(self.custom_schema, 'r', encoding='utf-8') as f:
+        self.custom_schema = json.load(f)
     if self.custom_prompt and str(self.custom_prompt).endswith('.txt'):
       with smart_open.open(self.custom_prompt, 'r', encoding='utf-8') as f:
         self.custom_prompt = '\n'.join(f.readlines())
