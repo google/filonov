@@ -36,7 +36,7 @@ class TestMediaSimilarity:
   def test_cluster(self):
     request = media_similarity.MediaClusteringRequest(
       tagger_type='gemini',
-      media_type='IMAGE',
+      media_type='YOUTUBE_VIDEO',
       media_paths=[
         MEDIA_IDENTIFIER_1,
         MEDIA_IDENTIFIER_2,
