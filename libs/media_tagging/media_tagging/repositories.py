@@ -21,7 +21,7 @@ import itertools
 from collections.abc import Sequence
 
 import sqlalchemy
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import StaticPool
 from typing_extensions import override
 

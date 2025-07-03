@@ -22,7 +22,7 @@ from typing import Any, Final, Iterable
 
 import sqlalchemy
 from media_tagging.repositories import SqlAlchemyRepository
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from typing_extensions import override
 
 from media_similarity import media_pair
