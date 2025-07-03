@@ -123,7 +123,7 @@ class FilonovService:
       Generated creative map.
     """
     input_parameters = (
-      request.input_parameters.dict()
+      request.input_parameters.model_dump()
       if isinstance(request.input_parameters, pydantic.BaseModel)
       else request.input_parameters
     )

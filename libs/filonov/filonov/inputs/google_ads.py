@@ -191,7 +191,7 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
     performance_reports = []
     common_fields = list(queries.PerformanceQuery.required_fields)
     for campaign_type, query in performance_queries.items():
-      fetching_parameters = fetching_request.dict()
+      fetching_parameters = fetching_request.model_dump()
       fetching_parameters.pop('campaign_types')
       fetching_parameters.pop('account')
       fetching_parameters.pop('ads_config_path')

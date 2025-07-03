@@ -77,9 +77,9 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
     """
     videos = youtube_api_fetcher.fetch(
       channel_videos_query,
-      playlistId=videos_playlist.to_list(flatten=True, distinct=True),
+      playlistId=videos_playlist.to_list(row_type='scalar', distinct=True),
       maxResults=50,
-    ).to_list(flatten=True, distinct=True)
+    ).to_list(row_type='scalar', distinct=True)
 
     video_performance_query = """
     SELECT

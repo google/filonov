@@ -107,5 +107,5 @@ class MediaInputService:
         fetching_request=fetching_request,
         with_size_base=with_size_base,
       ),
-      fetching_request.dict(),
+      fetching_request.model_dump(),
     )
