@@ -106,7 +106,11 @@ def convert_gaarf_report_to_media_info(
   metric_columns = metric_columns or []
   for media_url, values in performance.items():
     info = build_info(values, list(metric_columns) + common_info_columns)
-    segments = build_info(values, segment_columns) if segment_columns else {}
+    segments = (
+      build_segments(values, segment_columns, metric_columns)
+      if segment_columns
+      else {}
+    )
     if values[0].get('date'):
       series = {
         entry.get('date'): build_info(entry, metric_columns) for entry in values
@@ -135,6 +139,38 @@ def build_info(data: Info, metric_names: Sequence[str]) -> Info:
   return {
     metric: _aggregate_nested_metric(data, metric) for metric in metric_names
   }
+
+
+def build_segments(
+  data: Info, segment_names: Sequence[str], metric_names: Sequence[str]
+) -> dict[str, dict[Info]]:
+  """Builds info object for each variant of a segment.
+
+  Args:
+    data: Report data formatted as a mapping.
+    segment_names: Names of column in report to transform into segments.
+    metric_names: Names of metrics in report to calculate for each segment.
+
+  Returns:
+    Mapping between each segment, it's variants and corresponding metrics.
+  """
+  segments = {}
+  for segment_name in segment_names:
+    get_segment_getter = operator.itemgetter(segment_name)
+    try:
+      segment_values = set(map(get_segment_getter, data))
+    except KeyError:
+      continue
+    for segment_value in segment_values:
+      segment_variants = {}
+      if segment_value != 'UNKNOWN':
+        segment_variants[segment_value] = build_info(
+          list(filter(lambda x: x[segment_name] == segment_value, data)),
+          metric_names,
+        )
+      if segment_variants:
+        segments[segment_name] = segment_variants
+  return segments
 
 
 def _aggregate_nested_metric(

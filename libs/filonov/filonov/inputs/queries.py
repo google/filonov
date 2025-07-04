@@ -44,6 +44,8 @@ class PerformanceQuery(base_query.BaseQuery):
   required_fields = (
     'date',
     'campaign_type',
+    'channel_type',
+    'format_type',
     'media_name',
     'media_url',
     'aspect_ratio',
@@ -91,6 +93,7 @@ class DisplayAssetPerformance(PerformanceQuery):
     ad_group_ad.ad.name AS media_name,
     ad_group_ad.ad.id AS asset_id,
     ad_group_ad.ad.image_ad.image_url AS media_url,
+    'UNKNOWN' AS format_type,
     ad_group_ad.ad.image_ad.pixel_width / ad_group_ad.ad.image_ad.pixel_height
       AS aspect_ratio,
     0 AS file_size,
@@ -129,6 +132,7 @@ class VideoPerformance(PerformanceQuery):
     ad_group_ad.ad.type AS ad_type,
     video.id AS media_url,
     video.title AS media_name,
+    segments.ad_format_type AS format_type,
     0 AS aspect_ratio,
     video.duration_millis / 1000 AS video_duration,
     metrics.cost_micros / 1e6 AS cost,
@@ -165,6 +169,7 @@ class PmaxAssetInfo(PerformanceQuery):
     asset.id AS asset_id,
     {media_name} AS media_name,
     {media_url} AS media_url,
+    'UNKNOWN' AS format_type
     {aspect_ratio} AS aspect_ratio,
     {size} AS {size_column},
     0 AS cost,
@@ -214,6 +219,7 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
     asset.name AS media_name,
     asset.id AS asset_id,
     asset.image_asset.full_size.url AS media_url,
+    'UNKNOWN' AS format_type,
     asset.image_asset.full_size.width_pixels /
       asset.image_asset.full_size.height_pixels AS aspect_ratio,
     asset.image_asset.file_size / 1024 AS file_size,
@@ -255,6 +261,7 @@ class DemandGenVideoAssetPerformance(PerformanceQuery):
     campaign.advertising_channel_type AS channel_type,
     video.id AS media_url,
     video.title AS media_name,
+    segments.ad_format_type AS format_type,
     0 AS aspect_ratio,
     video.duration_millis / 1000 AS video_duration,
     metrics.cost_micros / 1e6 AS cost,
@@ -290,6 +297,7 @@ class AppAssetPerformance(PerformanceQuery):
     asset.id AS asset_id,
     {media_name} AS media_name,
     {media_url} AS media_url,
+    segments.ad_format_type AS format_type,
     {aspect_ratio} AS aspect_ratio,
     {size} AS {size_column},
     metrics.cost_micros / 1e6 AS cost,

@@ -47,12 +47,15 @@ class GoogleAdsInputParameters(interfaces.InputParameters):
     'GOOGLE_ADS_CONFIGURATION_FILE_PATH',
     str(pathlib.Path.home() / 'google-ads.yaml'),
   )
+  segments: Sequence[str] | str = ('format_type', 'channel_type')
 
   def model_post_init(self, __context):  # noqa: D105
     if self.campaign_types == 'all':
       self.campaign_types = get_args(queries.SupportedCampaignTypes)
     elif isinstance(self.campaign_types, str):
       self.campaign_types = self.campaign_types.split(',')
+    elif isinstance(self.segments, str):
+      self.segments = self.segments.split(',')
 
 
 _CORE_METRICS: Final[tuple[str, ...]] = (
@@ -99,11 +102,12 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
       else 'video_duration'
     )
 
-    self._inject_extra_info_into_reports(
-      performance,
-      video_extra_info,
-      columns=(media_size_column, 'aspect_ratio'),
-    )
+    if video_extra_info:
+      self._inject_extra_info_into_reports(
+        performance,
+        video_extra_info,
+        columns=(media_size_column, 'aspect_ratio'),
+      )
     return performance
 
   def generate_extra_info(
@@ -118,7 +122,7 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
       performance=performance,
       media_type=media.MediaTypeEnum[fetching_request.media_type.upper()],
       metric_columns=_CORE_METRICS,
-      segment_columns=('campaign_type',),
+      segment_columns=fetching_request.segments,
       with_size_base=with_size_base,
     )
 
@@ -193,6 +197,7 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
     for campaign_type, query in performance_queries.items():
       fetching_parameters = fetching_request.model_dump()
       fetching_parameters.pop('campaign_types')
+      fetching_parameters.pop('segments')
       fetching_parameters.pop('account')
       fetching_parameters.pop('ads_config_path')
       fetching_parameters['campaign_type'] = campaign_type
@@ -279,6 +284,5 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
       base_key: Common identifier between performance report and extra_info.
     """
     for row in performance_report:
-      if extra_info:
-        for column in columns:
-          row[column] = extra_info.get(row[base_key], {}).get(column)
+      for column in columns:
+        row[column] = extra_info.get(row[base_key], {}).get(column)
