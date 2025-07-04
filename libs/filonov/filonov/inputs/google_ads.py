@@ -90,7 +90,9 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
       customer_ids=customer_ids,
     )
     if fetching_request.media_type == 'YOUTUBE_VIDEO':
-      video_ids = performance['media_url'].to_list(flatten=True, distinct=True)
+      video_ids = performance['media_url'].to_list(
+        row_type='scalar', distinct=True
+      )
       video_extra_info = self._build_youtube_video_extra_info(
         fetcher, customer_ids, video_ids
       )
@@ -107,6 +109,13 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
         performance,
         video_extra_info,
         columns=(media_size_column, 'aspect_ratio'),
+      )
+    if geo_extra_info := self._build_main_geo_info(fetcher, customer_ids):
+      self._inject_extra_info_into_reports(
+        performance,
+        geo_extra_info,
+        columns=('main_geo',),
+        base_key='campaign_id',
       )
     return performance
 
@@ -267,6 +276,46 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
         {'video_duration': video_durations.get(video_id)}
       )
     return video_extra_info
+
+  def _build_main_geo_info(
+    self,
+    fetcher: gaarf.AdsReportFetcher,
+    customer_ids: Sequence[str],
+    threshold: float = 0.5,
+  ):
+    def get_dominant_country(group):
+      dominant_country_row = group[group['share'] > threshold]
+      if dominant_country_row.empty:
+        return 'Unknown'
+      return dominant_country_row['country'].iloc[0]
+
+    country_mapping = fetcher.fetch(queries.GeoTargets(), customer_ids).to_dict(
+      key_column='country_id',
+      value_column='country_name',
+      value_column_output='scalar',
+    )
+    geo_extra_info = fetcher.fetch(
+      queries.CampaignGeos(), customer_ids
+    ).to_pandas()
+    geo_extra_info['country'] = geo_extra_info['country_id'].map(
+      country_mapping
+    )
+    geo_extra_info['country'] = geo_extra_info['country'].fillna('Unknown')
+    geo_extra_info['total_campaign_cost'] = geo_extra_info.groupby(
+      'campaign_id'
+    )['cost'].transform('sum')
+    geo_extra_info['share'] = (
+      geo_extra_info['cost'] / geo_extra_info['total_campaign_cost']
+    )
+    geo_extra_info = (
+      geo_extra_info.groupby('campaign_id')
+      .apply(get_dominant_country)
+      .to_dict()
+    )
+    return {
+      campaign_id: {'main_geo': value}
+      for campaign_id, value in geo_extra_info.items()
+    }
 
   def _inject_extra_info_into_reports(
     self,

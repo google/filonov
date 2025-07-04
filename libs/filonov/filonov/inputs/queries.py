@@ -69,6 +69,32 @@ class PerformanceQuery(base_query.BaseQuery):
 
 
 @dataclasses.dataclass
+class CampaignGeos(base_query.BaseQuery):
+  """Fetches cost split by country and campaign."""
+
+  query_text = """
+   SELECT
+     campaign.id AS campaign_id,
+     user_location_view.country_criterion_id AS country_id,
+    metrics.cost_micros / 1e6 AS cost
+   FROM user_location_view
+  """
+
+
+@dataclasses.dataclass
+class GeoTargets(base_query.BaseQuery):
+  """Fetches mapping between country name and it's numeric geo target code."""
+
+  query_text = """
+   SELECT
+     geo_target_constant.id AS country_id,
+     geo_target_constant.name AS country_name
+   FROM geo_target_constant
+   WHERE geo_target_constant.id BETWEEN 2000 AND 3000
+  """
+
+
+@dataclasses.dataclass
 class YouTubeVideoDurations(base_query.BaseQuery):
   """Fetches YouTube links."""
 
@@ -89,6 +115,7 @@ class DisplayAssetPerformance(PerformanceQuery):
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
+    campaign.id AS campaign_id,
     campaign.advertising_channel_type AS channel_type,
     ad_group_ad.ad.name AS media_name,
     ad_group_ad.ad.id AS asset_id,
@@ -127,6 +154,7 @@ class VideoPerformance(PerformanceQuery):
   query_text = """
   SELECT
     '{campaign_type}' AS campaign_type,
+    campaign.id AS campaign_id,
     segments.date AS date,
     campaign.advertising_channel_type AS channel_type,
     ad_group_ad.ad.type AS ad_type,
@@ -165,6 +193,7 @@ class PmaxAssetInfo(PerformanceQuery):
   SELECT
     '{campaign_type}' AS campaign_type,
     '' AS date,
+    campaign.id AS campaign_id,
     campaign.advertising_channel_type AS channel_type,
     asset.id AS asset_id,
     {media_name} AS media_name,
@@ -215,6 +244,7 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
+    campaign.id AS campaign_id,
     campaign.advertising_channel_type AS channel_type,
     asset.name AS media_name,
     asset.id AS asset_id,
@@ -258,6 +288,7 @@ class DemandGenVideoAssetPerformance(PerformanceQuery):
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
+    campaign.id AS campaign_id,
     campaign.advertising_channel_type AS channel_type,
     video.id AS media_url,
     video.title AS media_name,
@@ -294,10 +325,11 @@ class AppAssetPerformance(PerformanceQuery):
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
+    campaign.id AS campaign_id,
     asset.id AS asset_id,
     {media_name} AS media_name,
     {media_url} AS media_url,
-    segments.ad_format_type AS format_type,
+    'UNKNOWN' AS format_type,
     {aspect_ratio} AS aspect_ratio,
     {size} AS {size_column},
     metrics.cost_micros / 1e6 AS cost,
