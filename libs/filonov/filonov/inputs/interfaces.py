@@ -102,7 +102,12 @@ def convert_gaarf_report_to_media_info(
   performance = performance.to_dict(key_column='media_url')
   results = {}
   media_size_column = 'file_size' if media_type == 'IMAGE' else 'video_duration'
-  common_info_columns = ['orientation', media_size_column, 'main_geo']
+  common_info_columns = [
+    'orientation',
+    media_size_column,
+    'main_geo',
+    'in_campaigns',
+  ]
   metric_columns = metric_columns or []
   for media_url, values in performance.items():
     info = build_info(values, list(metric_columns) + common_info_columns)

@@ -89,6 +89,13 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
       fetching_request=fetching_request,
       customer_ids=customer_ids,
     )
+    n_campaigns = {
+      media_url: {'in_campaigns': str(len(campaigns))}
+      for media_url, campaigns in performance.to_dict(
+        'media_url', 'campaign_id'
+      ).items()
+    }
+
     if fetching_request.media_type == 'YOUTUBE_VIDEO':
       video_ids = performance['media_url'].to_list(
         row_type='scalar', distinct=True
@@ -104,6 +111,11 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
       else 'video_duration'
     )
 
+    self._inject_extra_info_into_reports(
+      performance,
+      n_campaigns,
+      columns=['in_campaigns'],
+    )
     if video_extra_info:
       self._inject_extra_info_into_reports(
         performance,
