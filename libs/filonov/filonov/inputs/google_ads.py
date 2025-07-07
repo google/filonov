@@ -26,6 +26,7 @@ from typing import Final, Literal, get_args
 
 import gaarf
 import garf_youtube_data_api
+from filonov import exceptions
 from filonov.inputs import interfaces, queries
 from media_tagging import media
 
@@ -74,7 +75,18 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
     self,
     fetching_request: GoogleAdsInputParameters,
   ) -> gaarf.GaarfReport:
-    """Fetches performance data from Google Ads API."""
+    """Fetches performance data from Google Ads API.
+
+    Args:
+      fetching_request: Request for getting data from Google Ads.
+
+    Returns:
+      Report with performance data.
+
+    Raises:
+      FilonovError: When there's no data for a given fetching context.
+
+    """
     fetcher = gaarf.AdsReportFetcher(
       api_client=gaarf.GoogleAdsApiClient(
         path_to_config=fetching_request.ads_config_path
@@ -89,6 +101,10 @@ class ExtraInfoFetcher(interfaces.BaseMediaInfoFetcher):
       fetching_request=fetching_request,
       customer_ids=customer_ids,
     )
+    if not performance:
+      raise exceptions.FilonovError(
+        f'No performance data found for the context: {fetching_request}'
+      )
     n_campaigns = {
       media_url: {'in_campaigns': str(len(campaigns))}
       for media_url, campaigns in performance.to_dict(
