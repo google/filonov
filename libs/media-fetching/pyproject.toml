@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "media-fetching"
+dependencies = [
+  "media-tagging",
+  "garf-youtube-data-api",
+  "google-ads-api-report-fetcher",
+]
+requires-python = ">=3.10"
+description = "Simplified fetching of media for Filonov library"
+readme = "README.md"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python"
+]
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = {attr = "media_fetching.__version__"}
+
+[project.optional-dependencies]
+server = [
+  "media-tagging[server]",
+  "media-similarity[server]",
+]
+all = [
+  "media-fetching[server]"
+]
+
+[options.extras_require]
+test =  [
+  "pytest",
+]
+
+[tool.pytest.ini_options]
+addopts = [
+  "-ra",
+]
+testpaths = [
+  "tests",
+]
+pythonpath = "media_fetching"
+markers = [
+  "file: File source",
+  "googleads: Google Ads source",
+  "youtube: YouTube source",
+]
+
+[project.scripts]
+media-fetcher="media_fetching.entrypoints.cli:main"

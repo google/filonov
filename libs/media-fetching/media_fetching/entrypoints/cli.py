@@ -1,0 +1,90 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# pylint: disable=C0330, g-bad-import-order, g-multiple-import
+
+"""CLI entrypoint for fetching media data."""
+
+import argparse
+from typing import get_args
+
+from garf_executors.entrypoints import utils as garf_utils
+from garf_io import writer
+from media_tagging import media
+
+import media_fetching
+
+
+def main():  # noqa: D103
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+    '--source',
+    dest='source',
+    choices=get_args(media_fetching.media_fetching_service.InputSource),
+    default='googleads',
+    help='Which datasources to use for fetching media data',
+  )
+  parser.add_argument(
+    '--media-type',
+    dest='media_type',
+    choices=media.MediaTypeEnum.options(),
+    help='Type of media.',
+  )
+  parser.add_argument(
+    '--extra-info',
+    dest='extra_info',
+    default=None,
+    help=(
+      'Comma separated modules to add extra information to fetched data '
+      'specified in "module.method" format'
+    ),
+  )
+  parser.add_argument(
+    '--writer',
+    dest='writer',
+    default='json',
+    help='Type of writer used to write resulting report.',
+  )
+  parser.add_argument(
+    '--output',
+    dest='output',
+    default='media_results',
+    help='Destination of written report.',
+  )
+  args, kwargs = parser.parse_known_args()
+
+  supported_enrichers = (
+    media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
+  )
+  parsed_param_keys = set([args.source] + list(supported_enrichers))
+  extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(kwargs)
+  fetching_service = media_fetching.MediaFetcherService(args.source)
+  report = fetching_service.fetch(
+    args.media_type, extra_parameters.get(args.source)
+  )
+  if extra_info_modules := args.extra_info:
+    fetching_service.enrich(
+      performance=report,
+      media_type=args.media_type,
+      modules=extra_info_modules.split(','),
+      params=extra_parameters,
+    )
+  writer_parameters = extra_parameters.get(args.writer) or {}
+  writer.create_writer(args.writer, **writer_parameters).write(
+    report, args.output
+  )
+
+
+if __name__ == '__main__':
+  main()
