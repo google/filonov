@@ -14,9 +14,16 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
+from media_fetching import sources
 from media_fetching.media_fetching_service import MediaFetcherService
 
 __all__ = [
   'MediaFetcherService',
 ]
+
+INPUT_MAPPING = {
+  'googleads': sources.googleads.GoogleAdsInputParameters,
+  'youtube': sources.youtube.YouTubeInputParameters,
+  'file': sources.file.FileInputParameters,
+}
 __version__ = '0.0.0'
