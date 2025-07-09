@@ -34,11 +34,12 @@ class FileInputParameters(models.InputParameters):
   media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO', None] = None
   media_identifier: str = 'media_url'
   media_name: str = 'media_name'
-  metric_names: Sequence[str] | str = ('clicks', 'impressions')
+  metrics: Sequence[str] | str = ('clicks', 'impressions')
+  segments: Sequence[str] | None = None
 
   def model_post_init(self, __context__):
-    if isinstance(self.metric_names, str):
-      self.metric_names = self.metric_names.split(',')
+    if isinstance(self.metrics, str):
+      self.metrics = self.metrics.split(',')
 
 
 class Fetcher(models.BaseMediaInfoFetcher):

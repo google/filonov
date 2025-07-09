@@ -43,12 +43,19 @@ class GoogleAdsInputParameters(models.InputParameters):
   end_date: str = (
     datetime.datetime.today() - datetime.timedelta(days=1)
   ).strftime('%Y-%m-%d')
-
+  min_cost: int = 0
   campaign_types: Sequence[queries.SupportedCampaignTypes] | str = ('app',)
   ads_config_path: str = os.getenv(
     'GOOGLE_ADS_CONFIGURATION_FILE_PATH',
     str(pathlib.Path.home() / 'google-ads.yaml'),
   )
+  metrics: Sequence[str] = [
+    'clicks',
+    'impressions',
+    'cost',
+    'conversions',
+    'conversions_value',
+  ]
   segments: Sequence[str] | str = ('format_type', 'channel_type')
 
   def model_post_init(self, __context__):  # noqa: D105
@@ -58,6 +65,14 @@ class GoogleAdsInputParameters(models.InputParameters):
       self.campaign_types = self.campaign_types.split(',')
     elif isinstance(self.segments, str):
       self.segments = self.segments.split(',')
+
+  @property
+  def query_params(self) -> dict[str, str]:
+    return {
+      'start_date': self.start_date,
+      'end_date': self.end_date,
+      'media_type': self.media_type,
+    }
 
 
 _CORE_METRICS: Final[tuple[str, ...]] = (
@@ -173,11 +188,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
     performance_reports = []
     common_fields = list(queries.PerformanceQuery.required_fields)
     for campaign_type, query in performance_queries.items():
-      fetching_parameters = fetching_request.model_dump()
-      fetching_parameters.pop('campaign_types')
-      fetching_parameters.pop('segments')
-      fetching_parameters.pop('account')
-      fetching_parameters.pop('ads_config_path')
+      fetching_parameters = fetching_request.query_params
       fetching_parameters['campaign_type'] = campaign_type
       performance = self.fetcher.fetch(
         query(**fetching_parameters),

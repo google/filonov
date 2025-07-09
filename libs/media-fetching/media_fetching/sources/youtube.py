@@ -16,6 +16,8 @@
 
 """Defines fetching data from YouTube channel."""
 
+from collections.abc import Sequence
+
 import garf_youtube_data_api
 from garf_core import report
 
@@ -26,6 +28,11 @@ class YouTubeInputParameters(models.InputParameters):
   """YouTube specific parameters for getting media data."""
 
   channel: str
+  metrics: Sequence[str] = [
+    'views',
+    'likes',
+  ]
+  segments: Sequence[str] | None = None
 
 
 class Fetcher(models.BaseMediaInfoFetcher):
