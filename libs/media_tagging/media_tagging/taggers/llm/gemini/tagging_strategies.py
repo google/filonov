@@ -19,6 +19,7 @@
 import functools
 import json
 import logging
+import os
 from collections.abc import Mapping
 from typing import Final
 
@@ -56,15 +57,20 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     self,
     model_name: str,
     model_parameters: GeminiModelParameters,
+    api_key: str | None = None,
   ) -> None:
     """Initializes GeminiTaggingStrategy.
 
     Args:
       model_name: Name of the model to perform the tagging.
       model_parameters: Various parameters to finetune the model.
+      api_key: Optional API key to initialize Gemini client.
     """
     self.model_name = model_name
     self.model_parameters = model_parameters
+    self.api_key = (
+      api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+    )
     self._client = None
     self._prompt = ''
     self._response_schema = None
@@ -73,7 +79,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
   def client(self) -> genai.Client:
     """Initializes GenerativeModel."""
     if not self._client:
-      self._client = genai.Client()
+      self._client = genai.Client(api_key=self.api_key)
     return self._client
 
   def get_response_schema(self, output):

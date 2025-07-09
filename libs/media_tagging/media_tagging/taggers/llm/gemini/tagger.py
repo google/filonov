@@ -31,9 +31,20 @@ class GeminiTagger(base.BaseTagger):
   alias = 'gemini'
 
   @override
-  def __init__(self, model_name: str | None = None, **kwargs: str) -> None:
-    """Initializes GeminiTagger based on model name."""
+  def __init__(
+    self,
+    model_name: str | None = None,
+    api_key: str | None = None,
+    **kwargs: str,
+  ) -> None:
+    """Initializes GeminiTagger.
+
+    Args:
+      model_name: Name of the model to perform the tagging.
+      api_key: Optional API key to initialize Gemini client.
+    """
     self.model_name = self._format_model_name(model_name or kwargs.get('model'))
+    self.api_key = api_key
     self.model_parameters = ts.GeminiModelParameters(**kwargs)
     super().__init__()
 
@@ -59,4 +70,8 @@ class GeminiTagger(base.BaseTagger):
       raise base.TaggerError(
         f'There are no supported taggers for media type: {media_type.name}'
       )
-    return tagging_strategy(self.model_name, self.model_parameters)
+    return tagging_strategy(
+      model_name=self.model_name,
+      model_parameters=self.model_parameters,
+      api_key=self.api_key,
+    )
