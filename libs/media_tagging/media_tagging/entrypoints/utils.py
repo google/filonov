@@ -29,7 +29,7 @@ class InputConfig(pydantic.BaseModel):
   """Parameters for reading media urls from a file.
 
   Attributes:
-    path: Path to a CSV file that contains media urls.
+    path: Path to a file that contains media urls (either CSV or txt).
     column_name: Column name in a file that contains media_urls.
     skip_rows: Number of rows to skip in a file.
   """
@@ -51,8 +51,22 @@ def get_media_paths_from_file(input_config: InputConfig) -> set[str]:
     Unique media urls.
 
   Raises:
-    MediaSimilarityError: When specified column with media_urls is not found.
+    MediaTaggingError:
+      When specified column with media_urls is not found
+      or too many rows skipped.
   """
+  if str(input_config.path).endswith('.txt'):
+    with smart_open.open(input_config.path, 'r', encoding='utf-8') as f:
+      data = f.readlines()
+    if skip_rows := input_config.skip_rows:
+      if skip_rows < len(data):
+        raise exceptions.MediaTaggingError(
+          f'Skipping too many rows, data has {len(data)} rows, '
+          f'skipping {skip_rows}'
+        )
+      data = data[skip_rows:]
+    return {url.strip() for url in data}
+
   data = pd.read_csv(
     smart_open.open(input_config.path), skiprows=input_config.skip_rows
   )
