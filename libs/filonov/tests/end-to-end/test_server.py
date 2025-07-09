@@ -56,6 +56,7 @@ class TestFilonov:
         'account': os.getenv('FILONOV_GOOGLEADS_ACCOUNT'),
         'media_type': 'IMAGE',
         'campaign_types': ('pmax',),
+        'extra_info': ['googleads.main_geo'],
       },
     )
     response = client.post(

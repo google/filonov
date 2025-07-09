@@ -18,12 +18,10 @@
 
 from filonov.creative_map import CreativeMap
 from filonov.filonov_service import CreativeMapGenerateRequest, FilonovService
-from filonov.inputs.input_service import MediaInputService
 
 __all__ = [
   'FilonovService',
   'CreativeMapGenerateRequest',
-  'MediaInputService',
   'CreativeMap',
 ]
 

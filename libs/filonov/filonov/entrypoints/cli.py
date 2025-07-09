@@ -19,10 +19,11 @@ import argparse
 import json
 import sys
 
+import media_fetching
 import media_similarity
 import media_tagging
 import smart_open
-from garf_executors.entrypoints import utils as gaarf_utils
+from garf_executors.entrypoints import utils as garf_utils
 from media_tagging import media
 
 import filonov
@@ -113,10 +114,15 @@ def main():  # noqa: D103
     print(f'filonov version: {filonov.__version__}')
     sys.exit()
 
-  _ = gaarf_utils.init_logging(loglevel=args.loglevel, logger_type=args.logger)
-  extra_parameters = gaarf_utils.ParamsParser(
-    [args.source, 'tagger', 'similarity']
-  ).parse(kwargs)
+  _ = garf_utils.init_logging(loglevel=args.loglevel, logger_type=args.logger)
+  supported_enrichers = (
+    media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
+  )
+  parsed_param_keys = set(
+    [args.source, 'tagger', 'similarity'] + list(supported_enrichers)
+  )
+  extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(kwargs)
+  fetching_service = media_fetching.MediaFetcherService(args.source)
   tagging_service = media_tagging.MediaTaggingService(
     tagging_results_repository=(
       media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
@@ -144,10 +150,12 @@ def main():  # noqa: D103
     ),
     parallel_threshold=args.parallel_threshold,
     trim_tags_threshold=args.trim_tags_threshold,
+    context=extra_parameters,
   )
-  generated_map = filonov.FilonovService(
-    tagging_service, similarity_service
-  ).generate_creative_map(args.source, request)
+  filonov_service = filonov.FilonovService(
+    fetching_service, tagging_service, similarity_service
+  )
+  generated_map = filonov_service.generate_creative_map(request)
   destination = utils.build_creative_map_destination(
     request.output_parameters.output_name
   )

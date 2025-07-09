@@ -5,9 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "filonov"
 dependencies = [
+  "media-fetching",
   "media-similarity",
   "garf-youtube-data-api",
-  "google-ads-api-report-fetcher==1.15.4",
+  "google-ads-api-report-fetcher",
 ]
 requires-python = ">=3.10"
 description = "AI Creative Concept Analysis library"
@@ -55,4 +56,3 @@ markers = [
 [project.scripts]
 filonov="filonov.entrypoints.cli:main"
 filonov-ui="filonov.entrypoints.streamlit_cli:main"
-creatives-fetcher="filonov.inputs.entrypoints.cli:main"

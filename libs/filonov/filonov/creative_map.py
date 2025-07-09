@@ -18,13 +18,36 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import Any, TypedDict
+import logging
+import operator
+from collections.abc import Mapping, Sequence
+from typing import Any, TypeAlias, TypedDict
 
+import numpy as np
+import pydantic
+from garf_core import report
 from media_similarity import media_similarity_service
-from media_tagging import tagging_result
+from media_tagging import media, tagging_result
 
-from filonov.inputs import interfaces
+MetricInfo: TypeAlias = dict[str, int | float]
+Info: TypeAlias = dict[str, int | float | str | list[str] | None]
+
+
+class MediaInfo(pydantic.BaseModel):
+  """Contains extra information on a given medium."""
+
+  media_path: str
+  media_name: str
+  info: Info
+  series: dict[str, MetricInfo]
+  media_preview: str | None = None
+  size: float | None = None
+  segments: dict[str, dict[str, Info]] | None = None
+
+  def model_post_init(self, __context__) -> None:  # noqa: D105
+    if not self.media_preview:
+      self.media_preview = self.media_path
+    self.info = dict(self.info)
 
 
 class GraphInfo(TypedDict):
@@ -43,8 +66,8 @@ class NodeInfo(TypedDict):
   image: str
   media_path: str
   cluster: int
-  info: interfaces.Info
-  series: dict[str, interfaces.MetricInfo]
+  info: Info
+  series: dict[str, MetricInfo]
   tags: list[dict[str, float]]
   segments: dict[str, str]
 
@@ -87,7 +110,7 @@ class CreativeMap:
     cls,
     clustering_results: media_similarity_service.ClusteringResults,
     tagging_results: Sequence[tagging_result.TaggingResult],
-    extra_info: dict[str, interfaces.MediaInfo] | None = None,
+    extra_info: dict[str, MediaInfo] | None = None,
     fetching_request: dict[str, Any] | None = None,
   ) -> CreativeMap:
     """Builds network visualization with injected extra_info."""
@@ -146,3 +169,153 @@ class CreativeMap:
       'nodes': self.nodes,
       'edges': self.edges,
     }
+
+
+def convert_report_to_media_info(
+  performance: report.GarfReport,
+  media_type: media.MediaTypeEnum,
+  metric_columns: Sequence[str] | None = None,
+  segment_columns: Sequence[str] | None = None,
+  with_size_base: str | None = None,
+) -> dict[str, MediaInfo]:
+  """Convert report to MediaInfo mappings."""
+  if with_size_base and with_size_base not in performance.column_names:
+    logging.warning('Failed to set MediaInfo size to %s', with_size_base)
+    with_size_base = None
+  if with_size_base:
+    try:
+      float(performance[0][with_size_base])
+    except TypeError:
+      logging.warning('MediaInfo size attribute should be numeric')
+    with_size_base = None
+
+  performance = performance.to_dict(key_column='media_url')
+  results = {}
+  media_size_column = 'file_size' if media_type == 'IMAGE' else 'video_duration'
+  common_info_columns = [
+    'orientation',
+    media_size_column,
+    'main_geo',
+    'in_campaigns',
+  ]
+  metric_columns = metric_columns or []
+  for media_url, values in performance.items():
+    info = build_info(values, list(metric_columns) + common_info_columns)
+    segments = (
+      build_segments(values, segment_columns, metric_columns)
+      if segment_columns
+      else {}
+    )
+    if values[0].get('date'):
+      series = {
+        entry.get('date'): build_info(entry, metric_columns) for entry in values
+      }
+    else:
+      series = {}
+    if with_size_base and (size_base := info.get(with_size_base)):
+      media_size = np.log(size_base) * np.log10(size_base)
+    else:
+      media_size = None
+    results[media.convert_path_to_media_name(media_url, media_type)] = (
+      MediaInfo(
+        **create_node_links(media_url, media_type),
+        media_name=values[0].get('media_name'),
+        info=info,
+        series=series,
+        size=media_size,
+        segments=segments,
+      )
+    )
+  return results
+
+
+def build_info(data: Info, metric_names: Sequence[str]) -> Info:
+  """Extracts and aggregated data for specified metrics."""
+  return {
+    metric: _aggregate_nested_metric(data, metric) for metric in metric_names
+  }
+
+
+def build_segments(
+  data: Info, segment_names: Sequence[str], metric_names: Sequence[str]
+) -> dict[str, dict[Info]]:
+  """Builds info object for each variant of a segment.
+
+  Args:
+    data: Report data formatted as a mapping.
+    segment_names: Names of column in report to transform into segments.
+    metric_names: Names of metrics in report to calculate for each segment.
+
+  Returns:
+    Mapping between each segment, it's variants and corresponding metrics.
+  """
+  segments = {}
+  for segment_name in segment_names:
+    get_segment_getter = operator.itemgetter(segment_name)
+    try:
+      segment_values = set(map(get_segment_getter, data))
+    except KeyError:
+      continue
+    for segment_value in segment_values:
+      segment_variants = {}
+      if segment_value != 'UNKNOWN':
+        segment_variants[segment_value] = build_info(
+          list(filter(lambda x: x[segment_name] == segment_value, data)),
+          metric_names,
+        )
+      if segment_variants:
+        segments[segment_name] = segment_variants
+  return segments
+
+
+def _aggregate_nested_metric(
+  data: Info | Sequence[Info],
+  metric_name: str,
+) -> float | int | str | list[str] | None:
+  """Performance appropriate aggregation over a dictionary.
+
+  Sums numerical values and deduplicates and sorts alphabetically
+  string values.
+
+  Args:
+    data: Data to extract metrics from.
+    metric_name: Name of a metric to be extracted from supplied data.
+
+  Returns:
+    Aggregated value of a metric.
+  """
+  get_metric_getter = operator.itemgetter(metric_name)
+  if isinstance(data, Mapping):
+    return get_metric_getter(data)
+
+  try:
+    res = list(map(get_metric_getter, data))
+  except KeyError:
+    return None
+  try:
+    return sum(res)
+  except TypeError:
+    if len(result := sorted(set(res))) == 1:
+      return ','.join(result)
+    return result
+
+
+def create_node_links(
+  url: str, media_type: media.MediaTypeEnum
+) -> dict[str, str]:
+  return {
+    'media_path': _to_youtube_video_link(url)
+    if media_type == media.MediaTypeEnum.YOUTUBE_VIDEO
+    else url,
+    'media_preview': _to_youtube_preview_link(url)
+    if media_type == media.MediaTypeEnum.YOUTUBE_VIDEO
+    else url,
+  }
+
+
+def _to_youtube_preview_link(video_id: str) -> str:
+  return f'https://img.youtube.com/vi/{video_id}/0.jpg'
+
+
+def _to_youtube_video_link(video_id: str) -> str:
+  return f'https://www.youtube.com/watch?v={video_id}'

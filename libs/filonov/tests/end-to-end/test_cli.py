@@ -40,7 +40,7 @@ class TestFilonov:
       f'--file.path={filonov_performance_file} '
       '--file.media_identifier=media_url '
       '--file.media_name=asset_name '
-      '--file.metric_names=clicks '
+      '--file.metrics=clicks '
       '--logger local'
     )
     result = subprocess.run(command, shell=True, check=False)

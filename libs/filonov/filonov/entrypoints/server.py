@@ -18,6 +18,7 @@ import json
 from typing import Literal
 
 import fastapi
+import media_fetching
 import media_similarity
 import media_tagging
 import smart_open
@@ -70,21 +71,21 @@ router = fastapi.APIRouter(prefix='/creative_maps')
 class CreativeMapGoogleAdsGenerateRequest(filonov.CreativeMapGenerateRequest):
   """Specifies Google Ads specific request for returning creative map."""
 
-  input_parameters: filonov.inputs.google_ads.GoogleAdsInputParameters
+  input_parameters: media_fetching.sources.googleads.GoogleAdsInputParameters
   source: Literal['googleads'] = 'googleads'
 
 
 class CreativeMapFileGenerateRequest(filonov.CreativeMapGenerateRequest):
   """Specifies Google Ads specific request for returning creative map."""
 
-  input_parameters: filonov.inputs.file.FileInputParameters
+  input_parameters: media_fetching.sources.file.FileInputParameters
   source: Literal['file'] = 'file'
 
 
 class CreativeMapYouTubeGenerateRequest(filonov.CreativeMapGenerateRequest):
   """Specifies YouTube specific request for returning creative map."""
 
-  input_parameters: filonov.inputs.youtube.YouTubeInputParameters
+  input_parameters: media_fetching.sources.youtube.YouTubeInputParameters
   source: Literal['youtube'] = 'youtube'
   media_type: Literal['YOUTUBE_VIDEO'] = 'YOUTUBE_VIDEO'
   tagger: Literal['gemini'] = 'gemini'
@@ -137,10 +138,11 @@ def generate_creative_map(
   """Generates Json with creative map data."""
   generated_map = (
     filonov.FilonovService(
+      fetching_service=media_fetching.MediaFetcherService(source),
       tagging_service=dependencies.tagging_service,
       similarity_service=dependencies.similarity_service,
     )
-    .generate_creative_map(source, request)
+    .generate_creative_map(request)
     .to_json()
   )
 
