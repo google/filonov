@@ -19,6 +19,7 @@
 from collections.abc import Sequence
 
 import garf_youtube_data_api
+import pydantic
 from garf_core import report
 
 from media_fetching.sources import models
@@ -33,6 +34,7 @@ class YouTubeInputParameters(models.InputParameters):
     'likes',
   ]
   segments: Sequence[str] | None = None
+  extra_info: Sequence[str] = pydantic.Field(default_factory=list)
 
 
 class Fetcher(models.BaseMediaInfoFetcher):

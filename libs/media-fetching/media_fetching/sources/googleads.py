@@ -26,6 +26,7 @@ from typing import Final, Literal, get_args
 
 import gaarf
 import garf_youtube_data_api
+import pydantic
 from garf_core import report
 
 from media_fetching import exceptions
@@ -57,6 +58,7 @@ class GoogleAdsInputParameters(models.InputParameters):
     'conversions_value',
   ]
   segments: Sequence[str] | str = ('format_type', 'channel_type')
+  extra_info: Sequence[str] = pydantic.Field(default_factory=list)
 
   def model_post_init(self, __context__):  # noqa: D105
     if self.campaign_types == 'all':

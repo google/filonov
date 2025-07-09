@@ -21,6 +21,7 @@ from collections.abc import Sequence
 from typing import Literal
 
 import pandas as pd
+import pydantic
 import smart_open
 from garf_core import report
 
@@ -36,6 +37,7 @@ class FileInputParameters(models.InputParameters):
   media_name: str = 'media_name'
   metrics: Sequence[str] | str = ('clicks', 'impressions')
   segments: Sequence[str] | None = None
+  extra_info: Sequence[str] = pydantic.Field(default_factory=list)
 
   def model_post_init(self, __context__):
     if isinstance(self.metrics, str):
