@@ -58,6 +58,9 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     model_name: str,
     model_parameters: GeminiModelParameters,
     api_key: str | None = None,
+    vertexai: bool = False,
+    project: str | None = None,
+    location: str | None = None,
   ) -> None:
     """Initializes GeminiTaggingStrategy.
 
@@ -65,21 +68,35 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       model_name: Name of the model to perform the tagging.
       model_parameters: Various parameters to finetune the model.
       api_key: Optional API key to initialize Gemini client.
+      vertexai: Whether to use VertexAI backend.
+      project: Google Cloud project name.
+      location: Location of Vertex AI endpoint.
     """
     self.model_name = model_name
     self.model_parameters = model_parameters
     self.api_key = (
       api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
     )
+    self.vertexai = vertexai or os.getenv('GOOGLE_GENAI_USE_VERTEXAI')
+    self.project = project or os.getenv('GOOGLE_CLOUD_PROJECT')
+    self.location = location or os.getenv('GOOGLE_CLOUD_LOCATION')
     self._client = None
     self._prompt = ''
     self._response_schema = None
 
   @functools.cached_property
   def client(self) -> genai.Client:
-    """Initializes GenerativeModel."""
+    """Initializes genai Client."""
     if not self._client:
-      self._client = genai.Client(api_key=self.api_key)
+      if self.vertexai and self.project:
+        client = genai.Client(
+          vertexai=True, project=self.project, location=self.location
+        )
+      elif self.api_key:
+        client = genai.Client(api_key=self.api_key)
+      else:
+        client = genai.Client()
+      self._client = client
     return self._client
 
   def get_response_schema(self, output):

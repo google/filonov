@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Module for performing media tagging with LLMs."""
+"""Module for performing media tagging with Gemini."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 from typing import Final
@@ -35,6 +35,9 @@ class GeminiTagger(base.BaseTagger):
     self,
     model_name: str | None = None,
     api_key: str | None = None,
+    vertexai: bool = False,
+    project: str | None = None,
+    location: str | None = None,
     **kwargs: str,
   ) -> None:
     """Initializes GeminiTagger.
@@ -42,9 +45,15 @@ class GeminiTagger(base.BaseTagger):
     Args:
       model_name: Name of the model to perform the tagging.
       api_key: Optional API key to initialize Gemini client.
+      vertexai: Whether to use VertexAI backend.
+      project: Google Cloud project name.
+      location: Location of Vertex AI endpoint.
     """
     self.model_name = self._format_model_name(model_name or kwargs.get('model'))
     self.api_key = api_key
+    self.vertexai = vertexai
+    self.project = project
+    self.location = location
     self.model_parameters = ts.GeminiModelParameters(**kwargs)
     super().__init__()
 
@@ -74,4 +83,7 @@ class GeminiTagger(base.BaseTagger):
       model_name=self.model_name,
       model_parameters=self.model_parameters,
       api_key=self.api_key,
+      vertexai=self.vertexai,
+      project=self.project,
+      location=self.location,
     )
