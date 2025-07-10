@@ -228,6 +228,13 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     )
 
 
+class TextTaggingStrategy(GeminiTaggingStrategy):
+  """Defines Gemini specific tagging strategy for images."""
+
+  def build_content(self, medium, **kwargs):
+    return str(medium.content)
+
+
 class ImageTaggingStrategy(GeminiTaggingStrategy):
   """Defines Gemini specific tagging strategy for images."""
 

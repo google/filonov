@@ -51,7 +51,7 @@ class MediaTaggingRequest(pydantic.BaseModel):
   model_config = pydantic.ConfigDict(extra='ignore')
 
   tagger_type: str
-  media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO']
+  media_type: Literal[tuple(media.MediaTypeEnum.options())]
   media_paths: set[str] | Sequence[os.PathLike[str] | str]
   tagging_options: base_tagger.TaggingOptions = base_tagger.TaggingOptions()
   parallel_threshold: int = 10

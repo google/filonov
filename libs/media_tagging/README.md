@@ -83,7 +83,7 @@ where:
 > from  a file using \
 > `--input FILENAME.CSV` argument.
 > Use `--input.column_name=NAME_OF_COLUMN` to specify column name in the file.
-* `<MEDIA_TYPE>` - type of media (YOUTUBE_VIDEO, VIDEO, IMAGE).
+* `<MEDIA_TYPE>` - type of media (YOUTUBE_VIDEO, VIDEO, IMAGE, TEXT).
 * `<TAGGER_TYPE>` - name of tagger, [supported options](#supported-taggers).
 > Tagger can be customized via `tagger.option=value` syntax. I.e. if you want to request a specific number of tags you can add `--tagger.n-tags=100` CLI flag.
 * `<CONNECTION_STRING>` - Optional connection string to the database with tagging results (i.e. `sqlite:///tagging.db`). If this parameter is set make sure that DB exists.

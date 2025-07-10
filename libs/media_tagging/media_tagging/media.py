@@ -43,10 +43,15 @@ class MediaTypeEnum(enum.Enum):
   IMAGE = 1
   VIDEO = 2
   YOUTUBE_VIDEO = 3
+  TEXT = 4
 
   @classmethod
   def options(cls) -> list[str]:
     return [option for option in cls.__members__ if option != 'UNKNOWN']
+
+  @classmethod
+  def options_lowercase(cls) -> list[str]:
+    return list(map(str.lower, cls.options()))
 
 
 class Medium:
@@ -86,6 +91,8 @@ class Medium:
   @property
   def content(self) -> bytes:
     """Content of media as bytes."""
+    if self.type == MediaTypeEnum.TEXT:
+      return self._media_path
     if self._content or (
       self.type == MediaTypeEnum.YOUTUBE_VIDEO
       and not str(self._media_path).endswith(_SUPPORTED_VIDEO_FILE_EXTENSIONS)

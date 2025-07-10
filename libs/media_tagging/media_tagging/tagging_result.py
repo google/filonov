@@ -26,7 +26,7 @@ import pandas as pd
 import pydantic
 from garf_core import report
 
-from media_tagging import exceptions
+from media_tagging import exceptions, media
 
 
 class TaggingOutput(pydantic.BaseModel):
@@ -96,8 +96,8 @@ class TaggingResult(pydantic.BaseModel):
     default_factory=datetime.datetime.utcnow,
   )
   identifier: str = pydantic.Field(description='media identifier')
-  type: Literal['image', 'video', 'youtube_video'] = pydantic.Field(
-    description='type of media'
+  type: Literal[tuple(media.MediaTypeEnum.options_lowercase())] = (
+    pydantic.Field(description='type of media')
   )
   content: tuple[Tag, ...] | Description | list[Description] = pydantic.Field(
     description='tags or description in the result'

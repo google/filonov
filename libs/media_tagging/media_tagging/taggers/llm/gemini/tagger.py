@@ -71,6 +71,7 @@ class GeminiTagger(base.BaseTagger):
     self, media_type: media.MediaTypeEnum
   ) -> base.TaggingStrategy:
     tagging_strategies = {
+      media.MediaTypeEnum.TEXT: ts.TextTaggingStrategy,
       media.MediaTypeEnum.IMAGE: ts.ImageTaggingStrategy,
       media.MediaTypeEnum.VIDEO: ts.VideoTaggingStrategy,
       media.MediaTypeEnum.YOUTUBE_VIDEO: ts.YouTubeVideoTaggingStrategy,
