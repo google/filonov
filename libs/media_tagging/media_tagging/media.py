@@ -65,7 +65,7 @@ class Medium:
     content: bytes = bytes(),
   ) -> None:
     """Initializes Medium."""
-    self._media_path = media_path
+    self._media_path = str(media_path)
     self._media_type = media_type
     self._name = media_name
     self._content: bytes = content
