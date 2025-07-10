@@ -25,7 +25,7 @@ from garf_core import report
 from media_fetching.sources import models
 
 
-class YouTubeInputParameters(models.InputParameters):
+class YouTubeFetchingParameters(models.FetchingParameters):
   """YouTube specific parameters for getting media data."""
 
   channel: str
@@ -34,7 +34,7 @@ class YouTubeInputParameters(models.InputParameters):
     'likes',
   ]
   segments: Sequence[str] | None = None
-  extra_info: Sequence[str] = pydantic.Field(default_factory=list)
+  extra_info: Sequence[str] | None = pydantic.Field(default_factory=list)
 
 
 class Fetcher(models.BaseMediaInfoFetcher):
@@ -42,7 +42,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
 
   def fetch_media_data(
     self,
-    fetching_request: YouTubeInputParameters,
+    fetching_request: YouTubeFetchingParameters,
   ) -> report.GarfReport:
     """Get all public videos from YouTube channel."""
     youtube_api_fetcher = garf_youtube_data_api.YouTubeDataApiReportFetcher()

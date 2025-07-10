@@ -47,6 +47,8 @@ def prepare_extra_info(
     All extra info to be injected into the report.
   """
   data = []
+  if isinstance(modules, str):
+    modules = modules.split(',')
   for module in modules:
     enricher_module, method = module.split('.', maxsplit=2)
     if available_module := AVAILABLE_MODULES.get(enricher_module):

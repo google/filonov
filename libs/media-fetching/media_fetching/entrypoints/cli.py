@@ -24,6 +24,7 @@ from garf_io import writer
 from media_tagging import media
 
 import media_fetching
+from media_fetching.sources import fetcher
 
 
 def main():  # noqa: D103
@@ -31,7 +32,7 @@ def main():  # noqa: D103
   parser.add_argument(
     '--source',
     dest='source',
-    choices=get_args(media_fetching.media_fetching_service.InputSource),
+    choices=get_args(media_fetching.sources.models.InputSource),
     default='googleads',
     help='Which datasources to use for fetching media data',
   )
@@ -69,21 +70,20 @@ def main():  # noqa: D103
   )
   parsed_param_keys = set([args.source] + list(supported_enrichers))
   extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(kwargs)
-  fetching_service = media_fetching.MediaFetcherService(args.source)
+  fetching_service = media_fetching.MediaFetchingService(args.source)
+  request_class, _ = fetcher.FETCHERS.get(args.source)
+
   report = fetching_service.fetch(
-    args.media_type, extra_parameters.get(args.source)
-  )
-  if extra_info_modules := args.extra_info:
-    fetching_service.enrich(
-      performance=report,
+    request=request_class(
+      **extra_parameters.get(args.source),
+      extra_info=args.extra_info,
       media_type=args.media_type,
-      modules=extra_info_modules.split(','),
-      params=extra_parameters,
-    )
-  writer_parameters = extra_parameters.get(args.writer) or {}
-  writer.create_writer(args.writer, **writer_parameters).write(
-    report, args.output
+    ),
+    extra_parameters=extra_parameters,
   )
+  writer.create_writer(
+    args.writer, **(extra_parameters.get(args.writer) or {})
+  ).write(report, args.output)
 
 
 if __name__ == '__main__':

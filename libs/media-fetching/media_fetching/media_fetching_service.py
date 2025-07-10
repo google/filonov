@@ -16,68 +16,43 @@
 
 """Responsible for fetching media specific information from various sources."""
 
-from collections.abc import Sequence
-from typing import Literal, get_args
+from typing import Any, get_args
 
 from garf_core import report
 
 from media_fetching import exceptions
 from media_fetching.enrichers import enricher
-from media_fetching.sources import fetcher
-
-InputSource = Literal['googleads', 'youtube', 'file']
+from media_fetching.sources import fetcher, models
 
 
-class MediaFetcherService:
+class MediaFetchingService:
   """Extracts media information from a specified source."""
 
   def __init__(
     self,
-    source: InputSource = 'googleads',
+    source: models.InputSource = 'googleads',
   ) -> None:
-    """Initializes MediaFetcherService."""
-    if source not in get_args(InputSource):
+    """Initializes MediaFetchingService."""
+    if not (source_fetcher := fetcher.FETCHERS.get(source)):
       raise exceptions.MediaFetchingError(
-        f'Incorrect source: {source}. Only {get_args(InputSource)} '
+        f'Incorrect source: {source}. Only {get_args(models.InputSource)} '
         'are supported.'
       )
-    self.source = source
+    self.fetcher = source_fetcher[1]
 
   def fetch(
     self,
-    media_type: str,
-    input_parameters: dict[str, str],
+    request: models.FetchingParameters,
+    extra_parameters: dict[str, dict[str, Any]] | None = None,
   ) -> report.GarfReport:
-    """Extracts data from specified source.
-
-    Args:
-      media_type: Type of media to get.
-      input_parameters: Parameters to fine-tune fetching.
-
-    Returns:
-      Report with fetched data.
-    """
-    source_fetcher, fetching_request = fetcher.build_fetching_context(
-      self.source, media_type, input_parameters
-    )
-    return source_fetcher.fetch_media_data(fetching_request)
-
-  def enrich(
-    self,
-    performance: report.GarfReport,
-    media_type: str,
-    modules: Sequence[str],
-    params: dict[str, dict[str, str]],
-  ) -> None:
-    """Inject extra information into report.
-
-    Args:
-      performance: Report with performance data.
-      media_type:  Type of media in the report.
-      modules: Modules used to perform enriching.
-      params: Parameters to perform enriching.
-    """
-    extra_data = enricher.prepare_extra_info(
-      performance, media_type, modules, params
-    )
-    enricher.enrich(performance, extra_data)
+    """Extracts data from specified source."""
+    media_data = self.fetcher().fetch_media_data(request)
+    if extra_info_modules := request.extra_info:
+      extra_data = enricher.prepare_extra_info(
+        performance=media_data,
+        media_type=request.media_type,
+        modules=extra_info_modules,
+        params=extra_parameters,
+      )
+      enricher.enrich(media_data, extra_data)
+    return media_data

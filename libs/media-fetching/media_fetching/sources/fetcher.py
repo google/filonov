@@ -16,31 +16,10 @@
 
 """Instantiates concrete fetcher and builds fetching context."""
 
-from typing import TypeAlias
+from media_fetching.sources import file, googleads, youtube
 
-from media_fetching.sources import file, googleads, models, youtube
-
-MetricInfo: TypeAlias = dict[str, int | float]
-Info: TypeAlias = dict[str, int | float | str | list[str]]
-
-
-def build_fetching_context(
-  source: str,
-  media_type: str,
-  input_parameters: dict[str, str],
-) -> tuple[models.BaseMediaInfoFetcher, models.InputParameters]:
-  """Builds correct fetching request and initializes appropriate fetcher."""
-  if source == 'youtube':
-    fetching_request = youtube.YouTubeInputParameters(**input_parameters)
-    fetcher = youtube.Fetcher()
-  elif source == 'googleads':
-    fetching_request = googleads.GoogleAdsInputParameters(**input_parameters)
-    fetcher = googleads.Fetcher()
-  elif source == 'file':
-    fetching_request = file.FileInputParameters(**input_parameters)
-    fetcher = file.Fetcher()
-  if (
-    hasattr(fetching_request, 'media_type') and not fetching_request.media_type
-  ):
-    fetching_request.media_type = media_type
-  return (fetcher, fetching_request)
+FETCHERS = {
+  'youtube': (youtube.YouTubeFetchingParameters, youtube.Fetcher),
+  'googleads': (googleads.GoogleAdsFetchingParameters, googleads.Fetcher),
+  'file': (file.FileFetchingParameters, file.Fetcher),
+}

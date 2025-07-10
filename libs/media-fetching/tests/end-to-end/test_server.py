@@ -16,10 +16,17 @@
 
 import os
 import pathlib
-import subprocess
 
 import dotenv
+import fastapi
+import media_fetching
 import pytest
+from fastapi import testclient
+from media_fetching.entrypoints.server import router
+
+app = fastapi.FastAPI()
+app.include_router(router)
+client = testclient.TestClient(app)
 
 dotenv.load_dotenv()
 _SCRIPT_PATH = pathlib.Path(__file__).parent
@@ -38,38 +45,43 @@ class TestMediaFetcher:
       ['IMAGE', 'YOUTUBE_VIDEO'],
     )
     def test_fetch(self, media_type):
-      command = (
-        f'media-fetcher --source googleads '
-        f'--media-type {media_type} '
-        f'--googleads.account={filonov_account} '
-        '--googleads.campaign_types=pmax '
-        '--extra-info=googleads.main_geo '
-        '--writer console '
-      )
-      result = subprocess.run(command, shell=True, check=False)
-      assert result.returncode == 0
+      request = {
+        'request': {
+          'media_type': media_type,
+          'account': filonov_account,
+          'campaign_types': ['pmax'],
+        },
+        'writer_options': {
+          'writer': 'console',
+        },
+      }
+      response = client.post('/media_fetching/fetch:googleads', json=request)
+      assert response.status_code == fastapi.status.HTTP_200_OK
 
   @pytest.mark.youtube
   class TestYouTubeFetcher:
     def test_fetch(self):
-      command = (
-        f'media-fetcher --source youtube '
-        f'--youtube.channel={filonov_youtube_channel} '
-        '--writer console '
-      )
-      result = subprocess.run(command, shell=True, check=False)
-      assert result.returncode == 0
+      request = {
+        'request': {
+          'channel': filonov_youtube_channel,
+        },
+        'writer_options': {
+          'writer': 'console',
+        },
+      }
+      response = client.post('/media_fetching/fetch:youtube', json=request)
+      assert response.status_code == fastapi.status.HTTP_200_OK
 
   @pytest.mark.file
   class TestFileFetcher:
     def test_fetch(self):
-      command = (
-        f'media-fetcher --source file '
-        f'--file.path={filonov_performance_file} '
-        '--file.media_identifier=media_url '
-        '--file.media_name=asset_name '
-        '--file.metrics=clicks '
-        '--writer console '
-      )
-      result = subprocess.run(command, shell=True, check=False)
-      assert result.returncode == 0
+      request = {
+        'request': {
+          'path': str(filonov_performance_file),
+        },
+        'writer_options': {
+          'writer': 'console',
+        },
+      }
+      response = client.post('/media_fetching/fetch:file', json=request)
+      assert response.status_code == fastapi.status.HTTP_200_OK

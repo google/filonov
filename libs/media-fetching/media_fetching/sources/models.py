@@ -17,15 +17,18 @@
 """Models and interfaces for media fetching library."""
 
 import abc
+from typing import Literal
 
 import pydantic
 from garf_core import report
 
+InputSource = Literal['googleads', 'youtube', 'file']
 
-class InputParameters(pydantic.BaseModel):
+
+class FetchingParameters(pydantic.BaseModel):
   """Interface for parameters for getting media data."""
 
-  model_config = pydantic.ConfigDict(extra='ignore')
+  model_config = pydantic.ConfigDict(extra='allow')
 
 
 class BaseMediaInfoFetcher(abc.ABC):
@@ -34,6 +37,6 @@ class BaseMediaInfoFetcher(abc.ABC):
   @abc.abstractmethod
   def fetch_media_data(
     self,
-    fetching_request: InputParameters,
+    fetching_request: FetchingParameters,
   ) -> report.GarfReport:
     """Extracts data from a source as a report."""

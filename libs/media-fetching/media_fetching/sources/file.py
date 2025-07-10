@@ -28,7 +28,7 @@ from garf_core import report
 from media_fetching.sources import models
 
 
-class FileInputParameters(models.InputParameters):
+class FileFetchingParameters(models.FetchingParameters):
   """File specific parameters for getting media."""
 
   path: os.PathLike[str] | str
@@ -37,7 +37,7 @@ class FileInputParameters(models.InputParameters):
   media_name: str = 'media_name'
   metrics: Sequence[str] | str = ('clicks', 'impressions')
   segments: Sequence[str] | None = None
-  extra_info: Sequence[str] = pydantic.Field(default_factory=list)
+  extra_info: Sequence[str] | None = pydantic.Field(default_factory=list)
 
   def model_post_init(self, __context__):
     if isinstance(self.metrics, str):
@@ -49,7 +49,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
 
   def fetch_media_data(
     self,
-    fetching_request: FileInputParameters,
+    fetching_request: FileFetchingParameters,
   ) -> report.GarfReport:
     return report.GarfReport.from_pandas(
       pd.read_csv(smart_open.open(fetching_request.path))

@@ -21,8 +21,8 @@ import functools
 import operator
 import os
 import pathlib
-from collections.abc import Sequence
-from typing import Final, Literal, get_args
+from collections.abc import Mapping, Sequence
+from typing import Literal, get_args
 
 import gaarf
 import garf_youtube_data_api
@@ -33,7 +33,7 @@ from media_fetching import exceptions
 from media_fetching.sources import models, queries
 
 
-class GoogleAdsInputParameters(models.InputParameters):
+class GoogleAdsFetchingParameters(models.FetchingParameters):
   """Google Ads specific parameters for getting media data."""
 
   account: str
@@ -58,7 +58,7 @@ class GoogleAdsInputParameters(models.InputParameters):
     'conversions_value',
   ]
   segments: Sequence[str] | str = ('format_type', 'channel_type')
-  extra_info: Sequence[str] = pydantic.Field(default_factory=list)
+  extra_info: str | Sequence[str] | None = pydantic.Field(default_factory=list)
 
   def model_post_init(self, __context__):  # noqa: D105
     if self.campaign_types == 'all':
@@ -77,21 +77,12 @@ class GoogleAdsInputParameters(models.InputParameters):
     }
 
 
-_CORE_METRICS: Final[tuple[str, ...]] = (
-  'clicks',
-  'impressions',
-  'cost',
-  'conversions',
-  'conversions_value',
-)
-
-
 class Fetcher(models.BaseMediaInfoFetcher):
   """Extracts media information from Google Ads."""
 
   def fetch_media_data(
     self,
-    fetching_request: GoogleAdsInputParameters,
+    fetching_request: GoogleAdsFetchingParameters,
   ) -> report.GarfReport:
     """Fetches performance data from Google Ads API.
 
@@ -105,6 +96,8 @@ class Fetcher(models.BaseMediaInfoFetcher):
       MediaFetchingError: When there's no data for a given fetching context.
 
     """
+    if isinstance(fetching_request, Mapping):
+      fetching_request = GoogleAdsFetchingParameters(**fetching_request)
     self.fetcher = gaarf.AdsReportFetcher(
       api_client=gaarf.GoogleAdsApiClient(
         path_to_config=fetching_request.ads_config_path
@@ -128,7 +121,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
     return performance
 
   def _define_performance_queries(
-    self, fetching_request: GoogleAdsInputParameters
+    self, fetching_request: GoogleAdsFetchingParameters
   ) -> dict[str, queries.PerformanceQuery]:
     """Defines queries based on campaign and media types.
 
@@ -150,7 +143,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
 
   def _define_customer_ids(
     self,
-    fetching_request: GoogleAdsInputParameters,
+    fetching_request: GoogleAdsFetchingParameters,
   ) -> list[str]:
     """Identifies all accounts that have campaigns with specified types.
 
@@ -173,7 +166,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
   def _execute_performance_queries(
     self,
     performance_queries: dict[str, queries.PerformanceQuery],
-    fetching_request: GoogleAdsInputParameters,
+    fetching_request: GoogleAdsFetchingParameters,
   ) -> report.GarfReport:
     """Executes performance queries for a set of customer ids.
 
