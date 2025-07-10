@@ -43,7 +43,7 @@ echo "Using settings from $SETTING_FILE"
 PROJECT_ID=$(gcloud config get-value project 2> /dev/null)
 PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="csv(projectNumber)" | tail -n 1)
 REGION=$(git config -f $SETTING_FILE common.region || echo "europe-west1")
-
+SERVICE_ACCOUNT=$(git config -f $SETTING_FILE common.service-account || echo $PROJECT_NUMBER-compute@developer.gserviceaccount.com)
 
 enable_apis() {
   gcloud services enable secretmanager.googleapis.com

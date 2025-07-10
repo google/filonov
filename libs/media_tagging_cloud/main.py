@@ -62,15 +62,13 @@ def _update_status(output_gcs_folder: str, job_id: str, status: str):
 def _validate_gcs_path(path: str, param_name: str):
   """Raises ValueError if the path is not a valid GCS path."""
   if not path or not path.startswith('gs://'):
-    raise ValueError(
-      f"Invalid GCS path for {param_name}: '{path}'. "
-      "Path must be a non-empty string starting with 'gs://'."
-    )
+    raise ValueError(f"Invalid GCS path for {param_name}: '{path}'. "
+                     "Path must be a non-empty string starting with 'gs://'.")
 
 
-def _get_request_param(
-  request_json: Dict[str, Any], param_name: str, is_optional: bool = False
-) -> Any:
+def _get_request_param(request_json: Dict[str, Any],
+                       param_name: str,
+                       is_optional: bool = False) -> Any:
   """Extracts a parameter from the request."""
   param_value = request_json.get(param_name)
   if not param_value and not is_optional:
@@ -127,9 +125,9 @@ def _get_asset_paths(asset_ids: List[str], assets_gcs_folder: str) -> List[str]:
       asset_paths.append(f'gs://{bucket_name}/{blob_name}')
     else:
       logging.warning(
-        "Asset ID '%s' not found in GCS folder '%s'",
-        asset_id,
-        assets_gcs_folder,
+          "Asset ID '%s' not found in GCS folder '%s'",
+          asset_id,
+          assets_gcs_folder,
       )
 
   return asset_paths
@@ -143,12 +141,10 @@ def main(request):
   """
   # Base logging config
   logging.basicConfig(
-    level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s'
-  )
+      level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-  if request.data and 'message' in (
-    request_json := request.get_json(silent=True) or {}
-  ):
+  if request.data and 'message' in (request_json :=
+                                    request.get_json(silent=True) or {}):
     logging.info('Processing Pub/Sub message')
     # Pub/Sub call
     data = base64.b64decode(request_json['message']['data']).decode('utf-8')
@@ -176,9 +172,11 @@ def main(request):
     output_gcs_folder = _get_request_param(payload, 'output_gcs_folder')
     job_id = _get_request_param(payload, 'job_id', is_optional=True)
     custom_prompt_gcs_path = payload.get('custom_prompt_gcs_path')
+    custom_prompt = payload.get('custom_prompt')
+    custom_schema = payload.get('custom_schema')
+    n_runs = payload.get('n_runs')
     media_type = (
-      _get_request_param(payload, 'media_type', is_optional=True) or 'VIDEO'
-    )
+        _get_request_param(payload, 'media_type', is_optional=True) or 'VIDEO')
 
     # Validate GCS paths before use
     _validate_gcs_path(assets_gcs_folder, 'assets_gcs_folder')
@@ -196,8 +194,8 @@ def main(request):
     if tagging_mode not in ['describe', 'tag']:
       raise ValueError("Invalid tagging_mode. Must be 'describe' or 'tag'")
 
-    if 'GEMINI_API_KEY' not in os.environ:
-      raise ValueError('GEMINI_API_KEY environment variable not set')
+    # if no Gemini API key provided, we'll use Vertex AI backend
+    use_vertexai = 'GEMINI_API_KEY' not in os.environ
 
     asset_paths = _get_asset_paths(asset_ids, assets_gcs_folder)
     logging.info('Found %d asset paths: %s', len(asset_paths), asset_paths)
@@ -209,23 +207,25 @@ def main(request):
 
     media_tagger = MediaTaggingService()
 
-    custom_prompt = None
-    if custom_prompt_gcs_path:
+    if not custom_prompt and custom_prompt_gcs_path:
       with smart_open.open(custom_prompt_gcs_path, 'r') as f:
         custom_prompt = f.read()
 
-    tagging_options = TaggingOptions(custom_prompt=custom_prompt)
+    tagging_options = TaggingOptions(
+        custom_prompt=custom_prompt,
+        custom_schema=custom_schema,
+        n_runs=n_runs,
+        vertexai=use_vertexai)
 
     tagging_request = MediaTaggingRequest(
-      media_paths=asset_paths,
-      tagger_type='gemini',
-      media_type=media_type,
-      tagging_options=tagging_options,
+        media_paths=asset_paths,
+        tagger_type='gemini',
+        media_type=media_type,
+        tagging_options=tagging_options,
     )
 
-    logging.info(
-      'Running media_tagger with %d files: %s', len(asset_paths), asset_paths
-    )
+    logging.info('Running media_tagger with %d files: %s', len(asset_paths),
+                 asset_paths)
 
     if tagging_mode == 'describe':
       result = media_tagger.describe_media(tagging_request)
@@ -238,8 +238,7 @@ def main(request):
 
     logging.info('Saving result to %s', output_file_path)
     result.save(
-      output_file_path, writer='json', destination_folder=output_gcs_folder
-    )
+        output_file_path, writer='json', destination_folder=output_gcs_folder)
 
     if job_id:
       _update_status(output_gcs_folder, job_id, 'completed')
@@ -255,8 +254,8 @@ def main(request):
       except Exception as status_update_e:
         # Log the failure to update status, but don't crash the error handler
         logging.error(
-          "CRITICAL: Failed to update job status to 'failed': %s",
-          status_update_e,
+            "CRITICAL: Failed to update job status to 'failed': %s",
+            status_update_e,
         )
     return 'Internal Server Error', 500
 
