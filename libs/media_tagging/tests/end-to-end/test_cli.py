@@ -24,6 +24,8 @@ import pytest
 dotenv.load_dotenv()
 _SCRIPT_PATH = pathlib.Path(__file__).parent
 
+filonov_test_text = '"To be or not to be this is the question."'
+
 
 @pytest.mark.tagger
 class TestMediaTagger:
@@ -34,6 +36,7 @@ class TestMediaTagger:
     @pytest.mark.parametrize(
       ('media_type', 'media_location'),
       [
+        ('TEXT', filonov_test_text),
         ('IMAGE', _SCRIPT_PATH / os.getenv('FILONOV_IMAGE_PATH')),
         ('VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_VIDEO_PATH')),
         ('YOUTUBE_VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_YOUTUBE_LINK')),
@@ -50,6 +53,7 @@ class TestMediaTagger:
     @pytest.mark.parametrize(
       ('media_type', 'media_location'),
       [
+        ('TEXT', filonov_test_text),
         ('IMAGE', _SCRIPT_PATH / os.getenv('FILONOV_IMAGE_PATH')),
         ('VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_VIDEO_PATH')),
         ('YOUTUBE_VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_YOUTUBE_LINK')),
@@ -70,6 +74,7 @@ class TestMediaTagger:
     @pytest.mark.parametrize(
       ('media_type', 'media_location', 'expected_return_code'),
       [
+        ('TEXT', filonov_test_text, 1),
         ('IMAGE', _SCRIPT_PATH / os.getenv('FILONOV_IMAGE_PATH'), 0),
         ('VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_VIDEO_PATH'), 0),
         ('YOUTUBE_VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_YOUTUBE_LINK'), 1),
@@ -86,6 +91,7 @@ class TestMediaTagger:
     @pytest.mark.parametrize(
       ('media_type', 'media_location'),
       [
+        ('TEXT', filonov_test_text),
         ('IMAGE', _SCRIPT_PATH / os.getenv('FILONOV_IMAGE_PATH')),
         ('VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_VIDEO_PATH')),
         ('YOUTUBE_VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_YOUTUBE_LINK')),
