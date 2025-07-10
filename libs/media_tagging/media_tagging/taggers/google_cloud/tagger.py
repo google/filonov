@@ -58,7 +58,8 @@ class GoogleCloudTagger(base.BaseTagger):
     if media_type == media.MediaTypeEnum.VIDEO:
       return ts.VideoTaggingStrategy(self.project)
     raise base.TaggerError(
-      f'There are no supported taggers for media type: {media_type.name}'
+      'There are no supported tagging strategies for media type: '
+      f'{media_type.name}'
     )
 
 
