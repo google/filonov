@@ -23,8 +23,10 @@ from typing import Literal
 
 from gaarf import base_query
 
-SupportedMediaTypes = Literal['IMAGE', 'YOUTUBE_VIDEO']
-SupportedCampaignTypes = Literal['pmax', 'app', 'demandgen', 'video', 'display']
+SupportedMediaTypes = Literal['IMAGE', 'YOUTUBE_VIDEO', 'TEXT']
+SupportedCampaignTypes = Literal[
+  'pmax', 'app', 'demandgen', 'video', 'display', 'search'
+]
 
 
 class PerformanceQuery(base_query.BaseQuery):
@@ -64,7 +66,7 @@ class PerformanceQuery(base_query.BaseQuery):
     ]
     if missing_fields:
       raise ValueError(
-        'query_text does not contain required fields: ' f'{missing_fields}'
+        f'query_text does not contain required fields: {missing_fields}'
       )
 
 
@@ -95,14 +97,14 @@ class DisplayAssetPerformance(PerformanceQuery):
     ad_group_ad.ad.type = IMAGE_AD
     AND campaign.advertising_channel_type = DISPLAY
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
-    AND metrics.cost_micros >= {min_cost}
+    AND metrics.cost_micros > {min_cost}
   """
 
   start_date: str
   end_date: str
   media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
-  min_cost: int = 10
+  min_cost: int = 0
 
   def __post_init__(self) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
@@ -153,24 +155,25 @@ class PmaxAssetInfo(PerformanceQuery):
   query_text = """
   SELECT
     '{campaign_type}' AS campaign_type,
-    '' AS date,
+    segments.date AS date,
     campaign.id AS campaign_id,
     campaign.advertising_channel_type AS channel_type,
     asset.id AS asset_id,
     {media_name} AS media_name,
     {media_url} AS media_url,
-    'UNKNOWN' AS format_type
+    asset_group_asset.field_type AS format_type,
     {aspect_ratio} AS aspect_ratio,
     {size} AS {size_column},
     0 AS cost,
     0 AS clicks,
     0 AS impressions,
-    0 AS conversions,
-    0 AS conversions_value
+    metrics.conversions AS conversions,
+    metrics.conversions_value AS conversions_value
   FROM asset_group_asset
   WHERE
     asset.type = {media_type}
     AND campaign.advertising_channel_type = PERFORMANCE_MAX
+    AND segments.date BETWEEN '{start_date}' AND '{end_date}'
   """
 
   start_date: str
@@ -189,12 +192,98 @@ class PmaxAssetInfo(PerformanceQuery):
       self.size = 'asset.image_asset.file_size / 1024'
       self.size_column = 'file_size'
       self.media_name = 'asset.name'
+    elif self.media_type == 'TEXT':
+      self.media_url = 'asset.text_asset.text'
+      self.aspect_ratio = '0'
+      self.size = '0'
+      self.size_column = 'file_size'
+      self.media_name = 'asset.name'
     else:
       self.media_url = 'asset.youtube_video_asset.youtube_video_id'
       self.aspect_ratio = 0.0
       self.size = 0.0
       self.size_column = 'video_duration'
       self.media_name = 'asset.youtube_video_asset.youtube_video_title'
+
+
+@dataclasses.dataclass
+class SearchAssetPerformance(PerformanceQuery):
+  """Fetches text asset performance for Search campaigns."""
+
+  query_text = """
+  SELECT
+    '{campaign_type}' AS campaign_type,
+    segments.date AS date,
+    campaign.id AS campaign_id,
+    campaign.advertising_channel_type AS channel_type,
+    asset.name AS media_name,
+    asset.id AS asset_id,
+    asset.text_asset.text AS media_url,
+    ad_group_ad_asset_view.field_type AS format_type,
+    0 AS aspect_ratio,
+    0 AS file_size,
+    ad_group_ad.ad.name AS ad_name,
+    metrics.cost_micros / 1e6 AS cost,
+    metrics.clicks AS clicks,
+    metrics.impressions AS impressions,
+    metrics.conversions AS conversions,
+    metrics.conversions_value AS conversions_value
+  FROM ad_group_ad_asset_view
+  WHERE
+    campaign.advertising_channel_type =  SEARCH
+    AND asset.type = TEXT
+    AND segments.date BETWEEN '{start_date}' AND '{end_date}'
+    AND metrics.cost_micros > {min_cost}
+  """
+
+  start_date: str
+  end_date: str
+  media_type: SupportedMediaTypes
+  campaign_type: SupportedCampaignTypes
+  min_cost: int = 0
+
+  def __post_init__(self) -> None:  # noqa: D105
+    self.min_cost = int(self.min_cost * 1e6)
+
+
+@dataclasses.dataclass
+class DemandGenTextAssetPerformance(PerformanceQuery):
+  """Fetches image asset performance for Demand Gen campaigns."""
+
+  query_text = """
+  SELECT
+    '{campaign_type}' AS campaign_type,
+    segments.date AS date,
+    campaign.id AS campaign_id,
+    campaign.advertising_channel_type AS channel_type,
+    asset.name AS media_name,
+    asset.id AS asset_id,
+    asset.text_asset.text AS media_url,
+    ad_group_ad_asset_view.field_type AS format_type,
+    0 AS aspect_ratio,
+    0 AS file_size,
+    ad_group_ad.ad.name AS ad_name,
+    metrics.cost_micros / 1e6 AS cost,
+    metrics.clicks AS clicks,
+    metrics.impressions AS impressions,
+    metrics.conversions AS conversions,
+    metrics.conversions_value AS conversions_value
+  FROM ad_group_ad_asset_view
+  WHERE
+    campaign.advertising_channel_type =  DEMAND_GEN
+    AND asset.type = TEXT
+    AND segments.date BETWEEN '{start_date}' AND '{end_date}'
+    AND metrics.cost_micros > {min_cost}
+  """
+
+  start_date: str
+  end_date: str
+  media_type: SupportedMediaTypes
+  campaign_type: SupportedCampaignTypes
+  min_cost: int = 0
+
+  def __post_init__(self) -> None:  # noqa: D105
+    self.min_cost = int(self.min_cost * 1e6)
 
 
 @dataclasses.dataclass
@@ -210,7 +299,7 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
     asset.name AS media_name,
     asset.id AS asset_id,
     asset.image_asset.full_size.url AS media_url,
-    'UNKNOWN' AS format_type,
+    ad_group_ad_asset_view.field_type AS format_type,
     asset.image_asset.full_size.width_pixels /
       asset.image_asset.full_size.height_pixels AS aspect_ratio,
     asset.image_asset.file_size / 1024 AS file_size,
@@ -290,7 +379,7 @@ class AppAssetPerformance(PerformanceQuery):
     asset.id AS asset_id,
     {media_name} AS media_name,
     {media_url} AS media_url,
-    'UNKNOWN' AS format_type,
+    ad_group_ad_asset_view.field_type AS format_type,
     {aspect_ratio} AS aspect_ratio,
     {size} AS {size_column},
     metrics.cost_micros / 1e6 AS cost,
@@ -325,6 +414,12 @@ class AppAssetPerformance(PerformanceQuery):
       self.size = 'asset.image_asset.file_size / 1024'
       self.size_column = 'file_size'
       self.media_name = 'asset.name'
+    elif self.media_type == 'TEXT':
+      self.media_url = 'asset.text_asset.text'
+      self.aspect_ratio = '0'
+      self.size = '0'
+      self.size_column = 'file_size'
+      self.media_name = 'asset.name'
     else:
       self.media_url = 'asset.youtube_video_asset.youtube_video_id'
       self.aspect_ratio = 0.0
@@ -336,6 +431,7 @@ class AppAssetPerformance(PerformanceQuery):
 QUERIES_MAPPING: dict[
   str, base_query.BaseQuery | dict[str, base_query.BaseQuery]
 ] = {
+  'search': SearchAssetPerformance,
   'app': AppAssetPerformance,
   'display': DisplayAssetPerformance,
   'pmax': PmaxAssetInfo,
@@ -343,11 +439,13 @@ QUERIES_MAPPING: dict[
   'demandgen': {
     'YOUTUBE_VIDEO': DemandGenVideoAssetPerformance,
     'IMAGE': DemandGenImageAssetPerformance,
+    'TEXT': DemandGenTextAssetPerformance,
   },
 }
 
 CAMPAIGN_TYPES_MAPPING: dict[str, str] = {
   'app': 'MULTI_CHANNEL',
+  'search': 'SEARCH',
   'display': 'DISPLAY',
   'pmax': 'PERFORMANCE_MAX',
   'video': 'VIDEO',
