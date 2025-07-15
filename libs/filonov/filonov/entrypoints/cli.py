@@ -18,6 +18,7 @@
 import argparse
 import json
 import sys
+from typing import get_args
 
 import media_fetching
 import media_similarity
@@ -37,7 +38,7 @@ def main():  # noqa: D103
   parser.add_argument(
     '--source',
     dest='source',
-    choices=['googleads', 'file', 'youtube'],
+    choices=get_args(media_fetching.sources.models.InputSource),
     default='googleads',
     help='Which datasources to use for generating a map',
   )
@@ -122,7 +123,7 @@ def main():  # noqa: D103
     [args.source, 'tagger', 'similarity'] + list(supported_enrichers)
   )
   extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(kwargs)
-  fetching_service = media_fetching.MediaFetcherService(args.source)
+  fetching_service = media_fetching.MediaFetchingService(args.source)
   tagging_service = media_tagging.MediaTaggingService(
     tagging_results_repository=(
       media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
@@ -144,7 +145,7 @@ def main():  # noqa: D103
     tagger=tagger,
     tagger_parameters=extra_parameters.get('tagger'),
     similarity_parameters=extra_parameters.get('similarity'),
-    input_parameters=extra_parameters.get(args.source),
+    source_parameters=extra_parameters.get(args.source),
     output_parameters=filonov.filonov_service.OutputParameters(
       output_name=args.output_name
     ),

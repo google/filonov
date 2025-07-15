@@ -138,7 +138,7 @@ def generate_creative_map(
   """Generates Json with creative map data."""
   generated_map = (
     filonov.FilonovService(
-      fetching_service=media_fetching.MediaFetcherService(source),
+      fetching_service=media_fetching.MediaFetchingService(source),
       tagging_service=dependencies.tagging_service,
       similarity_service=dependencies.similarity_service,
     )

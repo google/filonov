@@ -62,7 +62,7 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
     tagger: Type of tagger to use.
     tagger_parameters: Parameters to finetune tagging.
     similarity_parameters: Parameters to similarity matching.
-    input_parameters: Parameters to get data from the source of creative map.
+    source_parameters: Parameters to get data from the source of creative map.
     output_parameters: Parameters for saving creative maps data.
     parallel_threshold: Tagging and similarity detecting threshold.
     trim_tags_threshold: Keeps tags only with the score higher than threshold.
@@ -71,12 +71,12 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
 
   default_tagger_parameters: ClassVar[dict[str, int]] = {'n_tags': 100}
 
-  source: media_fetching.media_fetching_service.InputSource
+  source: media_fetching.sources.models.InputSource
   media_type: Literal['IMAGE', 'YOUTUBE_VIDEO', 'VIDEO', None] = None
   tagger: Literal['gemini', 'google-cloud', 'loader', None] = None
   tagger_parameters: dict[str, str | int] = default_tagger_parameters
   similarity_parameters: SimilarityParameters = SimilarityParameters()
-  input_parameters: dict[str, str | Sequence[str]] = {}
+  source_parameters: dict[str, str | Sequence[str]] = {}
   output_parameters: OutputParameters = OutputParameters()
   parallel_threshold: int = 10
   trim_tags_threshold: float | None = None
@@ -90,13 +90,15 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
       self.media_type = 'YOUTUBE_VIDEO'
       self.tagger = 'gemini'
 
-    input_parameters_class = media_fetching.INPUT_MAPPING.get(self.source)
+    source_parameters_class = media_fetching.INPUT_MAPPING.get(self.source)
     if not isinstance(
-      input_parameters := self.input_parameters, input_parameters_class
+      source_parameters := self.source_parameters, source_parameters_class
     ):
-      self.input_parameters = input_parameters_class(**input_parameters)
+      self.source_parameters = source_parameters_class(
+        **source_parameters, media_type=self.media_type
+      )
 
-    self.context.update({self.source: self.input_parameters.model_dump()})
+    self.context.update({self.source: self.source_parameters.model_dump()})
 
 
 class FilonovService:
@@ -104,7 +106,7 @@ class FilonovService:
 
   def __init__(
     self,
-    fetching_service: media_fetching.MediaFetcherService,
+    fetching_service: media_fetching.MediaFetchingService,
     tagging_service: media_tagging.MediaTaggingService,
     similarity_service: media_similarity.MediaSimilarityService,
   ) -> None:
@@ -130,33 +132,24 @@ class FilonovService:
 
     Returns:
       Generated creative map.
+
+    Raises:
+      FilonovError: When not tagging data are found.
     """
     logger.info(
       'Fetching input from source %s with parameters: %s',
       request.media_type,
-      request.input_parameters,
+      request.source_parameters,
     )
     media_data = self.fetching_service.fetch(
-      media_type=request.media_type,
-      input_parameters=request.input_parameters.model_dump(),
+      request.source_parameters, request.context
     )
-    if extra_info_modules := request.input_parameters.extra_info:
-      self.fetching_service.enrich(
-        performance=media_data,
-        media_type=request.media_type,
-        modules=extra_info_modules,
-        params=request.context,
-      )
     media_info = creative_map.convert_report_to_media_info(
       performance=media_data,
       media_type=request.media_type,
-      metric_columns=request.input_parameters.metrics,
-      segment_columns=request.input_parameters.segments,
+      metric_columns=request.source_parameters.metrics,
+      segment_columns=request.source_parameters.segments,
     )
-    if not media_info:
-      raise exceptions.FilonovError(
-        f'No performance data found for the context: {request.input_parameters}'
-      )
     media_urls = {media.media_path for media in media_info.values()}
     if not request.tagger:
       logger.info('Tagger not specified, getting data from DB')
@@ -189,7 +182,7 @@ class FilonovService:
     if not tagging_response:
       raise exceptions.FilonovError(
         'Failed to perform media tagging for the context: '
-        f'{request.input_parameters}'
+        f'{request.source_parameters}'
       )
     logger.info(
       'Performing similarity detection with parameters: %s',
@@ -215,5 +208,5 @@ class FilonovService:
       clustering_results,
       tagging_response.results,
       media_info,
-      request.input_parameters.model_dump(),
+      request.source_parameters.model_dump(),
     )
