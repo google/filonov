@@ -19,7 +19,6 @@ import pathlib
 
 import dotenv
 import fastapi
-import media_fetching
 import pytest
 from fastapi import testclient
 from media_fetching.entrypoints.server import router
@@ -34,6 +33,8 @@ _SCRIPT_PATH = pathlib.Path(__file__).parent
 filonov_performance_file = os.getenv('FILONOV_PERFORMANCE_RESULTS')
 filonov_account = os.getenv('FILONOV_GOOGLEADS_ACCOUNT')
 filonov_youtube_channel = os.getenv('FILONOV_YOUTUBE_CHANNEL_ID')
+filonov_db = os.getenv('FILONOV_TEST_DB')
+filonov_bq_table = os.getenv('FILONOV_TEST_BQ_TABLE')
 
 
 @pytest.mark.tagger
@@ -84,4 +85,33 @@ class TestMediaFetcher:
         },
       }
       response = client.post('/media_fetching/fetch:file', json=request)
+      assert response.status_code == fastapi.status.HTTP_200_OK
+
+  @pytest.mark.file
+  class TestBigQueryFetcher:
+    def test_fetch(self):
+      request = {
+        'request': {
+          'table': filonov_bq_table,
+        },
+        'writer_options': {
+          'writer': 'console',
+        },
+      }
+      response = client.post('/media_fetching/fetch:bq', json=request)
+      assert response.status_code == fastapi.status.HTTP_200_OK
+
+  @pytest.mark.file
+  class TestSqlAlchemyQueryFetcher:
+    def test_fetch(self):
+      request = {
+        'request': {
+          'table': 'media_results',
+          'connection_string': filonov_db,
+        },
+        'writer_options': {
+          'writer': 'console',
+        },
+      }
+      response = client.post('/media_fetching/fetch:sqldb', json=request)
       assert response.status_code == fastapi.status.HTTP_200_OK

@@ -16,10 +16,12 @@
 
 """Instantiates concrete fetcher and builds fetching context."""
 
-from media_fetching.sources import file, googleads, youtube
+from media_fetching.sources import file, googleads, sql, youtube
 
 FETCHERS = {
   'youtube': (youtube.YouTubeFetchingParameters, youtube.Fetcher),
   'googleads': (googleads.GoogleAdsFetchingParameters, googleads.Fetcher),
   'file': (file.FileFetchingParameters, file.Fetcher),
+  'bq': (sql.BigQueryFetchingParameters, sql.BigQueryFetcher),
+  'sqldb': (sql.SqlAlchemyQueryFetchingParameters, sql.SqlAlchemyQueryFetcher),
 }

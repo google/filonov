@@ -8,6 +8,7 @@ dependencies = [
   "media-tagging",
   "garf-youtube-data-api",
   "google-ads-api-report-fetcher",
+  "garf-executors[bq,sql]",
 ]
 requires-python = ">=3.10"
 description = "Simplified fetching of media for Filonov library"

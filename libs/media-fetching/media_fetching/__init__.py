@@ -17,6 +17,10 @@
 from media_fetching.media_fetching_service import MediaFetchingService
 from media_fetching.sources.file import FileFetchingParameters
 from media_fetching.sources.googleads import GoogleAdsFetchingParameters
+from media_fetching.sources.sql import (
+  BigQueryFetchingParameters,
+  SqlAlchemyQueryFetchingParameters,
+)
 from media_fetching.sources.youtube import YouTubeFetchingParameters
 
 __all__ = [
@@ -27,5 +31,7 @@ INPUT_MAPPING = {
   'googleads': GoogleAdsFetchingParameters,
   'youtube': YouTubeFetchingParameters,
   'file': FileFetchingParameters,
+  'sqldb': SqlAlchemyQueryFetchingParameters,
+  'bq': BigQueryFetchingParameters,
 }
 __version__ = '0.0.0'

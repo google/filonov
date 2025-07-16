@@ -59,6 +59,24 @@ async def fetch_youtube(
   return fetch('youtube', request, writer_options)
 
 
+@router.post('/fetch:bq')
+async def fetch_bq(
+  request: media_fetching.sources.sql.BigQueryFetchingParameters,
+  writer_options: WriterOptions,
+) -> fastapi.responses.JSONResponse:
+  """Fetches media data from BigQuery."""
+  return fetch('bq', request, writer_options)
+
+
+@router.post('/fetch:sqldb')
+async def fetch_sqldb(
+  request: media_fetching.sources.sql.SqlAlchemyQueryFetchingParameters,
+  writer_options: WriterOptions,
+) -> fastapi.responses.JSONResponse:
+  """Fetches media data from SqlAlchemy DB."""
+  return fetch('sqldb', request, writer_options)
+
+
 def fetch(
   source: models.InputSource,
   request: models.FetchingParameters,

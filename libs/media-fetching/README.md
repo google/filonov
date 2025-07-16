@@ -82,6 +82,25 @@ Source customizations are performed via `--source.parameters=value` syntax (i.e.
   * media_identifier=IDENTIFIER_OF_MEDIA
   * metric_names=COMMA_SEPARATED_METRIC_NAMES
 
+* `bq`:
+
+  Mandatory:
+  * table=FULLY_QUALIFIED_TABLE_NAME (in `project.dataset.table` format)
+
+  Optional:
+  * media_identifier=IDENTIFIER_OF_MEDIA
+  * metric_names=COMMA_SEPARATED_METRIC_NAMES
+
+* `sqldb`:
+
+  Mandatory:
+  * connection_string=DATABASE_CONNECTION_STRING (in [SQLAlchemy format](https://docs.sqlalchemy.org/en/14/core/engines.html))
+  * table=TABLE_NAME
+
+  Optional:
+  * media_identifier=IDENTIFIER_OF_MEDIA
+  * metric_names=COMMA_SEPARATED_METRIC_NAMES
+
 #### Available extra info modules
 
 Source customizations are performed via `--extra-info module.method` syntax (i.e. `--extra-info tagging.languages,googleads.main_geo`)
