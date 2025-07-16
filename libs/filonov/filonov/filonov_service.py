@@ -24,6 +24,7 @@ import media_fetching
 import media_similarity
 import media_tagging
 import pydantic
+from media_tagging import media
 from media_tagging.media_tagging_service import (
   MediaFetchingRequest,
   MediaTaggingRequest,
@@ -72,7 +73,7 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   default_tagger_parameters: ClassVar[dict[str, int]] = {'n_tags': 100}
 
   source: media_fetching.sources.models.InputSource
-  media_type: Literal['IMAGE', 'YOUTUBE_VIDEO', 'VIDEO', None] = None
+  media_type: Literal[tuple(media.MediaTypeEnum.options())] | None = None
   tagger: Literal['gemini', 'google-cloud', 'loader', None] = None
   tagger_parameters: dict[str, str | int] = default_tagger_parameters
   similarity_parameters: SimilarityParameters = SimilarityParameters()
@@ -149,6 +150,7 @@ class FilonovService:
       media_type=request.media_type,
       metric_columns=request.source_parameters.metrics,
       segment_columns=request.source_parameters.segments,
+      modules=request.source_parameters.extra_info,
     )
     media_urls = {media.media_path for media in media_info.values()}
     if not request.tagger:

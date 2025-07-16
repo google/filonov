@@ -176,9 +176,22 @@ def convert_report_to_media_info(
   media_type: media.MediaTypeEnum,
   metric_columns: Sequence[str] | None = None,
   segment_columns: Sequence[str] | None = None,
+  modules: Sequence[str] | None = None,
   with_size_base: str | None = None,
 ) -> dict[str, MediaInfo]:
-  """Convert report to MediaInfo mappings."""
+  """Convert report to MediaInfo mappings.
+
+  Args:
+    performance: Report with media data.
+    media_type: Type of media in the report.
+    metric_columns:  Name of metrics to be included in media info.
+    segment_columns:  Name of segments to be calculated.
+    modules: Optional column names to be added to media_info.
+    with_size_base: Optional column name for regulating size of media info.
+
+  Returns:
+    Mapping between media identifier and its media info.
+  """
   if with_size_base and with_size_base not in performance.column_names:
     logging.warning('Failed to set MediaInfo size to %s', with_size_base)
     with_size_base = None
@@ -189,18 +202,25 @@ def convert_report_to_media_info(
       logging.warning('MediaInfo size attribute should be numeric')
     with_size_base = None
 
-  performance = performance.to_dict(key_column='media_url')
-  results = {}
-  media_size_column = 'file_size' if media_type == 'IMAGE' else 'video_duration'
-  common_info_columns = [
-    'orientation',
-    media_size_column,
-    'main_geo',
-    'in_campaigns',
-  ]
+  if modules:
+    modules = {module.split('.')[1] for module in modules}
+    modules = modules.intersection(performance.column_names)
+  else:
+    modules = set()
+
+  if media_type == 'YOUTUBE_VIDEO':
+    modules.add('duration')
+    modules.add('orientation')
+  elif media_type == 'IMAGE':
+    modules.add('format_type')
+
   metric_columns = metric_columns or []
-  for media_url, values in performance.items():
-    info = build_info(values, list(metric_columns) + common_info_columns)
+  if 'in_campaigns' in performance.column_names:
+    modules.add('in_campaigns')
+
+  results = {}
+  for media_url, values in performance.to_dict(key_column='media_url').items():
+    info = build_info(values, list(metric_columns) + list(modules))
     segments = (
       build_segments(values, segment_columns, metric_columns)
       if segment_columns
@@ -256,15 +276,15 @@ def build_segments(
       segment_values = set(map(get_segment_getter, data))
     except KeyError:
       continue
+    segment_variants = {}
     for segment_value in segment_values:
-      segment_variants = {}
       if segment_value != 'UNKNOWN':
         segment_variants[segment_value] = build_info(
           list(filter(lambda x: x[segment_name] == segment_value, data)),
           metric_names,
         )
-      if segment_variants:
-        segments[segment_name] = segment_variants
+    if segment_variants:
+      segments[segment_name] = segment_variants
   return segments
 
 

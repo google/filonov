@@ -46,13 +46,18 @@ class TestFilonov:
     result = subprocess.run(command, shell=True, check=False)
     assert result.returncode == 0
 
-  def test_source_googleads(self):
+  @pytest.mark.parametrize(
+    'media_type',
+    ['IMAGE', 'TEXT'],
+  )
+  def test_source_googleads(self, media_type):
     command = (
-      'filonov --source googleads --media-type IMAGE '
+      f'filonov --source googleads --media-type {media_type} '
       '--tagger=gemini '
       f'--db-uri  {db_uri} '
       f'--googleads.account={filonov_account} '
       '--googleads.campaign_types=pmax '
+      '--googleads.extra_info=googleads.main_geo '
       '--logger local'
     )
     result = subprocess.run(command, shell=True, check=False)
