@@ -42,10 +42,12 @@ class TableFetchingParameters(models.FetchingParameters):
     fields = f'{self.media_identifier}, {self.media_name}'
     if self.metrics:
       metrics = f'{', '.join(self.metrics)}'
-      fields = f'{fields}, {metrics}'
+      if metrics:
+        fields = f'{fields}, {metrics}'
     if self.segments:
       segments = f'{', '.join(self.segments)}'
-      fields = f'{fields}, {segments}'
+      if segments:
+        fields = f'{fields}, {segments}'
     return f'SELECT {fields} FROM {self.table}'
 
   def model_post_init(self, __context__):
