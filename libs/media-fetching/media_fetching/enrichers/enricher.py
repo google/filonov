@@ -72,6 +72,8 @@ def enrich(
   """
   for row in performance_report:
     for data in extra_data:
+      if not data.info:
+        continue
       columns = list(data.info.values())[0].keys()
       for column in columns:
         search_key = row[data.base_key]

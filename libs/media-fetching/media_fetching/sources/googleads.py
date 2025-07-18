@@ -28,6 +28,7 @@ import gaarf
 import garf_youtube_data_api
 import pydantic
 from garf_core import report
+from media_tagging import media
 
 from media_fetching import exceptions
 from media_fetching.sources import models, queries
@@ -37,7 +38,7 @@ class GoogleAdsFetchingParameters(models.FetchingParameters):
   """Google Ads specific parameters for getting media data."""
 
   account: str
-  media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO', None] = None
+  media_type: Literal[tuple(media.MediaTypeEnum.options())] | None = None
   start_date: str = (
     datetime.datetime.today() - datetime.timedelta(days=30)
   ).strftime('%Y-%m-%d')
@@ -65,8 +66,12 @@ class GoogleAdsFetchingParameters(models.FetchingParameters):
       self.campaign_types = get_args(queries.SupportedCampaignTypes)
     elif isinstance(self.campaign_types, str):
       self.campaign_types = self.campaign_types.split(',')
-    elif isinstance(self.segments, str):
+    if isinstance(self.segments, str):
       self.segments = self.segments.split(',')
+    if isinstance(self.metrics, str):
+      self.metrics = self.metrics.split(',')
+    if isinstance(self.extra_info, str):
+      self.extra_info = self.extra_info.split(',')
 
   @property
   def query_params(self) -> dict[str, str]:
@@ -259,20 +264,20 @@ class Fetcher(models.BaseMediaInfoFetcher):
     )
 
     for row in video_orientations:
-      row['aspect_ratio'] = round(int(row.width) / int(row.height), 2)
-      if row.aspect_ratio > 1:
+      aspect_ratio = round(int(row.width) / int(row.height), 2)
+      if aspect_ratio > 1:
         row['orientation'] = 'Landscape'
-      elif row.aspect_ratio < 1:
+      elif aspect_ratio < 1:
         row['orientation'] = 'Portrait'
       else:
         row['orientation'] = 'Square'
 
     video_orientations = video_orientations.to_dict(
       key_column='id',
-      value_column='aspect_ratio',
+      value_column='orientation',
       value_column_output='scalar',
     )
     for row in performance:
       video_id = row.media_url
-      row['aspect_ratio'] = video_orientations.get(video_id)
-      row['video_duration'] = video_durations.get(video_id)
+      row['orientation'] = video_orientations.get(video_id, 0.0)
+      row['duration'] = video_durations.get(video_id, 0.0)

@@ -98,7 +98,7 @@ class MediaFetchingRequest(pydantic.BaseModel):
 
   model_config = pydantic.ConfigDict(extra='ignore')
 
-  media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO']
+  media_type: Literal[tuple(media.MediaTypeEnum.options())]
   media_paths: Sequence[os.PathLike[str] | str]
   output: Literal['tag', 'description']
   tagger_type: str = 'loader'
