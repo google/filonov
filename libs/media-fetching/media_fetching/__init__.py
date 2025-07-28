@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Fetches media data from various sources."""
+
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 from media_fetching.media_fetching_service import MediaFetchingService
@@ -34,4 +36,4 @@ INPUT_MAPPING = {
   'sqldb': SqlAlchemyQueryFetchingParameters,
   'bq': BigQueryFetchingParameters,
 }
-__version__ = '0.1.0'
+__version__ = '0.2.0'

@@ -87,6 +87,7 @@ class DisplayAssetPerformance(PerformanceQuery):
     ad_group_ad.ad.image_ad.pixel_width / ad_group_ad.ad.image_ad.pixel_height
       AS aspect_ratio,
     0 AS file_size,
+    ad_group_ad.policy_summary.approval_status AS approval_status,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
     metrics.impressions AS impressions,
@@ -126,6 +127,7 @@ class VideoPerformance(PerformanceQuery):
     segments.ad_format_type AS format_type,
     0 AS aspect_ratio,
     video.duration_millis / 1000 AS video_duration,
+    ad_group_ad.policy_summary.approval_status AS approval_status,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
     metrics.impressions AS impressions,
@@ -149,7 +151,7 @@ class VideoPerformance(PerformanceQuery):
 
 
 @dataclasses.dataclass
-class PmaxAssetInfo(PerformanceQuery):
+class PmaxAssetPerformance(PerformanceQuery):
   """Fetches asset info for Performance Max campaigns."""
 
   query_text = """
@@ -164,6 +166,7 @@ class PmaxAssetInfo(PerformanceQuery):
     asset_group_asset.field_type AS format_type,
     {aspect_ratio} AS aspect_ratio,
     {size} AS {size_column},
+    asset_group_asset.policy_summary.approval_status AS approval_status,
     0 AS cost,
     0 AS clicks,
     0 AS impressions,
@@ -223,6 +226,7 @@ class SearchAssetPerformance(PerformanceQuery):
     0 AS aspect_ratio,
     0 AS file_size,
     ad_group_ad.ad.name AS ad_name,
+    ad_group_ad_asset_view.policy_summary:approval_status AS approval_status,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
     metrics.impressions AS impressions,
@@ -263,6 +267,7 @@ class DemandGenTextAssetPerformance(PerformanceQuery):
     0 AS aspect_ratio,
     0 AS file_size,
     ad_group_ad.ad.name AS ad_name,
+    ad_group_ad_asset_view.policy_summary:approval_status AS approval_status,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
     metrics.impressions AS impressions,
@@ -304,6 +309,7 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
       asset.image_asset.full_size.height_pixels AS aspect_ratio,
     asset.image_asset.file_size / 1024 AS file_size,
     ad_group_ad.ad.name AS ad_name,
+    ad_group_ad_asset_view.policy_summary:approval_status AS approval_status,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
     metrics.impressions AS impressions,
@@ -345,6 +351,7 @@ class DemandGenVideoAssetPerformance(PerformanceQuery):
     segments.ad_format_type AS format_type,
     0 AS aspect_ratio,
     video.duration_millis / 1000 AS video_duration,
+    ad_group_ad.policy_summary.approval_status AS approval_status,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
     metrics.impressions AS impressions,
@@ -382,6 +389,7 @@ class AppAssetPerformance(PerformanceQuery):
     ad_group_ad_asset_view.field_type AS format_type,
     {aspect_ratio} AS aspect_ratio,
     {size} AS {size_column},
+    ad_group_ad_asset_view.policy_summary:approval_status AS approval_status,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
     metrics.impressions AS impressions,
@@ -434,7 +442,7 @@ QUERIES_MAPPING: dict[
   'search': SearchAssetPerformance,
   'app': AppAssetPerformance,
   'display': DisplayAssetPerformance,
-  'pmax': PmaxAssetInfo,
+  'pmax': PmaxAssetPerformance,
   'video': VideoPerformance,
   'demandgen': {
     'YOUTUBE_VIDEO': DemandGenVideoAssetPerformance,

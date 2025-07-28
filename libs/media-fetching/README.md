@@ -108,7 +108,8 @@ Source customizations are performed via `--extra-info module.method` syntax (i.e
 Currently supported modules:
 
 * `googleads`:
-  * main_geo - identifies main spending country for a media
+  * main_geo - identifies main spending country for a media.
+  * approval_rate - calculates approval rate (from 0 to 1) for each media.
 
 * `tagging`:
   * language - identifies language of a media.

@@ -55,9 +55,46 @@ class GoogleAdsEnricher:
   def accounts(self) -> list[str]:
     return self.fetcher.expand_mcc(self.account)
 
+  def approval_rate(
+    self, performance: report.GarfReport, **kwargs: str
+  ) -> extra_info.ExtraInfo:
+    """Calculates percentage of approvals for each media.
+
+    Args:
+      performance: Report with performance data.
+
+    Returns:
+      Mapping between media_url and approval rate (from 0 to 1).
+    """
+    approvals = performance.to_dict(
+      key_column='media_url', value_column='approval_status'
+    )
+    approval_rates = {}
+    for media_url, statuses in approvals.items():
+      approval_rate = 1 - len(
+        list(filter(lambda x: x != 'APPROVED', statuses))
+      ) / len(statuses)
+
+      approval_rates[media_url] = {'approval_rate': approval_rate}
+    return extra_info.ExtraInfo(info=approval_rates)
+
   def main_geo(
     self, performance: report.GarfReport, **kwargs: str
   ) -> extra_info.ExtraInfo:
+    """Calculates dominant country for each media.
+
+    Dominant country is calculated on campaign level based on >50% of all
+    spend and propagated to all media in this campaign.
+
+    Args:
+      performance: Report with performance data.
+
+    Returns:
+      Mapping between media_url and its dominant country.
+
+    Raises:
+      GoogleAdsEnricherError: If report does not have campaign_id column.
+    """
     if 'campaign_id' not in performance.column_names:
       raise GoogleAdsEnricherError(
         '"campaign_id" is required for "main_geo" enriching'
