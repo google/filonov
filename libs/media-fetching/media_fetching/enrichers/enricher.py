@@ -26,6 +26,7 @@ from media_fetching.enrichers import extra_info
 AVAILABLE_MODULES = {
   'tagging': enrichers.MediaTaggingEnricher,
   'googleads': enrichers.GoogleAdsEnricher,
+  'youtube': enrichers.YouTubeEnricher,
 }
 
 

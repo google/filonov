@@ -16,8 +16,10 @@
 
 from media_fetching.enrichers.googleads import GoogleAdsEnricher
 from media_fetching.enrichers.tagging import MediaTaggingEnricher
+from media_fetching.enrichers.youtube import YouTubeEnricher
 
 __all__ = [
   'MediaTaggingEnricher',
   'GoogleAdsEnricher',
+  'YouTubeEnricher',
 ]

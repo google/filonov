@@ -105,10 +105,13 @@ Source customizations are performed via `--source.parameters=value` syntax (i.e.
 
 Source customizations are performed via `--extra-info module.method` syntax (i.e. `--extra-info tagging.languages,googleads.main_geo`)
 
-Currently two modules are supported `googleads` and `tagging`.
+Currently supported modules:
 
 * `googleads`:
   * main_geo - identifies main spending country for a media
 
 * `tagging`:
   * language - identifies language of a media.
+
+* `youtube`:
+  * language - identifies language of YouTube Video based on YouTube Data API.
