@@ -220,7 +220,7 @@ def convert_report_to_media_info(
 
   results = {}
   for media_url, values in performance.to_dict(key_column='media_url').items():
-    info = build_info(values, list(metric_columns) + list(modules))
+    info = build_info(values, list(metric_columns), list(modules))
     segments = (
       build_segments(values, segment_columns, metric_columns)
       if segment_columns
@@ -249,11 +249,26 @@ def convert_report_to_media_info(
   return results
 
 
-def build_info(data: Info, metric_names: Sequence[str]) -> Info:
-  """Extracts and aggregated data for specified metrics."""
-  return {
+def build_info(
+  data: Info, metric_names: Sequence[str], modules: Sequence[str] | None = None
+) -> Info:
+  """Extracts and aggregated data for specified metrics.
+
+  Args:
+    data: All available information on media_url.
+    metric_names: Metrics to sum.
+    modules: Meterics/ dimensions to get as is without aggregation.
+
+  Returns:
+    Mapping between name of metric / dimension and its processed value.
+  """
+  info = {
     metric: _aggregate_nested_metric(data, metric) for metric in metric_names
   }
+  if modules:
+    dimensions = {module: data[0].get(module) for module in modules}
+    info.update(dimensions)
+  return info
 
 
 def build_segments(
