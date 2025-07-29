@@ -139,7 +139,11 @@ class Fetcher(models.BaseMediaInfoFetcher):
     performance_queries = {}
     for campaign_type in fetching_request.campaign_types:
       query = queries.QUERIES_MAPPING.get(campaign_type)
-      if campaign_type == 'video' and fetching_request.media_type == 'IMAGE':
+      if (
+        campaign_type == 'video' and fetching_request.media_type == 'IMAGE'
+      ) or (
+        campaign_type == 'search' and fetching_request.media_type != 'TEXT'
+      ):
         continue
       if campaign_type == 'demandgen':
         query = query.get(fetching_request.media_type)
