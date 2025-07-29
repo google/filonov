@@ -15,7 +15,6 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import, missing-class-docstring, missing-module-docstring, missing-function-docstring
 
 import os
-import pathlib
 
 import dotenv
 import fastapi
@@ -30,8 +29,6 @@ app.include_router(router)
 client = testclient.TestClient(app)
 
 dotenv.load_dotenv()
-_SCRIPT_PATH = pathlib.Path(__file__).parent
-_IMAGE_PATH = str(_SCRIPT_PATH / os.getenv('FILONOV_IMAGE_PATH'))
 filonov_test_text = 'To be or not to be this is the question.'
 
 
@@ -42,9 +39,9 @@ class TestGeminiTagger:
     ('media_type', 'media_location'),
     [
       ('TEXT', filonov_test_text),
-      ('IMAGE', _SCRIPT_PATH / os.getenv('FILONOV_IMAGE_PATH')),
-      ('VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_VIDEO_PATH')),
-      ('YOUTUBE_VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_YOUTUBE_LINK')),
+      ('IMAGE', os.getenv('FILONOV_IMAGE_PATH')),
+      ('VIDEO', os.getenv('FILONOV_VIDEO_PATH')),
+      ('YOUTUBE_VIDEO', os.getenv('FILONOV_YOUTUBE_LINK')),
     ],
   )
   def test_tag(self, media_type, media_location):
@@ -70,9 +67,9 @@ class TestGeminiTagger:
     ('media_type', 'media_location'),
     [
       ('TEXT', filonov_test_text),
-      ('IMAGE', _SCRIPT_PATH / os.getenv('FILONOV_IMAGE_PATH')),
-      ('VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_VIDEO_PATH')),
-      ('YOUTUBE_VIDEO', _SCRIPT_PATH / os.getenv('FILONOV_YOUTUBE_LINK')),
+      ('IMAGE', os.getenv('FILONOV_IMAGE_PATH')),
+      ('VIDEO', os.getenv('FILONOV_VIDEO_PATH')),
+      ('YOUTUBE_VIDEO', os.getenv('FILONOV_YOUTUBE_LINK')),
     ],
   )
   def test_describe(self, media_type, media_location):
@@ -104,17 +101,17 @@ class TestGoogleCloudTagger:
       ('TEXT', filonov_test_text, fastapi.status.HTTP_404_NOT_FOUND),
       (
         'IMAGE',
-        _SCRIPT_PATH / os.getenv('FILONOV_IMAGE_PATH'),
+        os.getenv('FILONOV_IMAGE_PATH'),
         fastapi.status.HTTP_200_OK,
       ),
       (
         'VIDEO',
-        _SCRIPT_PATH / os.getenv('FILONOV_VIDEO_PATH'),
+        os.getenv('FILONOV_VIDEO_PATH'),
         fastapi.status.HTTP_200_OK,
       ),
       (
         'YOUTUBE_VIDEO',
-        _SCRIPT_PATH / os.getenv('FILONOV_YOUTUBE_LINK'),
+        os.getenv('FILONOV_YOUTUBE_LINK'),
         fastapi.status.HTTP_404_NOT_FOUND,
       ),
     ],
@@ -147,22 +144,22 @@ class TestGoogleCloudTagger:
       (
         'TEXT',
         filonov_test_text,
-        'no supported tagging strategy for media type: TEXT',
+        'no supported tagging strategies for media type: TEXT',
       ),
       (
         'IMAGE',
-        _SCRIPT_PATH / os.getenv('FILONOV_IMAGE_PATH'),
+        os.getenv('FILONOV_IMAGE_PATH'),
         'describe method is not supported',
       ),
       (
         'VIDEO',
-        _SCRIPT_PATH / os.getenv('FILONOV_VIDEO_PATH'),
+        os.getenv('FILONOV_VIDEO_PATH'),
         'describe method is not supported',
       ),
       (
         'YOUTUBE_VIDEO',
-        _SCRIPT_PATH / os.getenv('FILONOV_YOUTUBE_LINK'),
-        'no supported tagging strategy for media type: YOUTUBE_VIDEO',
+        os.getenv('FILONOV_YOUTUBE_LINK'),
+        'no supported tagging strategies for media type: YOUTUBE_VIDEO',
       ),
     ],
   )
