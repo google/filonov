@@ -186,7 +186,6 @@ class Fetcher(models.BaseMediaInfoFetcher):
       Report with media performance.
     """
     performance_reports = []
-    common_fields = list(queries.PerformanceQuery.required_fields)
     for campaign_type, query in performance_queries.items():
       fetching_parameters = fetching_request.query_params
       fetching_parameters['campaign_type'] = campaign_type
@@ -194,10 +193,18 @@ class Fetcher(models.BaseMediaInfoFetcher):
         query(**fetching_parameters),
         self.accounts,
       )
-      if len(performance_queries) > 1:
-        performance_reports.append(performance[common_fields])
-      else:
+      if len(performance_queries) == 1:
         return performance
+      if performance:
+        performance_reports.append(performance)
+    common_fields = []
+    for performance_report in performance_reports:
+      common_fields.append(set(performance_report.column_names))
+    common_fields = list(set.intersection(*common_fields))
+    performance_reports = [
+      performance_report[common_fields]
+      for performance_report in performance_reports
+    ]
     return functools.reduce(operator.add, performance_reports)
 
   def _add_in_campaigns(
