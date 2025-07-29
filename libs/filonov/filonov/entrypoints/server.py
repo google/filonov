@@ -71,21 +71,23 @@ router = fastapi.APIRouter(prefix='/creative_maps')
 class CreativeMapGoogleAdsGenerateRequest(filonov.CreativeMapGenerateRequest):
   """Specifies Google Ads specific request for returning creative map."""
 
-  input_parameters: media_fetching.sources.googleads.GoogleAdsInputParameters
+  source_parameters: (
+    media_fetching.sources.googleads.GoogleAdsFetchingParameters
+  )
   source: Literal['googleads'] = 'googleads'
 
 
 class CreativeMapFileGenerateRequest(filonov.CreativeMapGenerateRequest):
   """Specifies Google Ads specific request for returning creative map."""
 
-  input_parameters: media_fetching.sources.file.FileInputParameters
+  source_parameters: media_fetching.sources.file.FileFetchingParameters
   source: Literal['file'] = 'file'
 
 
 class CreativeMapYouTubeGenerateRequest(filonov.CreativeMapGenerateRequest):
   """Specifies YouTube specific request for returning creative map."""
 
-  input_parameters: media_fetching.sources.youtube.YouTubeInputParameters
+  source_parameters: media_fetching.sources.youtube.YouTubeFetchingParameters
   source: Literal['youtube'] = 'youtube'
   media_type: Literal['YOUTUBE_VIDEO'] = 'YOUTUBE_VIDEO'
   tagger: Literal['gemini'] = 'gemini'

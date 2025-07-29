@@ -38,7 +38,7 @@ class TestFilonov:
       source='file',
       media_type='IMAGE',
       tagger='gemini',
-      input_parameters={
+      source_parameters={
         'path': str(_SCRIPT_PATH / os.getenv('FILONOV_PERFORMANCE_RESULTS')),
       },
     )
@@ -52,9 +52,8 @@ class TestFilonov:
       source='googleads',
       media_type='IMAGE',
       tagger='gemini',
-      input_parameters={
+      source_parameters={
         'account': os.getenv('FILONOV_GOOGLEADS_ACCOUNT'),
-        'media_type': 'IMAGE',
         'campaign_types': ('pmax',),
         'extra_info': ['googleads.main_geo'],
       },
@@ -67,7 +66,7 @@ class TestFilonov:
   def test_source_youtube(self):
     request = filonov.CreativeMapGenerateRequest(
       source='youtube',
-      input_parameters={
+      source_parameters={
         'channel': os.getenv('FILONOV_YOUTUBE_CHANNEL_ID'),
       },
     )
