@@ -18,6 +18,7 @@
 
 import datetime
 import json
+import os
 import tempfile
 
 import media_fetching
@@ -87,7 +88,13 @@ def streamlit_app():
         if end_date < start_date:
           st.error('End date cannot be less than start_date')
       extra_info = st.multiselect(
-        'Extra info', ['googleads.main_geo', 'tagging.language']
+        'Extra info',
+        [
+          'googleads.main_geo',
+          'googleads.approval_status',
+          'tagging.language',
+          'youtube.language',
+        ],
       )
       input_parameters = {
         'account': account,
@@ -96,6 +103,15 @@ def streamlit_app():
         'end_date': end_date.strftime('%Y-%m-%d'),
         'extra_info': extra_info,
       }
+      if not os.getenv('GOOGLE_ADS_CONFIGURATION_FILE_PATH'):
+        st.error(
+          'Path to google-ads.yaml is not found in '
+          'GOOGLE_ADS_CONFIGURATION_FILE_PATH environmental variable. '
+          'Please expose it or add manually.'
+        )
+        ads_config_path = st.text_input('Path to google-ads.yaml', '')
+        input_parameters.update({'ads_config_path': ads_config_path})
+
     elif source in ('bq', 'file', 'sqldb'):
       input_parameters = {}
       if source == 'bq':
@@ -138,6 +154,15 @@ def streamlit_app():
       tagger_type = 'gemini'
       channel = st.text_input('YouTube Channel ID', '')
       input_parameters = {'channel': channel}
+      if not os.getenv('GOOGLE_API_KEY'):
+        st.error(
+          'Add GOOGLE_API_KEY environmental variable to work with YouTube.'
+        )
+    if not settings.media_tagging_db_url:
+      st.warning(
+        'No tagging data is saved between runs. '
+        'Add MEDIA_TAGGING_DB_URL environmental variable to save data.'
+      )
 
     submitted = st.form_submit_button('Generate Creative Map')
 
