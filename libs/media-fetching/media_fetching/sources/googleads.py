@@ -51,7 +51,7 @@ class GoogleAdsFetchingParameters(models.FetchingParameters):
     'GOOGLE_ADS_CONFIGURATION_FILE_PATH',
     str(pathlib.Path.home() / 'google-ads.yaml'),
   )
-  metrics: Sequence[str] = [
+  metrics: Sequence[str] | str = [
     'clicks',
     'impressions',
     'cost',
