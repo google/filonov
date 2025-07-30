@@ -137,11 +137,6 @@ class FilonovService:
     Raises:
       FilonovError: When not tagging data are found.
     """
-    logger.info(
-      'Fetching input from source %s with parameters: %s',
-      request.media_type,
-      request.source_parameters,
-    )
     media_data = self.fetching_service.fetch(
       request.source_parameters, request.context
     )
@@ -166,11 +161,6 @@ class FilonovService:
       if not tagging_response:
         raise exceptions.FilonovError('Failed to get tagging results from DB')
     else:
-      logger.info(
-        'Performing tagging with tagger %s and  parameters: %s',
-        request.tagger,
-        request.tagger_parameters,
-      )
       tagging_response = self.tagging_service.tag_media(
         MediaTaggingRequest(
           tagger_type=request.tagger,
@@ -186,10 +176,6 @@ class FilonovService:
         'Failed to perform media tagging for the context: '
         f'{request.source_parameters}'
       )
-    logger.info(
-      'Performing similarity detection with parameters: %s',
-      request.similarity_parameters,
-    )
     clustering_request = media_similarity.MediaClusteringRequest(
       media_paths=media_urls,
       media_type=request.media_type,

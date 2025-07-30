@@ -269,6 +269,13 @@ class MediaSimilarityService:
     Raises:
       MediaSimilarityError: When not tagging results were found.
     """
+    logger.info(
+      'Performing media clustering with parameters: %s',
+      {
+        'custom_threshold': request.custom_threshold,
+        'normalize': request.normalize,
+      },
+    )
     if not request.tagger_type:
       tagging_response = self.tagging_service.get_media(
         media_tagging.media_tagging_service.MediaFetchingRequest(

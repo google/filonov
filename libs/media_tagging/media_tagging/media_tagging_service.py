@@ -266,6 +266,11 @@ class MediaTaggingService:
       return MediaTaggingResponse(results=tagged_media)
 
     logger.info('Processing %d media', len(untagged_media))
+    logger.info(
+      'Using %s tagger and parameters: %s',
+      tagging_request.tagger_type,
+      tagging_request.tagging_options,
+    )
     if n_runs := tagging_request.tagging_options.n_runs:
       untagged_media = itertools.chain.from_iterable(
         itertools.repeat(untagged_media, n_runs)

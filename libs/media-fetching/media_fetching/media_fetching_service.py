@@ -16,6 +16,7 @@
 
 """Responsible for fetching media specific information from various sources."""
 
+import logging
 from typing import Any, get_args
 
 from garf_core import report
@@ -23,6 +24,8 @@ from garf_core import report
 from media_fetching import exceptions
 from media_fetching.enrichers import enricher
 from media_fetching.sources import fetcher, models
+
+logger = logging.getLogger('media-fetching')
 
 
 class MediaFetchingService:
@@ -39,6 +42,7 @@ class MediaFetchingService:
         'are supported.'
       )
     self.fetcher = source_fetcher[1]
+    self.source = source
 
   def fetch(
     self,
@@ -46,6 +50,11 @@ class MediaFetchingService:
     extra_parameters: dict[str, dict[str, Any]] | None = None,
   ) -> report.GarfReport:
     """Extracts data from specified source."""
+    logger.info(
+      "Fetching data from source '%s' with parameters: %s",
+      self.source,
+      request,
+    )
     media_data = self.fetcher().fetch_media_data(request)
     if extra_info_modules := request.extra_info:
       extra_data = enricher.prepare_extra_info(
