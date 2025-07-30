@@ -20,6 +20,7 @@ import datetime
 import json
 import os
 import tempfile
+from collections.abc import Sequence
 
 import media_fetching
 import media_similarity
@@ -145,8 +146,8 @@ def streamlit_app():
         {
           'media_identifier': media_path_column,
           'media_name': media_name,
-          'metrics': metrics,
-          'segments': segments,
+          'metrics': metrics.split(','),
+          'segments': segments.split(','),
         }
       )
     else:
@@ -164,7 +165,24 @@ def streamlit_app():
         'Add MEDIA_TAGGING_DB_URL environmental variable to save data.'
       )
 
-    submitted = st.form_submit_button('Generate Creative Map')
+    col1, col2 = st.columns(2)
+    with col1:
+      submitted = st.form_submit_button('Generate Creative Map')
+    with col2:
+      cli_command_submitted = st.form_submit_button('Generate CLI command')
+
+    if cli_command_submitted:
+      request = filonov.CreativeMapGenerateRequest(
+        source=source,
+        media_type=media_type,
+        tagger=tagger_type,
+        source_parameters=input_parameters,
+        output_parameters=filonov.filonov_service.OutputParameters(
+          output_name=name
+        ),
+      )
+      cli_command = build_cli_command(request, settings.media_tagging_db_url)
+      st.code(cli_command, language='bash', wrap_lines=True)
 
     if submitted:
       request = filonov.CreativeMapGenerateRequest(
@@ -176,6 +194,9 @@ def streamlit_app():
           output_name=name
         ),
       )
+      with st.expander('Show CLI command'):
+        cli_command = build_cli_command(request, settings.media_tagging_db_url)
+        st.code(cli_command, language='bash', wrap_lines=True)
       if 'fetching_service' not in st.session_state:
         st.session_state['fetching_service'] = (
           media_fetching.MediaFetchingService(source)
@@ -208,6 +229,41 @@ def streamlit_app():
         json.dump(generated_map.to_json(), f)
 
       st.success(f'Creative Map saved to {destination}!')
+
+
+def build_cli_command(
+  request: filonov.CreativeMapGenerateRequest, db: str | None
+) -> str:
+  command_template = (
+    'filonov --source {source} \\\n'
+    '\t--media-type {media_type} \\\n'
+    '\t--tagger {tagger} \\\n'
+    '{source_parameters} \\\n'
+    '\t--output-name {output}'
+  )
+  source = request.source
+  source_parameters = []
+  for name, value in request.source_parameters.model_dump().items():
+    if name == 'media_type':
+      continue
+    if isinstance(value, str):
+      source_parameters.append(f'\t--{source}.{name}={value}')
+    elif isinstance(value, Sequence):
+      value_concat = ','.join(value)
+      source_parameters.append(f'\t--{source}.{name}={value_concat}')
+
+  source_parameters = ' \\\n'.join(source_parameters)
+  params = {
+    'source': request.source,
+    'media_type': request.media_type,
+    'tagger': request.tagger,
+    'output': request.output_parameters.output_name,
+    'source_parameters': source_parameters,
+  }
+  non_db_command = command_template.format(**params).strip()
+  if db:
+    return f'{non_db_command} \\\n\t--db-uri {db}'
+  return non_db_command
 
 
 streamlit_app()
