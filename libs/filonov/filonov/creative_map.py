@@ -192,6 +192,8 @@ def convert_report_to_media_info(
   Returns:
     Mapping between media identifier and its media info.
   """
+  if isinstance(media_type, str):
+    media_type = media.MediaTypeEnum[media_type.upper()]
   if with_size_base and with_size_base not in performance.column_names:
     logging.warning('Failed to set MediaInfo size to %s', with_size_base)
     with_size_base = None
@@ -208,10 +210,10 @@ def convert_report_to_media_info(
   else:
     modules = set()
 
-  if media_type == 'YOUTUBE_VIDEO':
+  if media_type == media.MediaTypeEnum.YOUTUBE_VIDEO:
     modules.add('duration')
     modules.add('orientation')
-  elif media_type == 'IMAGE':
+  elif media_type == media.MediaTypeEnum.IMAGE:
     modules.add('format_type')
 
   metric_columns = metric_columns or []
