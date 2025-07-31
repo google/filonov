@@ -22,7 +22,7 @@ import os
 from collections.abc import Sequence
 from concurrent import futures
 from importlib.metadata import entry_points
-from typing import Literal
+from typing import Callable, Literal
 
 import pydantic
 from garf_io import writer as garf_writer
@@ -32,6 +32,20 @@ from media_tagging.taggers import TAGGERS
 from media_tagging.taggers import base as base_tagger
 
 logger = logging.getLogger('media-tagger')
+
+
+def discover_path_processors():
+  """Loads all path processors exposed as `media_tagger_path` plugin."""
+  processors = {}
+  for processor in entry_points(group='media_tagger_path'):
+    try:
+      processor_module = processor.load()
+      for name, obj in inspect.getmembers(processor_module):
+        if 'process' in name and inspect.isfunction(obj):
+          processors[processor.name] = getattr(processor_module, name)
+    except ModuleNotFoundError:
+      continue
+  return processors
 
 
 class MediaTaggingRequest(pydantic.BaseModel):
@@ -48,7 +62,7 @@ class MediaTaggingRequest(pydantic.BaseModel):
     tagger: Initialized tagger.
   """
 
-  model_config = pydantic.ConfigDict(extra='ignore')
+  model_config = pydantic.ConfigDict(extra='allow')
 
   tagger_type: str
   media_type: Literal[tuple(media.MediaTypeEnum.options())]
@@ -190,36 +204,53 @@ class MediaTaggingService:
   def tag_media(
     self,
     tagging_request: MediaTaggingRequest,
+    path_processor: str | Callable[[str], str] | None = os.getenv(
+      'MEDIA_TAGGING_PATH_PROCESSOR'
+    ),
   ) -> MediaTaggingResponse:
     """Tags media based on requested tagger.
 
     Args:
       tagging_request: Parameters for tagging.
+      path_processor: Custom processor of media paths.
 
     Returns:
       Results of tagging.
     """
-    return self._process_media('tag', tagging_request)
+    return self._process_media(
+      action='tag',
+      tagging_request=tagging_request,
+      path_processor=path_processor,
+    )
 
   def describe_media(
     self,
     tagging_request: MediaTaggingRequest,
+    path_processor: str | Callable[[str], str] | None = os.getenv(
+      'MEDIA_TAGGING_PATH_PROCESSOR'
+    ),
   ) -> MediaTaggingResponse:
     """Tags media based on requested tagger.
 
     Args:
       tagging_request: Parameters for tagging.
+      path_processor: Custom processor of media paths.
 
     Returns:
       Results of tagging.
     """
-    return self._process_media('describe', tagging_request)
+    return self._process_media(
+      action='describe',
+      tagging_request=tagging_request,
+      path_processor=path_processor,
+    )
 
   def _process_media(
     self,
     action: Literal['tag', 'describe'],
     tagging_request: MediaTaggingRequest,
     deduplicate: bool = False,
+    path_processor: str | Callable[[str], str] | None = None,
   ) -> MediaTaggingResponse:
     """Gets media information based on tagger and output type.
 
@@ -227,6 +258,7 @@ class MediaTaggingService:
       action: Defines output of tagging: tags or description.
       tagging_request: Parameters for tagging.
       deduplicate: Whether cached tagging results should be deduplicated.
+      path_processor: Custom processor of media paths.
 
     Returns:
       Results of tagging.
@@ -235,6 +267,9 @@ class MediaTaggingService:
       InvalidMediaTypeError: When incorrect media type is provided.
       TaggerError: When incorrect tagger_type is used.
     """
+    if isinstance(path_processor, str):
+      path_processor = discover_path_processors().get(path_processor)
+    path_processor = path_processor if path_processor else lambda x: x
     concrete_tagger = tagging_request.tagger
     media_type_enum = tagging_request.media_type_enum
     output = 'description' if action == 'describe' else 'tag'
@@ -283,6 +318,7 @@ class MediaTaggingService:
           tagging_request.media_type_enum,
           untagged_media,
           tagging_request.tagging_options,
+          path_processor,
         )
         + tagged_media
       )
@@ -298,6 +334,7 @@ class MediaTaggingService:
           media_type_enum,
           [media_path],
           tagging_request.tagging_options,
+          path_processor,
         ): media_path
         for media_path in untagged_media
       }
@@ -317,6 +354,7 @@ class MediaTaggingService:
     media_type: media.MediaTypeEnum,
     media_paths: Sequence[str | os.PathLike[str]],
     tagging_options: base_tagger.TaggingOptions,
+    path_processor: Callable[[str], str],
   ) -> list[tagging_result.TaggingResult]:
     """Runs media tagging algorithm.
 
@@ -326,13 +364,16 @@ class MediaTaggingService:
       media_type: Type of media.
       media_paths: Local or remote path to media file.
       tagging_options: Optional parameters to be sent for tagging.
+      path_processor: Custom processor of media paths.
 
     Returns:
       Results of tagging for all media.
     """
     results = []
     for path in media_paths:
-      medium = media.Medium(path, media_type)
+      medium = media.Medium(
+        media_path=path_processor(path), media_type=media_type
+      )
       logger.info('Processing media: %s', path)
       try:
         tagging_results = getattr(concrete_tagger, action)(

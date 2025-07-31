@@ -292,7 +292,8 @@ class MediaSimilarityService:
           media_type=request.media_type,
           media_paths=request.media_paths,
           deduplicate=True,
-        )
+        ),
+        path_processor=request.tagging_options.get('path_processor'),
       )
     if not (tagging_results := tagging_response.results):
       raise exceptions.MediaSimilarityError('No tagging results found.')
