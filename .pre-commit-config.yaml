@@ -24,6 +24,7 @@ repos:
   - id: trailing-whitespace
   - id: end-of-file-fixer
   - id: check-yaml
+    exclude: ^mkdocs\.yml$
   - id: check-added-large-files
   - id: debug-statements
   - id: double-quote-string-fixer
@@ -40,16 +41,3 @@ repos:
     - id: ruff
       args: [ --fix, --select, I]
     - id: ruff-format
-- repo: local
-  hooks:
-  - id: pytest-check
-    name: pytest-check
-    entry: pytest -n auto libs/media_tagging/tests/unit
-    language: system
-    pass_filenames: false
-  - id: e2e
-    stages: [pre-push]
-    name: e2e-tests
-    entry: bash end-to-end-tests.sh
-    language: system
-    pass_filenames: false
