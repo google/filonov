@@ -8,6 +8,11 @@ dependencies = [
   "media-tagging",
   "igraph",
 ]
+authors = [
+  {name = "Andrei Markin", email = "amarkin@google.com"},
+  {name = "Sergei Dorogin", email = "segy@google.com"},
+  {name = "Google Inc. (gTech gPS CSE team)", email = "no-reply@google.com"},
+]
 requires-python = ">=3.8"
 description = "Groups similar media into clusters"
 readme = "README.md"

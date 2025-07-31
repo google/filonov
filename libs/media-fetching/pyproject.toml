@@ -10,6 +10,11 @@ dependencies = [
   "google-ads-api-report-fetcher",
   "garf-executors[bq,sql]",
 ]
+authors = [
+  {name = "Andrei Markin", email = "amarkin@google.com"},
+  {name = "Sergei Dorogin", email = "segy@google.com"},
+  {name = "Google Inc. (gTech gPS CSE team)", email = "no-reply@google.com"},
+]
 requires-python = ">=3.10"
 description = "Simplified fetching of media for Filonov library"
 readme = "README.md"

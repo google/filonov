@@ -11,6 +11,8 @@ dependencies = [
   "langchain-community",
 ]
 authors = [
+  {name = "Andrei Markin", email = "amarkin@google.com"},
+  {name = "Sergei Dorogin", email = "segy@google.com"},
   {name = "Google Inc. (gTech gPS CSE team)", email = "no-reply@google.com"},
 ]
 license = {text = "Apache 2.0"}
