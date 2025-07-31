@@ -68,7 +68,9 @@ def main():  # noqa: D103
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
   )
-  parsed_param_keys = set([args.source] + list(supported_enrichers))
+  parsed_param_keys = set(
+    [args.source, args.writer] + list(supported_enrichers)
+  )
   extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(kwargs)
   fetching_service = media_fetching.MediaFetchingService(args.source)
   request_class, _ = fetcher.FETCHERS.get(args.source)
