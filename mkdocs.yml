@@ -45,27 +45,32 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Get Started:
-    - get-started/index.md
-    - Installation: get-started/installation.md
-    - Quickstart:
-      - get-started/index.md
-      - Library: get-started/library.md
-      - CLI: get-started/cli.md
-      - Server: get-started/server.md
-  - Usage:
-    - Define Queries: usage/queries.md
-    - Reports: usage/reports.md
-    - Writing: usage/writers.md
-    - Executors:
-      - usage/executors.md
-      - API: usage/api-executor.md
-      - BigQuery: usage/bq-executor.md
-      - SQL: usage/sql-executor.md
-  - Customization:
-    - Create a library: customization/creating-your-own-libraries.md
-  - Fetchers:
-    - YouTube:
-      - Data API: fetchers/youtube-data-api.md
-      - Reporting API: fetchers/youtube-reporting-api.md
-    - Merchant Center: fetchers/merchant-center-api.md
+  - Media Fetching:
+      - fetching/overview.md
+      - Fetchers:
+        - Google Ads: fetching/googleads.md
+        - YouTube: fetching/youtube.md
+        - File: fetching/file.md
+        - BigQuery: fetching/bq.md
+        - SQL DB: fetching/sql.md
+      - Enriching: fetching/enriching.md
+  - Media Tagging:
+    - tagging/overview.md
+    - Core Concepts:
+      - Media: tagging/media.md
+      - Tagging Result: tagging/tagging-result.md
+      - Persistence: tagging/persistence.md
+    - Taggers:
+      - Gemini: tagging/gemini.md
+      - Google Cloud: tagging/google-cloud.md
+      - Langchain: tagging/langchain.md
+      - Create Your Own: tagging/create-tagger.md
+    - Loaders:
+      - tagging/loading.md
+      - File: tagging/file-loader.md
+      - Create Your Own: tagging/create-loader.md
+  - Media Similarity:
+      - similarity/overview.md
+      - Clustering: similarity/clustering.md
+      - Search: similarity/search.md
+      - Comparison: similarity/comparison.md
