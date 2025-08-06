@@ -1,6 +1,6 @@
 # Getting data from Google Ads
 
-You can extra asset performance data from various campaigns in Google Ads.
+You can get various media performance data (i.e. assets) from various campaigns in Google Ads.
 
 ## Prerequisites
 
