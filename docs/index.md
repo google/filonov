@@ -1,16 +1,15 @@
 # Filonov
 
-When dealing with huge amounts of creatives (video and images) it might be hard
+When dealing with huge amounts of media (video, images, texts) it might be hard
 to identify which creative approaches work the best since actual performance is
-usually evaluated on a single creative.
+usually evaluated on a single medium.
 
 ## Key features
 
-* **[Media Fetching](fetching/overview.md)**: Extracting media from a source (i.e. Google Ads)
-* **[Media tagging](tagging/overview.md)**
-* **[Clustering media](similarity/overview.md)**
-* Combining into JSON
-* Visualization
+* **[Fetching media](fetching/overview.md)**: Downloading media info from various sources (i.e. Google Ads)
+* **[Tagging media](tagging/overview.md)**: Getting content of each media as a tag.
+* **[Finding similar media](similarity/overview.md)**: Find similar media and group them into clusters.
+* **[Visualizing media](http://filonov-ai.web.app)**: Ready to use dashboard for understanding media performance on tag, media, and cluster levels.
 
 
 ## Installation
@@ -23,7 +22,7 @@ pip install filonov
 
 /// tab | uv
 ```python
-uv pip install filonov
+uv add filonov
 ```
 ///
 
@@ -37,13 +36,17 @@ uv pip install filonov
 ### Generating files
 
 /// tab | cli
-```python
-filonov
+```bash
+filonov \
+  --source googleads \
+  --googleads.account=ACCOUNT_ID \
+  --media-type IMAGE
 ```
 ///
 
 /// tab | UI
-```python
+
+```bash
 filonov-ui
 ```
 ///

@@ -20,7 +20,7 @@ pip install media-fetching
 
 /// tab | uv
 ```
-uv pip install media-fetching
+uv add media-fetching
 ```
 ///
 

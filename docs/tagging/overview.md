@@ -1,16 +1,15 @@
 [![PyPI](https://img.shields.io/pypi/v/media-tagging?logo=pypi&logoColor=white&style=flat-square)](https://pypi.org/project/media-tagging)
 [![Open in Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google/filonov/blob/main/libs/media_tagging/media_tagging_demo.ipynb)
 
-When analyzing large amount of creatives of any nature (being images and videos)
-it might be challenging to quickly and reliably understand their content
-and gain insights.
+`media-tagger` performs tagging of [supported media](/media.md) based on various taggers.
 
-`media-tagger` performs tagging of image and videos based on various taggers
-- simply provide a path to your media files and `media-tagger` will do the rest.
+Each tag represents a distinctive feature of a medium (i.e. colors, elements, texts, etc.)and its relative representation in the medium.
 
 ## Key features
 
-* Provides tags
+* Extracts semantic tags from media.
+* Describes media using custom prompt and schema.
+* Saves results of tagging / description to files / databases.
 
 ## Supported taggers
 
