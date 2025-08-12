@@ -71,6 +71,12 @@ nav:
       - Create Your Own: tagging/create-loader.md
   - Media Similarity:
       - similarity/overview.md
+      - Core Concepts:
+        - Algotirhm: similarity/algorithm.md
+        - MediaPair: similarity/media-pair.md
+        - Idf Context: similarity/idf-context.md
+        - Adaptive Threshold: similarity/adaptive-threshold.md
+        - Persistence: similarity/persistence.md
       - Clustering: similarity/clustering.md
       - Search: similarity/search.md
       - Comparison: similarity/comparison.md
