@@ -2,10 +2,10 @@
 
 By default when doing tagging all intermediate data is saved in the memory.
 
-You can opt-in to persisting data in the database of you choice.
+You can opt-in to persisting data in the database of your choice.
 
-If you're tagging the same media for the second time it tags will be fetched
-from DB instead of using a tagger.
+If you're tagging the same media for the second time its tags will be fetched
+from DB instead of calling API to perform the tagging..
 
 /// tab | cli
 ```bash

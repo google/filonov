@@ -2,7 +2,7 @@
 
 `media-similarity` can search for similar media given a set of seed media.
 
-> Please note that this requires persistence setup.
+> Please note that this requires [persistence setup](persistence.md).
 
 
 

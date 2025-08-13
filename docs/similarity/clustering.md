@@ -2,9 +2,6 @@
 
 `media-similarity` can take several media, tag them and combine them into clusters.
 
-
-
-
 /// tab | cli
 ```
 media-similarity cluster image1.png image2.png image3.png \

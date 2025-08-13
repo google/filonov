@@ -4,7 +4,7 @@ Somethings it's useful to understand why two media end up in the same or differe
 
 `media-similarity` can provide detailed information how two media as similar to each other.
 
-> Please note that this requires persistence setup.
+> Please note that this requires [persistence setup](persistence.md).
 
 
 
