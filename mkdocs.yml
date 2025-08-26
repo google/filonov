@@ -1,0 +1,75 @@
+site_name: Filonov
+site_url: https://github.com/google/filonov
+repo_name: filonov
+repo_url: https://github.com/google/filonov
+copyright: Copyright Google 2025
+
+theme:
+  name: material
+  font:
+    text: Google Sans
+    code: Roboto Mono
+  palette:
+    - scheme: default
+      primary: white
+      accent: white
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: white
+      accent: white
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.footer
+    - navigation.tracking
+    - navigation.top
+    - navigation.path
+    - content.code.select
+    - content.code.copy
+markdown_extensions:
+  - md_in_html
+  - attr_list
+  - admonition
+  - pymdownx.details
+  - pymdownx.blocks.tab:
+      alternate_style: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - Media Fetching:
+      - fetching/overview.md
+      - Fetchers:
+        - Google Ads: fetching/googleads.md
+        - YouTube: fetching/youtube.md
+        - File: fetching/file.md
+        - BigQuery: fetching/bq.md
+        - SQL DB: fetching/sql.md
+      - Enriching: fetching/enriching.md
+  - Media Tagging:
+    - tagging/overview.md
+    - Core Concepts:
+      - Media: tagging/media.md
+      - Tagging Result: tagging/tagging-result.md
+      - Persistence: tagging/persistence.md
+    - Taggers:
+      - Gemini: tagging/gemini.md
+      - Google Cloud: tagging/google-cloud.md
+      - Langchain: tagging/langchain.md
+    - Loaders:
+      - tagging/loading.md
+      - File: tagging/file-loader.md
+  - Media Similarity:
+      - similarity/overview.md
+      - Clustering: similarity/clustering.md
+      - Search: similarity/search.md
+      - Comparison: similarity/comparison.md
+      - Persistence: similarity/persistence.md
