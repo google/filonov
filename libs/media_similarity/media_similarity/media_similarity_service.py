@@ -285,6 +285,11 @@ class MediaSimilarityService:
         )
       )
     else:
+      path_processor = (
+        request.tagging_options.path_processor
+        if hasattr(request.tagging_options, 'path_processor')
+        else None
+      )
       tagging_response = self.tagging_service.tag_media(
         media_tagging.MediaTaggingRequest(
           tagger_type=request.tagger_type,
@@ -293,7 +298,7 @@ class MediaSimilarityService:
           media_paths=request.media_paths,
           deduplicate=True,
         ),
-        path_processor=request.tagging_options.get('path_processor'),
+        path_processor=path_processor,
       )
     if not (tagging_results := tagging_response.results):
       raise exceptions.MediaSimilarityError('No tagging results found.')
