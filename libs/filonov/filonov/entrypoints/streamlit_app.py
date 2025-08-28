@@ -111,7 +111,7 @@ def streamlit_app():
           'Please expose it or add manually.'
         )
         ads_config_path = st.text_input('Path to google-ads.yaml', '')
-        input_parameters.update({'ads_config_path': ads_config_path})
+        input_parameters.update({'ads_config': ads_config_path})
 
     elif source in ('bq', 'file', 'sqldb'):
       input_parameters = {}

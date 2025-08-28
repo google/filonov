@@ -47,7 +47,7 @@ class GoogleAdsFetchingParameters(models.FetchingParameters):
   ).strftime('%Y-%m-%d')
   min_cost: int = 0
   campaign_types: Sequence[queries.SupportedCampaignTypes] | str = ('app',)
-  ads_config_path: str = os.getenv(
+  ads_config: str = os.getenv(
     'GOOGLE_ADS_CONFIGURATION_FILE_PATH',
     str(pathlib.Path.home() / 'google-ads.yaml'),
   )
@@ -106,7 +106,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
       fetching_request = GoogleAdsFetchingParameters(**fetching_request)
     self.fetcher = gaarf.AdsReportFetcher(
       api_client=gaarf.GoogleAdsApiClient(
-        path_to_config=fetching_request.ads_config_path
+        path_to_config=fetching_request.ads_config
       )
     )
 

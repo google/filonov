@@ -35,11 +35,11 @@ class GoogleAdsEnricher:
   """Injects Google Ads specific information into existing reports."""
 
   def __init__(
-    self, account: str, ads_config_path: str | None = None, **kwargs: str
+    self, account: str, ads_config: str | None = None, **kwargs: str
   ) -> None:
     """Initializes MediaTaggingEnricher."""
     self.account = account
-    self.ads_config_path = ads_config_path or os.getenv(
+    self.ads_config = ads_config or os.getenv(
       'GOOGLE_ADS_CONFIGURATION_FILE_PATH',
       str(pathlib.Path.home() / 'google-ads.yaml'),
     )
@@ -48,7 +48,7 @@ class GoogleAdsEnricher:
   @functools.cached_property
   def fetcher(self) -> gaarf.AdsReportFetcher:
     return gaarf.AdsReportFetcher(
-      api_client=gaarf.GoogleAdsApiClient(path_to_config=self.ads_config_path)
+      api_client=gaarf.GoogleAdsApiClient(path_to_config=self.ads_config)
     )
 
   @functools.cached_property
