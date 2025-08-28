@@ -36,4 +36,4 @@ INPUT_MAPPING = {
   'sqldb': SqlAlchemyQueryFetchingParameters,
   'bq': BigQueryFetchingParameters,
 }
-__version__ = '0.2.0'
+__version__ = '0.2.1'

@@ -355,7 +355,7 @@ class DemandGenVideoAssetPerformance(PerformanceQuery):
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
     metrics.impressions AS impressions,
-    metrics.impressions AS conversions,
+    metrics.conversions AS conversions,
     metrics.conversions_value AS conversions_value
   FROM video
   WHERE
