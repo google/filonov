@@ -77,7 +77,9 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   tagger: Literal['gemini', 'google-cloud', 'loader', None] = None
   tagger_parameters: dict[str, str | int] = default_tagger_parameters
   similarity_parameters: SimilarityParameters = SimilarityParameters()
-  source_parameters: dict[str, str | Sequence[str]] = {}
+  source_parameters: dict[str, str | Sequence[str]] = pydantic.Field(
+    default_factory=dict
+  )
   output_parameters: OutputParameters = OutputParameters()
   parallel_threshold: int = 10
   trim_tags_threshold: float | None = None
