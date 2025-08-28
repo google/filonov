@@ -17,6 +17,7 @@
 """CLI entrypoint for fetching media data."""
 
 import argparse
+import sys
 from typing import get_args
 
 from garf_executors.entrypoints import utils as garf_utils
@@ -63,7 +64,12 @@ def main():  # noqa: D103
     default='media_results',
     help='Destination of written report.',
   )
+  parser.add_argument('-v', '--version', dest='version', action='store_true')
   args, kwargs = parser.parse_known_args()
+
+  if args.version:
+    print(f'media-fetcher version: {media_fetching.__version__}')
+    sys.exit()
 
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
