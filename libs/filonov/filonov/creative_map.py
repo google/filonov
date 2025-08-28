@@ -229,9 +229,7 @@ def convert_report_to_media_info(
       else {}
     )
     if values[0].get('date'):
-      series = {
-        entry.get('date'): build_info(entry, metric_columns) for entry in values
-      }
+      series = build_segments(values, ['date'], metric_columns).get('date', {})
     else:
       series = {}
     if with_size_base and (size_base := info.get(with_size_base)):
