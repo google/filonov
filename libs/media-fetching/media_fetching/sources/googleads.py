@@ -74,11 +74,12 @@ class GoogleAdsFetchingParameters(models.FetchingParameters):
       self.extra_info = self.extra_info.split(',')
 
   @property
-  def query_params(self) -> dict[str, str]:
+  def query_params(self) -> dict[str, str | int]:
     return {
       'start_date': self.start_date,
       'end_date': self.end_date,
       'media_type': self.media_type,
+      'min_cost': self.min_cost,
     }
 
 
