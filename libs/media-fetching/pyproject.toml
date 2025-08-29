@@ -8,7 +8,7 @@ dependencies = [
   "media-tagging",
   "garf-youtube-data-api",
   "google-ads-api-report-fetcher",
-  "garf-executors[bq,sql]",
+  "garf-executors[bq,sql]>=0.0.7",
 ]
 authors = [
   {name = "Andrei Markin", email = "amarkin@google.com"},

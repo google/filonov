@@ -81,10 +81,9 @@ class BigQueryFetcher(models.BaseMediaInfoFetcher):
     executor = bq_executor.BigQueryExecutor(
       project_id=fetching_request.project,
     )
-    result = executor.execute(
-      script_name='media_data', query_text=fetching_request.query_text
+    return executor.execute(
+      title='media_data', query=fetching_request.query_text
     )
-    return report.GarfReport.from_pandas(result)
 
 
 class SqlAlchemyQueryFetcher(models.BaseMediaInfoFetcher):
@@ -97,7 +96,6 @@ class SqlAlchemyQueryFetcher(models.BaseMediaInfoFetcher):
     executor = sql_executor.SqlAlchemyQueryExecutor.from_connection_string(
       connection_string=fetching_request.connection_string
     )
-    result = executor.execute(
-      script_name='media_data', query_text=fetching_request.query_text
+    return executor.execute(
+      title='media_data', query=fetching_request.query_text
     )
-    return report.GarfReport.from_pandas(result)
