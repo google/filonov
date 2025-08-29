@@ -38,8 +38,8 @@ class TestFilonov:
       '--tagger=gemini '
       f'--db-uri  {db_uri} '
       f'--file.path={filonov_performance_file} '
-      '--file.media_identifier=media_url '
-      '--file.media_name=asset_name '
+      '--file.media-identifier=media_url '
+      '--file.media-name=asset_name '
       '--file.metrics=clicks '
       '--logger local'
     )
@@ -56,8 +56,8 @@ class TestFilonov:
       '--tagger=gemini '
       f'--db-uri  {db_uri} '
       f'--googleads.account={filonov_account} '
-      '--googleads.campaign_types=pmax '
-      '--googleads.extra_info=googleads.main_geo '
+      '--googleads.campaign-types=pmax '
+      '--googleads.extra-info=googleads.main_geo '
       '--logger local'
     )
     result = subprocess.run(command, shell=True, check=False)

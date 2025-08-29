@@ -44,7 +44,7 @@ class TestMediaFetcher:
         'media-fetcher --source googleads '
         f'--media-type {media_type} '
         f'--googleads.account={filonov_account} '
-        '--googleads.campaign_types=pmax '
+        '--googleads.campaign-types=pmax '
         '--extra-info=googleads.main_geo '
         '--writer console '
       )
@@ -68,8 +68,8 @@ class TestMediaFetcher:
       command = (
         'media-fetcher --source file '
         f'--file.path={filonov_performance_file} '
-        '--file.media_identifier=media_url '
-        '--file.media_name=asset_name '
+        '--file.media-identifier=media_url '
+        '--file.media-name=asset_name '
         '--file.metrics=clicks '
         '--writer console '
       )
@@ -81,7 +81,7 @@ class TestMediaFetcher:
     def test_fetch(self):
       command = (
         'media-fetcher --source sqldb '
-        f'--sqldb.connection_string={filonov_db} '
+        f'--sqldb.connection-string={filonov_db} '
         '--sqldb.table=media_results '
         '--writer console '
       )

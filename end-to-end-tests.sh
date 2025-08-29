@@ -33,6 +33,13 @@ run_tests() {
   fi
 }
 
+fetching() {
+  pushd `pwd`
+  cd libs/media-fetching/tests/end-to-end
+  run_tests
+  popd
+}
+
 tagging() {
   pushd `pwd`
   cd libs/media_tagging/tests/end-to-end
@@ -57,6 +64,7 @@ filonov() {
 
 if [[ $section = "all" ]]; then
   echo "running all tests"
+  fetching
   tagging
   similarity
   filonov
@@ -65,6 +73,9 @@ fi
 if [[ $section = "tagging" ]]; then
   echo "running tagging tests"
   tagging
+elif [[ $section = "fetching" ]]; then
+  echo "running fetching tests"
+  fetching
 elif [[ $section = "similarity" ]]; then
   echo "running similarity tests"
   similarity
