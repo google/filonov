@@ -18,12 +18,15 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 import inspect
+import logging
 import os
 from importlib.metadata import entry_points
 from typing import Literal
 
 from media_tagging import media, repositories
 from media_tagging.loaders import base as base_loader
+
+logger = logging.getLogger(__name__)
 
 
 def _get_loaders():
@@ -143,9 +146,17 @@ class MediaLoaderService:
       **loader_parameters,
     )
     if self.repo:
-      loader_media_names = {media.identifier for media in tagging_results}
-      loaded_media = self.repo.get(
-        loader_media_names, media_type, 'loader', action
-      )
-      not_loaded_media = set(tagging_results).difference(loaded_media)
-      self.repo.add(not_loaded_media)
+      new_media_names = {media.identifier for media in tagging_results}
+      existing_media_identifiers = {
+        m.identifier
+        for m in self.repo.get(new_media_names, media_type, 'loader', action)
+      }
+      not_loaded_media = set()
+      for result in tagging_results:
+        if result.identifier not in existing_media_identifiers:
+          not_loaded_media.add(result)
+      if not_loaded_media:
+        logger.info('Loading %d media.', len(not_loaded_media))
+        self.repo.add(not_loaded_media)
+      else:
+        logger.warning('No new media to load.')
