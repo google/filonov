@@ -19,6 +19,11 @@ uv pip install media-tagging[google-cloud]
 ```
 ///
 
+If you want to use server capabilities of `media-tagger` you need to install additional dependencies:
+
+```bash
+pip install media-tagging[server]
+```
 
 ## Usage
 
@@ -46,6 +51,23 @@ result = media_tagger.tag_media(
 )
 
 result.save(output='tagging_results', writer='csv')
+```
+///
+
+/// tab | curl
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/media_tagging/tag' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "google-cloud",
+    "media_type": "IMAGE",
+    "media_paths": [
+      "image1.png",
+      "image2.png"
+    ]
+  }'
 ```
 ///
 

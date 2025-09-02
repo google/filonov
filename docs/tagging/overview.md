@@ -40,6 +40,12 @@ pip install media-tagging media-tagging-langchain
 ```
 ///
 
+If you want to use server capabilities of `media-tagger` you need to install additional dependencies:
+
+```bash
+pip install media-tagging[server]
+```
+
 
 ## Usage
 
@@ -78,6 +84,25 @@ result.save(output='tagging_results', writer='csv')
 ```
 ///
 
+/// tab | curl
+
+> Start API by running `python -m media_tagging.entrypoints.server`.
+
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/media_tagging/tag' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "gemini",
+    "media_type": "IMAGE",
+    "media_paths": [
+      "image1.png",
+      "image2.png"
+    ]
+  }'
+```
+///
 
 #### n_tags
 
@@ -108,6 +133,31 @@ result = media_tagger.tag_media(
 )
 
 result.save(output='tagging_results', writer='csv')
+```
+///
+
+
+/// tab | curl
+
+> Start API by running `python -m media_tagging.entrypoints.server`.
+
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/media_tagging/tag' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "gemini",
+    "media_type": "IMAGE",
+    "media_paths": [
+      "image1.png",
+      "image2.png"
+    ],
+    "tagging_options": {
+      "n_tags": 100
+    }
+    "
+  }'
 ```
 ///
 
@@ -143,6 +193,30 @@ result.save(output='tagging_results', writer='csv')
 ```
 ///
 
+/// tab | curl
+
+> Start API by running `python -m media_tagging.entrypoints.server`.
+
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/media_tagging/tag' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "gemini",
+    "media_type": "IMAGE",
+    "media_paths": [
+      "image1.png",
+      "image2.png"
+    ],
+    "tagging_options": {
+      "tags": "cat,dog,human"
+    }
+    "
+  }'
+```
+///
+
 ### Describe media
 
 Description answer the question *"What this media is about?"*.
@@ -173,6 +247,26 @@ result.save(output='description_results', writer='csv')
 ```
 ///
 
+/// tab | curl
+
+> Start API by running `python -m media_tagging.entrypoints.server`.
+
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/media_tagging/describe' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "gemini",
+    "media_type": "IMAGE",
+    "media_paths": [
+      "image1.png",
+      "image2.png"
+    ]
+    "
+  }'
+```
+///
 
 #### custom_prompt
 
@@ -205,6 +299,30 @@ result = media_tagger.describe_media(
 )
 
 result.save(output='tagging_results', writer='csv')
+```
+///
+
+/// tab | curl
+
+> Start API by running `python -m media_tagging.entrypoints.server`.
+
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/media_tagging/describe' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "gemini",
+    "media_type": "IMAGE",
+    "media_paths": [
+      "image1.png",
+      "image2.png"
+    ],
+    "tagging_options": {
+      "custom_prompt": "Is this an advertising? Answer only True or False"
+    }
+    "
+  }'
 ```
 ///
 
@@ -250,6 +368,31 @@ result.save(output='tagging_results', writer='csv')
 ```
 ///
 
+/// tab | curl
+
+> Start API by running `python -m media_tagging.entrypoints.server`.
+
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/media_tagging/describe' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "gemini",
+    "media_type": "IMAGE",
+    "media_paths": [
+      "image1.png",
+      "image2.png"
+    ],
+    "tagging_options": {
+      "custom_prompt": "Is this an advertising? Answer only True or False",
+      "custom_schema": "schema.json"
+    }
+    "
+  }'
+```
+///
+
 ### Common tagger parameters
 
 All the taggers support the following parameters.
@@ -285,5 +428,29 @@ result = media_tagger.tag_media(
 )
 
 result.save(output='tagging_results', writer='csv')
+```
+///
+
+/// tab | curl
+
+> Start API by running `python -m media_tagging.entrypoints.server`.
+
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/media_tagging/tag' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "gemini",
+    "media_type": "IMAGE",
+    "media_paths": [
+      "image1.png",
+      "image2.png"
+    ],
+    "tagging_options": {
+      "n_runs": 10
+    }
+    "
+  }'
 ```
 ///

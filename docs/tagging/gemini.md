@@ -64,6 +64,24 @@ result = media_tagger.tag_media(
 
 result.save(output='tagging_results', writer='csv')
 ```
+///
+
+/// tab | curl
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/media_tagging/tag' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "gemini",
+    "media_type": "IMAGE",
+    "media_paths": [
+      "image1.png",
+      "image2.png"
+    ]
+  }'
+```
+///
 
 ## Tagger customizations
 
@@ -98,5 +116,27 @@ result = media_tagger.tag_media(
 )
 
 result.save(output='tagging_results', writer='csv')
+```
+///
+
+/// tab | curl
+
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/media_tagging/tag' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "gemini",
+    "media_type": "VIDEO",
+    "media_paths": [
+      "video1.mp4",
+      "video2.mp4"
+    ],
+    "tagging_options": {
+      "fps": 5
+    }
+    "
+  }'
 ```
 ///
