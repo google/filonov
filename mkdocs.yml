@@ -29,6 +29,7 @@ theme:
     - navigation.path
     - content.code.select
     - content.code.copy
+    - content.tabs.link
 markdown_extensions:
   - md_in_html
   - attr_list
