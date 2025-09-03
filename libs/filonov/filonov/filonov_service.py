@@ -110,9 +110,9 @@ class FilonovService:
 
   def __init__(
     self,
-    fetching_service: media_fetching.MediaFetchingService,
-    tagging_service: media_tagging.MediaTaggingService,
-    similarity_service: media_similarity.MediaSimilarityService,
+    fetching_service: media_fetching.MediaFetchingService | None = None,
+    tagging_service: media_tagging.MediaTaggingService | None = None,
+    similarity_service: media_similarity.MediaSimilarityService | None = None,
   ) -> None:
     """Initializes FilonovService."""
     self.fetching_service = fetching_service
@@ -140,7 +140,13 @@ class FilonovService:
     Raises:
       FilonovError: When not tagging data are found.
     """
-    media_data = self.fetching_service.fetch(
+    if not request.tagger and not self.tagging_service:
+      raise exceptions.FilonovError(
+        'Failed to get tagging results from DB. MediaTaggingService missing.'
+      )
+    if not (fetching_service := self.fetching_service):
+      fetching_service = media_fetching.MediaFetchingService(request.source)
+    media_data = fetching_service.fetch(
       request.source_parameters, request.context
     )
     media_info = creative_map.convert_report_to_media_info(
@@ -151,9 +157,11 @@ class FilonovService:
       modules=request.source_parameters.extra_info,
     )
     media_urls = {media.media_path for media in media_info.values()}
+    if not (tagging_service := self.tagging_service):
+      tagging_service = media_tagging.MediaTaggingService()
     if not request.tagger:
       logger.info('Tagger not specified, getting data from DB')
-      tagging_response = self.tagging_service.get_media(
+      tagging_response = tagging_service.get_media(
         MediaFetchingRequest(
           media_type=request.media_type,
           media_paths=list(media_urls),
@@ -162,9 +170,9 @@ class FilonovService:
         )
       )
       if not tagging_response:
-        raise exceptions.FilonovError('Failed to get tagging results from DB')
+        raise exceptions.FilonovError('No tagging data found in DB.')
     else:
-      tagging_response = self.tagging_service.tag_media(
+      tagging_response = tagging_service.tag_media(
         MediaTaggingRequest(
           tagger_type=request.tagger,
           media_type=request.media_type,
@@ -180,6 +188,12 @@ class FilonovService:
         'Failed to perform media tagging for the context: '
         f'{request.source_parameters}'
       )
+    if not (similarity_service := self.similarity_service):
+      similarity_service = (
+        media_similarity.MediaSimilarityService.from_connection_string(
+          tagging_service.repo.db_url
+        )
+      )
     clustering_request = media_similarity.MediaClusteringRequest(
       media_paths=media_urls,
       media_type=request.media_type,
@@ -190,9 +204,7 @@ class FilonovService:
       algorithm=request.similarity_parameters.algorithm,
       parallel_threshold=request.parallel_threshold,
     )
-    clustering_results = self.similarity_service.cluster_media(
-      clustering_request
-    )
+    clustering_results = similarity_service.cluster_media(clustering_request)
     logger.info('Generating creative map...')
     if trim_threshold := request.trim_tags_threshold:
       tagging_response.trim(trim_threshold)
