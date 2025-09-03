@@ -109,7 +109,7 @@ def main():
     tagging_options=extra_parameters.get('tagger'),
     parallel_threshold=args.parallel_threshold,
   )
-  path_processor = request.tagging_options.get('path_processor')
+  path_processor = extra_parameters.get('tagger', {}).get('path_processor')
   if args.action == 'tag':
     tagging_results = tagging_service.tag_media(request, path_processor)
   else:
