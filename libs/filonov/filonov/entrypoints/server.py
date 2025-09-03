@@ -14,14 +14,12 @@
 """Provides HTTP endpoint for filonov requests."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
-import json
 from typing import Literal
 
 import fastapi
 import media_fetching
 import media_similarity
 import media_tagging
-import smart_open
 import uvicorn
 from media_similarity.entrypoints.server import (
   router as media_similarity_router,
@@ -152,8 +150,7 @@ def generate_creative_map(
     destination = utils.build_creative_map_destination(
       request.output_parameters.output_name
     )
-    with smart_open.open(destination, 'w', encoding='utf-8') as f:
-      json.dump(generated_map, f)
+    generated_map.save(destination)
     return fastapi.responses.JSONResponse(
       content=f'Creative map was saved to {destination}.'
     )

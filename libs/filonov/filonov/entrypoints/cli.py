@@ -16,14 +16,12 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import argparse
-import json
 import sys
 from typing import get_args
 
 import media_fetching
 import media_similarity
 import media_tagging
-import smart_open
 from garf_executors.entrypoints import utils as garf_utils
 from media_tagging import media
 
@@ -160,8 +158,7 @@ def main():  # noqa: D103
   destination = utils.build_creative_map_destination(
     request.output_parameters.output_name
   )
-  with smart_open.open(destination, 'w', encoding='utf-8') as f:
-    json.dump(generated_map.to_json(), f)
+  generated_map.save(destination)
 
 
 if __name__ == '__main__':

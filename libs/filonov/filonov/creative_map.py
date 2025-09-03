@@ -18,13 +18,16 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import operator
+import os
 from collections.abc import Mapping, Sequence
 from typing import Any, TypeAlias, TypedDict
 
 import numpy as np
 import pydantic
+import smart_open
 from garf_core import report
 from media_similarity import media_similarity_service
 from media_tagging import media, tagging_result
@@ -169,6 +172,11 @@ class CreativeMap:
       'nodes': self.nodes,
       'edges': self.edges,
     }
+
+  def save(self, path: str | os.PathLike[str]) -> None:
+    """Saves map to a json file."""
+    with smart_open.open(path, 'w', encoding='utf-8') as f:
+      json.dump(self.to_json(), f)
 
 
 def convert_report_to_media_info(
