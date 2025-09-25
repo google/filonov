@@ -98,6 +98,7 @@ class DisplayAssetPerformance(PerformanceQuery):
     ad_group_ad.ad.type = IMAGE_AD
     AND campaign.advertising_channel_type = DISPLAY
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
+    AND ad_group_ad.ad.image_ad.image_url != ''
     AND metrics.cost_micros > {min_cost}
   """
 
@@ -137,6 +138,7 @@ class VideoPerformance(PerformanceQuery):
   WHERE
     campaign.advertising_channel_type = VIDEO
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
+    AND video.id != ''
     AND metrics.cost_micros > {min_cost}
   """
 
@@ -176,6 +178,7 @@ class PmaxAssetPerformance(PerformanceQuery):
   WHERE
     asset.type = {media_type}
     AND campaign.advertising_channel_type = PERFORMANCE_MAX
+    AND {media_url} != ''
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
   """
 
@@ -236,6 +239,7 @@ class SearchAssetPerformance(PerformanceQuery):
   WHERE
     campaign.advertising_channel_type =  SEARCH
     AND asset.type = TEXT
+    AND asset.text_asset.text != ''
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
     AND metrics.cost_micros > {min_cost}
   """
@@ -277,6 +281,7 @@ class DemandGenTextAssetPerformance(PerformanceQuery):
   WHERE
     campaign.advertising_channel_type =  DEMAND_GEN
     AND asset.type = TEXT
+    AND asset.text_asset.text != ''
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
     AND metrics.cost_micros > {min_cost}
   """
@@ -323,6 +328,7 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
       BUSINESS_LOGO, LANDSCAPE_LOGO,  LOGO
     )
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
+    AND asset.image_asset.full_size.url != ''
     AND metrics.cost_micros > {min_cost}
   """
 
@@ -361,6 +367,7 @@ class DemandGenVideoAssetPerformance(PerformanceQuery):
   WHERE
     campaign.advertising_channel_type =  DEMAND_GEN
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
+    AND video.id != ''
     AND metrics.cost_micros > {min_cost}
   """
 
@@ -402,6 +409,7 @@ class AppAssetPerformance(PerformanceQuery):
     campaign.advertising_channel_type = MULTI_CHANNEL
     AND asset.type = {media_type}
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
+    AND {media_url} != ''
     AND metrics.cost_micros > {min_cost}
   """
 
