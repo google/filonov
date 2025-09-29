@@ -12,20 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=C0330, g-bad-import-order, g-multiple-import
+import pytest
+from media_tagging import media
+from media_tagging.taggers.llm.gemini import tagging_strategies as ts
 
-"""Performs tagging of media based on various taggers.
 
-Media can be images, videos, urls, texts.
-"""
+class TestGeminiTaggingStrategy:
+  @pytest.fixture
+  def strategy(self):
+    return ts.TextTaggingStrategy(
+      model_name='models/gemini-2.5-flash',
+      model_parameters=ts.GeminiModelParameters(),
+    )
 
-from media_tagging.media_tagging_service import (
-  MediaTaggingRequest,
-  MediaTaggingService,
-)
+  def test_tag_raises_error_for_webpage_type(self, strategy):
+    medium = media.Medium(
+      media_path='example.com', media_type=media.MediaTypeEnum.WEBPAGE
+    )
 
-__all__ = [
-  'MediaTaggingService',
-  'MediaTaggingRequest',
-]
-__version__ = '1.6.0'
+    with pytest.raises(ts.GeminiTaggingError):
+      strategy.tag(medium)

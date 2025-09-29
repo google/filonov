@@ -44,6 +44,7 @@ class MediaTypeEnum(enum.Enum):
   VIDEO = 2
   YOUTUBE_VIDEO = 3
   TEXT = 4
+  WEBPAGE = 5
 
   @classmethod
   def options(cls) -> list[str]:
@@ -91,7 +92,7 @@ class Medium:
   @property
   def content(self) -> bytes:
     """Content of media as bytes."""
-    if self.type == MediaTypeEnum.TEXT:
+    if self.type in (MediaTypeEnum.TEXT, MediaTypeEnum.WEBPAGE):
       return self._media_path
     if self._content or (
       self.type == MediaTypeEnum.YOUTUBE_VIDEO
@@ -138,6 +139,8 @@ def convert_path_to_media_name(
   """Extracts file name without extension."""
   if isinstance(media_type, str):
     media_type = MediaTypeEnum[media_type.upper()]
+  if media_type == MediaTypeEnum.WEBPAGE:
+    return media_path
   if media_type == MediaTypeEnum.YOUTUBE_VIDEO and not media_path.endswith(
     _SUPPORTED_VIDEO_FILE_EXTENSIONS
   ):
