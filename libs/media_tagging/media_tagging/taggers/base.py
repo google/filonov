@@ -28,6 +28,10 @@ import tenacity
 
 from media_tagging import exceptions, media, tagging_result
 
+CustomSchema = (
+  str | os.PathLike[str] | Dict[str, Any] | type[pydantic.BaseModel]
+)
+
 
 class TaggingOptions(pydantic.BaseModel):
   """Specifies options to refine media tagging.
@@ -47,7 +51,7 @@ class TaggingOptions(pydantic.BaseModel):
   n_tags: int | None = None
   tags: str | Sequence[str] | None = None
   custom_prompt: str | os.PathLike[str] | None = None
-  custom_schema: str | os.PathLike[str] | Dict[str, Any] | None = None
+  custom_schema: CustomSchema | None = None
   no_schema: str | bool = False
 
   def model_post_init(self, __context):  # noqa: D105
@@ -66,6 +70,12 @@ class TaggingOptions(pydantic.BaseModel):
 
     if isinstance(self.no_schema, str):
       self.no_schema = self.no_schema.lower() in ['true', '1']
+
+  @pydantic.field_serializer('custom_schema')
+  def serialize_custom_schema(self, custom_schema: CustomSchema, _info):
+    if issubclass(custom_schema, pydantic.BaseModel):
+      return custom_schema.__name__
+    return custom_schema
 
   def dict(self):
     """Converts TaggingOptions to dict."""

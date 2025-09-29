@@ -14,30 +14,52 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
+import pathlib
+
+import pydantic
 import pytest
 from media_tagging.taggers import base
 
 
-def test_tagging_options_custom_prompt_from_string_returns_success():
-  test_prompt = 'test prompt'
-  options = base.TaggingOptions(custom_prompt=test_prompt)
-
-  assert options.custom_prompt == test_prompt
+class SampleSchema(pydantic.BaseModel):
+  element: str
 
 
-def test_tagging_options_custom_prompt_from_file_returns_success(tmp_path):
-  test_prompt = 'test prompt'
-  prompt_file = tmp_path / 'prompt.txt'
+class TestTaggingOptions:
+  def test_tagging_options_custom_prompt_from_string_returns_success(self):
+    test_prompt = 'test prompt'
+    options = base.TaggingOptions(custom_prompt=test_prompt)
 
-  with open(prompt_file, 'w') as f:
-    f.write(test_prompt)
+    assert options.custom_prompt == test_prompt
 
-  options = base.TaggingOptions(custom_prompt=prompt_file)
+  def test_tagging_options_custom_prompt_from_file_returns_success(
+    self, tmp_path
+  ):
+    test_prompt = 'test prompt'
+    prompt_file = tmp_path / 'prompt.txt'
 
-  assert options.custom_prompt == test_prompt
+    with open(prompt_file, 'w') as f:
+      f.write(test_prompt)
 
+    options = base.TaggingOptions(custom_prompt=prompt_file)
 
-def test_tagging_options_custom_prompt_from_file_raises_error():
-  test_prompt = 'test_prompt.txt'
-  with pytest.raises(FileNotFoundError):
-    base.TaggingOptions(custom_prompt=test_prompt)
+    assert options.custom_prompt == test_prompt
+
+  def test_tagging_options_custom_prompt_from_file_raises_error(self):
+    test_prompt = 'test_prompt.txt'
+    with pytest.raises(FileNotFoundError):
+      base.TaggingOptions(custom_prompt=test_prompt)
+
+  @pytest.mark.parametrize(
+    'schema,serialized',
+    [
+      (SampleSchema, 'SampleSchema'),
+      ({'type': 'STRING'}, {'type': 'STRING'}),
+      (pathlib.Path(__file__).parent / 'test-schema.json', {'type': 'STRING'}),
+    ],
+  )
+  def test_tagging_options_custom_schema_returns_correct_serializer(
+    self, schema, serialized
+  ):
+    options = base.TaggingOptions(custom_schema=schema)
+    assert options.dict().get('custom_schema') == serialized

@@ -29,18 +29,18 @@ class TestMediaTaggingService:
   def test_tag_media_saves_tagging_results_to_repository(self, service, mocker):
     expected_result = tagging_result.TaggingResult(
       identifier='test',
-      tagger='google-cloud',
+      tagger='gemini',
       output='tag',
       type='image',
       content=tagging_result.Description(text='Test description.'),
     )
     mocker.patch(
-      'media_tagging.taggers.google_cloud.tagger.GoogleCloudTagger.tag',
+      'media_tagging.taggers.llm.gemini.tagger.GeminiTagger.tag',
       return_value=expected_result,
     )
     test_tagging_result = service.tag_media(
       media_tagging_service.MediaTaggingRequest(
-        tagger_type='google-cloud',
+        tagger_type='gemini',
         media_type='IMAGE',
         media_paths=['test'],
         parallel_threshold=0,
