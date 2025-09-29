@@ -28,7 +28,7 @@ import tenacity
 from google import genai
 from typing_extensions import override
 
-from media_tagging import media, tagging_result
+from media_tagging import exceptions, media, tagging_result
 from media_tagging.taggers import base
 from media_tagging.taggers.llm import utils
 
@@ -38,6 +38,10 @@ MAX_NUMBER_LLM_TAGS: Final[int] = 10
 logging.getLogger('google_genai.models').setLevel(logging.WARNING)
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('google_genai._api_client').setLevel(logging.ERROR)
+
+
+class GeminiTaggingError(exceptions.MediaTaggingError):
+  """Handles gemini specific errors during tagging."""
 
 
 class GeminiModelParameters(pydantic.BaseModel):
@@ -140,9 +144,11 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     logging.debug('Tagging %s "%s"', medium.type, medium.name)
     prompt = self.build_prompt(medium.type, output, tagging_options)
     media_content = self.build_content(medium, **tagging_options.model_dump())
-    prompt_config = genai.types.GenerateContentConfig(
-      response_mime_type='application/json',
-    )
+    prompt_config = genai.types.GenerateContentConfig()
+    if medium.type == media.MediaTypeEnum.WEBPAGE:
+      prompt_config.tools = [{'url_context': {}}]
+    else:
+      prompt_config.response_mime_type = 'application/json'
     if not tagging_options.no_schema:
       prompt_config.response_schema = (
         tagging_options.custom_schema or self.get_response_schema(output)
@@ -150,8 +156,8 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     response = self.client.models.generate_content(
       model=self.model_name,
       contents=[
-        media_content,
         prompt,
+        media_content,
       ],
       config=prompt_config,
     )
@@ -182,6 +188,8 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       tagging_options=tagging_options,
     )
     self._prompt = prompt.format(**parameters)
+    if media_type == media.MediaTypeEnum.WEBPAGE:
+      self._prompt += '{url}'
     return self._prompt
 
   @override
@@ -191,6 +199,10 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     tagging_options: base.TaggingOptions = base.TaggingOptions(),
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
+    if medium.type == media.MediaTypeEnum.WEBPAGE:
+      raise GeminiTaggingError(
+        'Tagging is not supported for WEBPAGE media type'
+      )
     if not tagging_options:
       tagging_options.n_tags = MAX_NUMBER_LLM_TAGS
     result = self.get_llm_response(medium, tagging_result.Tag, tagging_options)
@@ -216,7 +228,10 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       medium, tagging_result.Description, tagging_options
     )
 
-    description = json.loads(result.text)
+    if medium.type == media.MediaTypeEnum.WEBPAGE:
+      description = {'text': result.text}
+    else:
+      description = json.loads(result.text)
     if not tagging_options.no_schema and not tagging_options.custom_schema:
       description = description.get('text')
     if isinstance(description, Mapping):

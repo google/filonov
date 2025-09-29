@@ -25,6 +25,10 @@ from media_tagging.taggers.llm.gemini import tagging_strategies as ts
 DEFAULT_GEMINI_MODEL: Final[str] = 'models/gemini-2.0-flash'
 
 
+class GeminiTaggerError(base.TaggerError):
+  """Gemini specific exception."""
+
+
 class GeminiTagger(base.BaseTagger):
   """Tags media via Gemini."""
 
@@ -75,10 +79,18 @@ class GeminiTagger(base.BaseTagger):
       media.MediaTypeEnum.IMAGE: ts.ImageTaggingStrategy,
       media.MediaTypeEnum.VIDEO: ts.VideoTaggingStrategy,
       media.MediaTypeEnum.YOUTUBE_VIDEO: ts.YouTubeVideoTaggingStrategy,
+      media.MediaTypeEnum.WEBPAGE: ts.TextTaggingStrategy,
     }
     if not (tagging_strategy := tagging_strategies.get(media_type)):
-      raise base.TaggerError(
+      raise GeminiTaggerError(
         f'There are no supported taggers for media type: {media_type.name}'
+      )
+    if (
+      media_type == media.MediaTypeEnum.WEBPAGE
+      and 'gemini-2.5' not in self.model_name
+    ):
+      raise GeminiTaggerError(
+        'Working with WEBPAGE media type works with gemini-2.5 models only'
       )
     return tagging_strategy(
       model_name=self.model_name,

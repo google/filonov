@@ -55,3 +55,10 @@ class TestMedium:
       media_path=test_media_path, media_type=media.MediaTypeEnum.UNKNOWN
     )
     assert test_medium.name == 'test_image'
+
+  def test_media_name_inferred_correctly_from_webpage(self):
+    test_media_path = 'https://github.com/google/filonov'
+    test_medium = media.Medium(
+      media_path=test_media_path, media_type=media.MediaTypeEnum.WEBPAGE
+    )
+    assert test_medium.name == test_media_path
