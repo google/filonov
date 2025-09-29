@@ -19,7 +19,6 @@ dist
 .python-version
 work/
 target
-libs/**/*.json
 libs/**/*.csv
 libs/**/*.pickle
 libs/**/.env

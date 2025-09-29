@@ -30,6 +30,7 @@ class FakeVisionAPIResponse:
   label_annotations: list[vision.EntityAnnotation]
 
 
+@pytest.mark.cloud
 class FakeVideoIntelligenceAPIOperation:
   def result(
     self, timeout: int | None = None
@@ -49,6 +50,7 @@ class FakeVideoIntelligenceAPIOperation:
     )
 
 
+@pytest.mark.cloud
 class TestGoogleCloudTagger:
   def test_tag_returns_correct_tagging_result_for_image(self, mocker):
     media_type = media.MediaTypeEnum.IMAGE
@@ -64,7 +66,7 @@ class TestGoogleCloudTagger:
       'google.cloud.vision.ImageAnnotatorClient.label_detection',
       return_value=fake_response,
     )
-    test_tagger = tagger.GoogleCloudTagger()
+    test_tagger = tagger.GoogleCloudTagger(project='test')
     result = test_tagger.tag(media.Medium('test', media_type))
     expected_result = tagging_result.TaggingResult(
       identifier='test',
@@ -89,7 +91,7 @@ class TestGoogleCloudTagger:
       'google.cloud.videointelligence.VideoIntelligenceServiceClient.annotate_video',
       return_value=fake_response,
     )
-    test_tagger = tagger.GoogleCloudTagger()
+    test_tagger = tagger.GoogleCloudTagger(project='test')
     result = test_tagger.tag(media.Medium('test', media_type))
     expected_result = tagging_result.TaggingResult(
       identifier='test',
@@ -104,11 +106,11 @@ class TestGoogleCloudTagger:
 
   def test_tag_raises_tagger_error_on_unsupported_media_type(self):
     media_type = media.MediaTypeEnum.YOUTUBE_VIDEO
-    test_tagger = tagger.GoogleCloudTagger()
+    test_tagger = tagger.GoogleCloudTagger(project='test')
     with pytest.raises(base.TaggerError):
       test_tagger.tag(media.Medium('test', media_type))
 
   def test_init_raises_unsupported_method_error_on_describe(self):
-    test_tagger = tagger.GoogleCloudTagger()
+    test_tagger = tagger.GoogleCloudTagger(project='test')
     with pytest.raises(base.UnsupportedMethodError):
       test_tagger.describe(media.Medium('test', media.MediaTypeEnum.IMAGE))
