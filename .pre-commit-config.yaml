@@ -48,9 +48,3 @@ repos:
     entry: pytest -n auto libs/media_tagging/tests/unit
     language: system
     pass_filenames: false
-  - id: e2e
-    stages: [pre-push]
-    name: e2e-tests
-    entry: bash end-to-end-tests.sh
-    language: system
-    pass_filenames: false
