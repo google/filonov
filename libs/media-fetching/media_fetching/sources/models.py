@@ -22,7 +22,7 @@ from typing import Literal
 import pydantic
 from garf_core import report
 
-InputSource = Literal['googleads', 'youtube', 'file', 'bq', 'sqldb']
+InputSource = Literal['googleads', 'youtube', 'file', 'bq', 'sqldb', 'fake']
 
 
 class FetchingParameters(pydantic.BaseModel):

@@ -41,11 +41,11 @@ class TableFetchingParameters(models.FetchingParameters):
   def query_text(self) -> str:
     fields = f'{self.media_identifier}, {self.media_name}'
     if self.metrics:
-      metrics = f'{', '.join(self.metrics)}'
+      metrics = ', '.join(self.metrics)
       if metrics:
         fields = f'{fields}, {metrics}'
     if self.segments:
-      segments = f'{', '.join(self.segments)}'
+      segments = ', '.join(self.segments)
       if segments:
         fields = f'{fields}, {segments}'
     return f'SELECT {fields} FROM {self.table}'
