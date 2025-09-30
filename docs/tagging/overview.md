@@ -1,4 +1,5 @@
 [![PyPI](https://img.shields.io/pypi/v/media-tagging?logo=pypi&logoColor=white&style=flat-square)](https://pypi.org/project/media-tagging)
+[![Downloads PyPI](https://img.shields.io/pypi/dw/media-tagging?logo=pypi)](https://pypi.org/project/media-tagging/)
 [![Open in Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google/filonov/blob/main/libs/media_tagging/media_tagging_demo.ipynb)
 
 `media-tagger` performs tagging of [supported media](/media.md) based on various taggers.
@@ -74,11 +75,12 @@ import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
 
-result = media_tagger.tag_media(
+request = media_tagging.MediaTaggingRequest(
   media_type='IMAGE',
   media_paths=['image1.png', 'image2.png'],
   tagger_type='gemini',
 )
+result = media_tagger.tag_media(request)
 
 result.save(output='tagging_results', writer='csv')
 ```
@@ -124,13 +126,14 @@ media-tagger tag MEDIA_PATHs \
 import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
-
-result = media_tagger.tag_media(
+request = media_tagging.MediaTaggingRequest(
   media_type='IMAGE',
   media_paths=['image1.png', 'image2.png'],
   tagger_type='gemini',
   tagging_options={'n_tags': 100},
 )
+
+result = media_tagger.tag_media(request)
 
 result.save(output='tagging_results', writer='csv')
 ```
@@ -181,13 +184,14 @@ media-tagger tag MEDIA_PATHs \
 import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
-
-result = media_tagger.tag_media(
+request = media_tagging.MediaTaggingRequest(
   media_type='IMAGE',
   media_paths=['image1.png', 'image2.png'],
   tagger_type='gemini',
   tagging_options={'tags': ['cat', 'dog', 'human']},
 )
+
+result = media_tagger.tag_media(request)
 
 result.save(output='tagging_results', writer='csv')
 ```
@@ -237,11 +241,12 @@ import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
 
-result = media_tagger.describe_media(
+request = media_tagging.MediaTaggingRequest(
+  media_type='IMAGE',
   media_paths=['image1.png', 'image2.png'],
   tagger_type='gemini',
-  media_type='IMAGE',
 )
+result = media_tagger.describe_media(request)
 
 result.save(output='description_results', writer='csv')
 ```
@@ -288,8 +293,7 @@ media-tagger describe MEDIA_PATHs \
 import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
-
-result = media_tagger.describe_media(
+request = media_tagging.MediaTaggingRequest(
   media_type='IMAGE',
   media_paths=['image1.png', 'image2.png'],
   tagger_type='gemini',
@@ -297,6 +301,8 @@ result = media_tagger.describe_media(
     'custom_prompt': 'Is this an advertising? Answer only True or False'
   },
 )
+
+result = media_tagger.describe_media(request)
 
 result.save(output='tagging_results', writer='csv')
 ```
@@ -353,8 +359,7 @@ class CustomSchema(pydantic.BaseModel):
 
 
 media_tagger = media_tagging.MediaTaggingService()
-
-result = media_tagger.describe_media(
+request = media_tagging.MediaTaggingRequest(
   media_type='IMAGE',
   media_paths=['image1.png', 'image2.png'],
   tagger_type='gemini',
@@ -363,6 +368,8 @@ result = media_tagger.describe_media(
     'custom_schema': CustomSchema,
   },
 )
+
+result = media_tagger.describe_media(request)
 
 result.save(output='tagging_results', writer='csv')
 ```
@@ -417,8 +424,7 @@ media-tagger tag MEDIA_PATHs \
 import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
-
-result = media_tagger.tag_media(
+request = media_tagging.MediaTaggingRequest(
   media_type='IMAGE',
   media_paths=['image1.png', 'image2.png'],
   tagger_type='gemini',
@@ -426,6 +432,8 @@ result = media_tagger.tag_media(
     'n_runs': 10,
   },
 )
+
+result = media_tagger.tag_media(request)
 
 result.save(output='tagging_results', writer='csv')
 ```

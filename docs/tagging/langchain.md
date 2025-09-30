@@ -1,3 +1,5 @@
+[![PyPI](https://img.shields.io/pypi/v/media-tagging-langchain?logo=pypi&logoColor=white&style=flat-square)](https://pypi.org/project/media-tagging-langchain)
+[![Downloads PyPI](https://img.shields.io/pypi/dw/media-tagging-langchain?logo=pypi)](https://pypi.org/project/media-tagging-langchain/)
 # Tagging media with Langchain
 
 If you're working with images you can use the multimodal LLMs supported by Langchain.
@@ -5,6 +7,10 @@ If you're working with images you can use the multimodal LLMs supported by Langc
 ## Prerequisites
 
 * A concrete Langchain library installed and configured
+
+## Supported media
+
+* IMAGE
 
 
 ## Installation
@@ -50,7 +56,7 @@ import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
 
-result = media_tagger.tag_media(
+request = media_tagging.MediaTaggingRequest(
   media_type='IMAGE',
   media_paths=['image1.png', 'image2.png'],
   tagger_type='langchain',
@@ -58,6 +64,8 @@ result = media_tagger.tag_media(
     'llm_class_name': 'langchain_google_genai.ChatGoogleGenerativeAI',
   }
 )
+
+result = media_tagger.tag_media(request)
 
 result.save(output='tagging_results', writer='csv')
 ```

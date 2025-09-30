@@ -5,6 +5,12 @@
 - A GCP project with billing account attached
 - [Video Intelligence API](https://console.cloud.google.com/apis/library/videointelligence.googleapis.com) and [Vision API](https://console.cloud.google.com/apis/library/vision.googleapis.com) enabled.
 
+## Supported media
+
+* IMAGE
+* VIDEO
+
+
 ## Installation
 
 /// tab | pip
@@ -27,7 +33,8 @@ pip install media-tagging[server]
 
 ## Usage
 
-`google-cloud` tagger only supports `tag` command.
+!!! important
+    `google-cloud` tagger only supports `tag` command.
 
 /// tab | cli
 
@@ -43,12 +50,13 @@ media-tagger tag MEDIA_PATHs \
 import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
-
-result = media_tagger.tag_media(
+request = media_tagging.MediaTaggingRequest(
   media_type='IMAGE',
   media_paths=['image1.png', 'image2.png'],
   tagger_type='google-cloud',
 )
+
+result = media_tagger.tag_media(request)
 
 result.save(output='tagging_results', writer='csv')
 ```

@@ -15,6 +15,7 @@ Each media consist of several elements:
 * VIDEO
 * TEXT
 * YOUTUBE_VIDEO
+* WEBPAGE
 
 
-Media can be located somewhere (local file, GCS / S3 bucket, URL) or present as it (i.e. text).
+Media can be located somewhere (local file, GCS / S3 bucket, URL) or present as is (i.e. text, page url).

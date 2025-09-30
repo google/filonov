@@ -1,6 +1,7 @@
-# Installing filonov
-
 [![PyPI](https://img.shields.io/pypi/v/filonov?logo=pypi&logoColor=white&style=flat-square)](https://pypi.org/project/filonov)
+[![Downloads PyPI](https://img.shields.io/pypi/dw/filonov?logo=pypi)](https://pypi.org/project/filonov/)
+
+# Installing filonov
 
 ## Create and activate virtual environment
 
