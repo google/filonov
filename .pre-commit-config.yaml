@@ -43,8 +43,13 @@ repos:
     - id: ruff-format
 - repo: local
   hooks:
-  - id: pytest-check
-    name: pytest-check
+  - id: tagging-tests
+    name: tagging-tests
     entry: pytest -n auto libs/media_tagging/tests/unit
+    language: system
+    pass_filenames: false
+  - id: similarity-tests
+    name: similarity-tests
+    entry: pytest -n auto libs/media_similarity/tests/unit
     language: system
     pass_filenames: false

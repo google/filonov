@@ -14,16 +14,41 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-from media_similarity import adaptive_threshold, media_pair
+from media_similarity import adaptive_threshold
+from media_similarity.media_pair import SimilarityPair, SimilarityScore
 
-similarity_pairs = {
-  media_pair.SimilarityPair(('media_1', 'media_2'), 0),
-  media_pair.SimilarityPair(('media_2', 'media_3'), 1),
-  media_pair.SimilarityPair(('media_1', 'media_3'), 3),
-  media_pair.SimilarityPair(('media_1', 'media_4'), 10),
-  media_pair.SimilarityPair(('media_2', 'media_4'), 10),
-  media_pair.SimilarityPair(('media_3', 'media_4'), 10),
-}
+similarity_pairs = [
+  SimilarityPair(
+    tagger='gemini',
+    media=('media_1', 'media_2'),
+    similarity_score=SimilarityScore(score=0),
+  ),
+  SimilarityPair(
+    tagger='gemini',
+    media=('media_2', 'media_3'),
+    similarity_score=SimilarityScore(score=1),
+  ),
+  SimilarityPair(
+    tagger='gemini',
+    media=('media_1', 'media_3'),
+    similarity_score=SimilarityScore(score=3),
+  ),
+  SimilarityPair(
+    tagger='gemini',
+    media=('media_1', 'media_4'),
+    similarity_score=SimilarityScore(score=10),
+  ),
+  SimilarityPair(
+    tagger='gemini',
+    media=('media_2', 'media_4'),
+    similarity_score=SimilarityScore(score=10),
+  ),
+  SimilarityPair(
+    tagger='gemini',
+    media=('media_3', 'media_4'),
+    similarity_score=SimilarityScore(score=10),
+  ),
+]
 
 
 def test_compute_adaptive_threshold_returns_correct_result():
@@ -31,5 +56,5 @@ def test_compute_adaptive_threshold_returns_correct_result():
     similarity_pairs, normalize=True
   )
   assert computed_threshold == adaptive_threshold.AdaptiveThreshold(
-    3.3, len(similarity_pairs)
+    14.51, len(similarity_pairs)
   )
