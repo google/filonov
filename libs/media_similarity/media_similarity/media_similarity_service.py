@@ -70,11 +70,12 @@ class MediaClusteringRequest(pydantic.BaseModel):
     custom_threshold: Optional threshold to pre-filter similar media.
     parallel_threshold:
       Number of parallel process for tagging / similarity detection.
+    tagging_response: Optional results of tagging.
 
   """
 
-  media_paths: list[str]
   media_type: str
+  media_paths: list[str] | None = None
   tagger_type: str | None = 'gemini'
   tagging_options: base_tagger.TaggingOptions = base_tagger.TaggingOptions(
     n_tags=100
@@ -82,6 +83,9 @@ class MediaClusteringRequest(pydantic.BaseModel):
   normalize: bool = True
   custom_threshold: float | None = None
   parallel_threshold: int = 10
+  tagging_response: (
+    media_tagging.media_tagging_service.MediaTaggingResponse | None
+  ) = None
 
 
 class ClusteringResults(pydantic.BaseModel):
@@ -276,30 +280,35 @@ class MediaSimilarityService:
         'normalize': request.normalize,
       },
     )
-    if not request.tagger_type:
-      tagging_response = self.tagging_service.get_media(
-        media_tagging.media_tagging_service.MediaFetchingRequest(
-          media_type=request.media_type,
-          media_paths=request.media_paths,
-          output='tag',
+    if not request.media_paths and not request.tagging_response:
+      raise exceptions.MediaSimilarityError(
+        'Provide either media urls or tagging response.'
+      )
+    if not (tagging_response := request.tagging_response):
+      if not request.tagger_type:
+        tagging_response = self.tagging_service.get_media(
+          media_tagging.media_tagging_service.MediaFetchingRequest(
+            media_type=request.media_type,
+            media_paths=request.media_paths,
+            output='tag',
+          )
         )
-      )
-    else:
-      path_processor = (
-        request.tagging_options.path_processor
-        if hasattr(request.tagging_options, 'path_processor')
-        else None
-      )
-      tagging_response = self.tagging_service.tag_media(
-        media_tagging.MediaTaggingRequest(
-          tagger_type=request.tagger_type,
-          tagging_options=request.tagging_options,
-          media_type=request.media_type,
-          media_paths=request.media_paths,
-          deduplicate=True,
-        ),
-        path_processor=path_processor,
-      )
+      else:
+        path_processor = (
+          request.tagging_options.path_processor
+          if hasattr(request.tagging_options, 'path_processor')
+          else None
+        )
+        tagging_response = self.tagging_service.tag_media(
+          media_tagging.MediaTaggingRequest(
+            tagger_type=request.tagger_type,
+            tagging_options=request.tagging_options,
+            media_type=request.media_type,
+            media_paths=request.media_paths,
+            deduplicate=True,
+          ),
+          path_processor=path_processor,
+        )
     if not (tagging_results := tagging_response.results):
       raise exceptions.MediaSimilarityError('No tagging results found.')
     tagger = tagging_results[0].tagger

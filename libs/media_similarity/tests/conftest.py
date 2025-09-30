@@ -19,6 +19,7 @@ from media_tagging import tagging_result
 def media_1():
   return tagging_result.TaggingResult(
     identifier='media_1',
+    tagger='gemini',
     type='image',
     content=(
       tagging_result.Tag(name='tag1', score=1.0),
@@ -31,6 +32,7 @@ def media_1():
 def media_2():
   return tagging_result.TaggingResult(
     identifier='media_2',
+    tagger='gemini',
     type='image',
     content=(
       tagging_result.Tag(name='tag1', score=0.5),
@@ -43,6 +45,7 @@ def media_2():
 def media_3():
   return tagging_result.TaggingResult(
     identifier='media_3',
+    tagger='gemini',
     type='image',
     content=(
       tagging_result.Tag(name='tag3', score=1.0),

@@ -15,18 +15,31 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import, missing-class-docstring, missing-module-docstring
 
 import pytest
-from media_similarity import media_pair, repositories
+from media_similarity import repositories
+from media_similarity.media_pair import (
+  MediaPair,
+  SimilarityPair,
+  SimilarityScore,
+)
 from media_tagging import tagging_result
 
 media_1 = tagging_result.TaggingResult(
   identifier='1',
+  tagger='gemini',
   type='image',
   content=(tagging_result.Tag(name='test', score=0.0),),
 )
 media_2 = tagging_result.TaggingResult(
   identifier='2',
+  tagger='gemini',
   type='image',
   content=(tagging_result.Tag(name='test', score=0.0),),
+)
+
+test_similarity_pair = SimilarityPair(
+  tagger='gemini',
+  media=('2', '1'),
+  similarity_score=SimilarityScore(score=1.0),
 )
 
 
@@ -36,24 +49,18 @@ class TestInMemoreSimilarityPairsRepository:
     return repositories.InMemorySimilarityPairsRepository()
 
   def test_add_populates_repository(self, repository):
-    pairs = [media_pair.SimilarityPair(media=('1', '2'), similarity_score=1.0)]
+    pairs = [test_similarity_pair]
     repository.add(pairs)
 
     assert repository.results == pairs
 
   def test_get_returns_correct_pair(self, repository):
-    test_pair = media_pair.MediaPair(media_1, media_2)
-    test_similarity_pair = media_pair.SimilarityPair(
-      media=('2', '1'), similarity_score=1.0
-    )
+    test_pair = MediaPair(media_1, media_2)
     repository.add([test_similarity_pair])
     [extracted_pair] = repository.get([test_pair])
     assert extracted_pair == test_similarity_pair
 
   def test_list_returns_correct_pairs(self, repository):
-    test_similarity_pair = media_pair.SimilarityPair(
-      media=('2', '1'), similarity_score=1.0
-    )
     repository.add([test_similarity_pair])
     extracted_pairs = repository.list()
     assert extracted_pairs == [test_similarity_pair]
@@ -69,18 +76,12 @@ class TestSqlAlchemySimilarityPairsRepository:
     return repo
 
   def test_get_returns_correct_pair(self, repository):
-    test_pair = media_pair.MediaPair(media_1, media_2)
-    test_similarity_pair = media_pair.SimilarityPair(
-      media=('2', '1'), similarity_score=1.0
-    )
+    test_pair = MediaPair(media_1, media_2)
     repository.add([test_similarity_pair])
     [extracted_pair] = repository.get([test_pair])
     assert extracted_pair == test_similarity_pair
 
   def test_list_returns_correct_pairs(self, repository):
-    test_similarity_pair = media_pair.SimilarityPair(
-      media=('2', '1'), similarity_score=1.0
-    )
     repository.add([test_similarity_pair])
     extracted_pairs = repository.list()
     assert extracted_pairs == [test_similarity_pair]
