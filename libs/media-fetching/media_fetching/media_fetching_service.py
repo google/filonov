@@ -16,7 +16,10 @@
 
 """Responsible for fetching media specific information from various sources."""
 
+from __future__ import annotations
+
 import logging
+import warnings
 from typing import Any, get_args
 
 from garf_core import report
@@ -29,20 +32,57 @@ logger = logging.getLogger('media-fetching')
 
 
 class MediaFetchingService:
-  """Extracts media information from a specified source."""
+  """Extracts media information from a specified source.
+
+  Attributes:
+    source_fetcher: Initialized concrete fetcher for getting media data.
+    source: Alias of a source.
+  """
 
   def __init__(
     self,
-    source: models.InputSource = 'googleads',
+    source: models.InputSource | None = None,
+    source_fetcher: models.BaseMediaInfoFetcher | None = None,
   ) -> None:
-    """Initializes MediaFetchingService."""
-    if not (source_fetcher := fetcher.FETCHERS.get(source)):
-      raise exceptions.MediaFetchingError(
-        f'Incorrect source: {source}. Only {get_args(models.InputSource)} '
-        'are supported.'
+    """Initializes MediaFetchingService.
+
+    Args:
+      source: [Deprecated] Alias of a source.
+      source_fetcher: Initialized concrete fetcher for getting media data.
+    """
+    if not source and not source_fetcher:
+      raise exceptions.MediaFetchingError('Missing source_fetcher parameter.')
+    if source and not source_fetcher:
+      warnings.warn(
+        'Initialization from source argument is deprecated.'
+        'Provide initialized source_fetcher instead',
+        FutureWarning,
+        stacklevel=2,
       )
-    self.fetcher = source_fetcher[1]
-    self.source = source
+      self.fetcher = _get_source_fetcher(source)
+      self.source = source
+    else:
+      fetcher_alias = None
+      for alias, (_, fetcher_class) in fetcher.FETCHERS.items():
+        if isinstance(source_fetcher, fetcher_class):
+          fetcher_alias = alias
+          break
+
+      if not fetcher_alias:
+        raise exceptions.MediaFetchingError(
+          f'Unsupported fetcher: {source_fetcher.__class__.__name__}'
+        )
+      self.fetcher = source_fetcher
+      self.source = fetcher_alias
+
+  @classmethod
+  def from_source_alias(
+    cls,
+    source: models.InputSource = 'googleads',
+  ) -> MediaFetchingService:
+    """Initialized MediaFetchingService from source alias."""
+    source_fetcher = _get_source_fetcher(source)
+    return cls(source_fetcher=source_fetcher())
 
   def fetch(
     self,
@@ -55,7 +95,7 @@ class MediaFetchingService:
       self.source,
       request,
     )
-    media_data = self.fetcher().fetch_media_data(request)
+    media_data = self.fetcher.fetch_media_data(request)
     if extra_info_modules := request.extra_info:
       extra_data = enricher.prepare_extra_info(
         performance=media_data,
@@ -65,3 +105,12 @@ class MediaFetchingService:
       )
       enricher.enrich(media_data, extra_data)
     return media_data
+
+
+def _get_source_fetcher(source: models.InputSource):
+  if not (fetcher_info := fetcher.FETCHERS.get(source)):
+    raise exceptions.MediaFetchingError(
+      f'Incorrect source: {source}. Only {get_args(models.InputSource)} '
+      'are supported.'
+    )
+  return fetcher_info[1]

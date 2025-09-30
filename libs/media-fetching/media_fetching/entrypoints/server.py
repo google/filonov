@@ -83,7 +83,9 @@ def fetch(
   writer_options: WriterOptions,
 ):
   """Fetches media data from a provided source."""
-  fetching_service = media_fetching.MediaFetchingService(source)
+  fetching_service = media_fetching.MediaFetchingService.from_source_alias(
+    source
+  )
   report = fetching_service.fetch(request)
   return writer.create_writer(
     writer_options.writer, **writer_options.writer_parameters
