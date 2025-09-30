@@ -30,9 +30,10 @@ jobs:
       - name: Install dependencies
         run: |
           uv pip install pytest coverage
-      - name: Test media-tagging
+      - name: Test filonov
         run: |
           uv pip install -e libs/media_tagging/.[all]
           uv pip install -e libs/media_similarity/
+          uv pip install -e libs/filonov/
           cd libs/filonov
           pytest tests/unit
