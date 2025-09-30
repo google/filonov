@@ -1,3 +1,6 @@
+[![PyPI](https://img.shields.io/pypi/v/media-fetching?logo=pypi&logoColor=white&style=flat-square)](https://pypi.org/project/media-fetching)
+[![Downloads PyPI](https://img.shields.io/pypi/dw/media-fetching?logo=pypi)](https://pypi.org/project/media-fetching/)
+
 `media-fetcher` performs fetching of [supported media](../tagging/media.md) from various sources.
 
 It gives you information on a single media coupled with its performance.

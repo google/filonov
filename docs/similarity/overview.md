@@ -1,3 +1,6 @@
+[![PyPI](https://img.shields.io/pypi/v/media-similarity?logo=pypi&logoColor=white&style=flat-square)](https://pypi.org/project/media-similarity)
+[![Downloads PyPI](https://img.shields.io/pypi/dw/media-similarity?logo=pypi)](https://pypi.org/project/media-similarity/)
+
 `media-similarity` finds how similar media are and combines them into clusters.
 
 Similarity is calculated based on tags provided by [`media-tagging`](../tagging/overview.md) library and takes into

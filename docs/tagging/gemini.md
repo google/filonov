@@ -5,6 +5,14 @@
 - Google Cloud Project with billing account attached
 - Either [Vertex AI API](https://pantheon.corp.google.com/apis/library/aiplatform.googleapis.com) enabled or [GOOGLE_API_KEY](https://support.google.com/googleapi/answer/6158862?hl=en) to access Google Gemini.
 
+## Supported media
+
+* IMAGE
+* VIDEO
+* YOUTUBE_VIDEO
+* TEXT
+* WEBPAGE (only for `gemini-2.5-*` models)
+
 
 ## Installation
 
@@ -55,12 +63,13 @@ media-tagger tag MEDIA_PATHs \
 import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
-
-result = media_tagger.tag_media(
+request = media_tagging.MediaTaggingRequest(
   media_type='IMAGE',
   media_paths=['image1.png', 'image2.png'],
   tagger_type='gemini',
 )
+
+result = media_tagger.tag_media(request)
 
 result.save(output='tagging_results', writer='csv')
 ```
@@ -105,8 +114,7 @@ media-tagger tag MEDIA_PATHs \
 import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
-
-result = media_tagger.tag_media(
+request = media_tagging.MediaTaggingRequest(
   media_type='VIDEO',
   media_paths=['video1.mp4', 'video2.mp4'],
   tagger_type='gemini',
@@ -114,6 +122,7 @@ result = media_tagger.tag_media(
     'fps': 5,
   },
 )
+result = media_tagger.tag_media(request)
 
 result.save(output='tagging_results', writer='csv')
 ```
