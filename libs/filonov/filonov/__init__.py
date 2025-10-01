@@ -14,7 +14,10 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-"""Simplifies imports from inner modules."""
+"""Library for AI creative analysis.
+
+Generates creative maps to be viewed via `https://filonov-ai.web.app/`.
+"""
 
 from filonov.creative_map import CreativeMap
 from filonov.filonov_service import CreativeMapGenerateRequest, FilonovService
@@ -25,4 +28,4 @@ __all__ = [
   'CreativeMap',
 ]
 
-__version__ = '0.5.1'
+__version__ = '0.5.2'

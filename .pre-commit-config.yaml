@@ -53,3 +53,8 @@ repos:
     entry: pytest -n auto libs/media_similarity/tests/unit
     language: system
     pass_filenames: false
+  - id: filonov-tests
+    name: filonov-tests
+    entry: pytest -n auto libs/filonov/tests/unit
+    language: system
+    pass_filenames: false
