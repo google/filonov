@@ -70,13 +70,6 @@ def main():  # noqa: D103
     help='Name of output file',
   )
   parser.add_argument(
-    '--custom-threshold',
-    dest='custom_threshold',
-    default=None,
-    type=float,
-    help='Custom threshold of identifying similar media',
-  )
-  parser.add_argument(
     '--trim-tags-threshold',
     dest='trim_tags_threshold',
     default=None,
@@ -103,10 +96,7 @@ def main():  # noqa: D103
     choices=['local', 'rich'],
     help='Type of logger',
   )
-  parser.add_argument('--normalize', dest='normalize', action='store_true')
-  parser.add_argument('--no-normalize', dest='normalize', action='store_false')
   parser.add_argument('-v', '--version', dest='version', action='store_true')
-  parser.set_defaults(normalize=False)
   args, kwargs = parser.parse_known_args()
 
   if args.version:
