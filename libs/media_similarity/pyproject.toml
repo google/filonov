@@ -13,7 +13,7 @@ authors = [
   {name = "Sergei Dorogin", email = "segy@google.com"},
   {name = "Google Inc. (gTech gPS CSE team)", email = "no-reply@google.com"},
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 description = "Groups similar media into clusters"
 readme = "README.md"
 classifiers = [
