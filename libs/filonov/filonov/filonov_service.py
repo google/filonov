@@ -95,11 +95,9 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
       self.tagger = 'gemini'
 
     source_parameters_class = media_fetching.INPUT_MAPPING.get(self.source)
-    if not isinstance(
-      source_parameters := self.source_parameters, source_parameters_class
-    ):
+    if not isinstance(self.source_parameters, source_parameters_class):
       self.source_parameters = source_parameters_class(
-        **source_parameters, media_type=self.media_type
+        **self.source_parameters, media_type=self.media_type
       )
 
     self.context.update({self.source: self.source_parameters.model_dump()})
@@ -138,7 +136,7 @@ class FilonovService:
       Generated creative map.
 
     Raises:
-      FilonovError: When not tagging data are found.
+      FilonovError: When performance or tagging data not found.
     """
     if not request.tagger and not self.tagging_service:
       raise exceptions.FilonovError(
@@ -149,6 +147,10 @@ class FilonovService:
     media_data = fetching_service.fetch(
       request.source_parameters, request.context
     )
+    if not media_data:
+      raise exceptions.FilonovError(
+        'No performance data found for the context.'
+      )
     media_info = creative_map.convert_report_to_media_info(
       performance=media_data,
       media_type=request.media_type,
@@ -195,7 +197,6 @@ class FilonovService:
         )
       )
     clustering_request = media_similarity.MediaClusteringRequest(
-      media_paths=media_urls,
       media_type=request.media_type,
       tagger_type=request.tagger,
       tagging_options=request.tagger_parameters,
@@ -203,6 +204,7 @@ class FilonovService:
       custom_threshold=request.similarity_parameters.custom_threshold,
       algorithm=request.similarity_parameters.algorithm,
       parallel_threshold=request.parallel_threshold,
+      tagging_response=tagging_response,
     )
     clustering_results = similarity_service.cluster_media(clustering_request)
     logger.info('Generating creative map...')
