@@ -14,10 +14,19 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
+import garf_core
+import media_fetching
+import media_similarity
 import media_tagging
 import pytest
 from filonov import exceptions, filonov_service
-from filonov.inputs import interfaces
+
+DATA = garf_core.GarfReport(
+  results=[
+    ['example.com', 'example', 1],
+  ],
+  column_names=['media_url', 'media_name', 'clicks'],
+)
 
 
 class TestCreativeMapGenerateRequest:
@@ -28,63 +37,75 @@ class TestCreativeMapGenerateRequest:
   def test_model_post_init_creates_correct_tagger_parameters(
     self, tagger_parameters
   ):
+    expected_parameters = dict(tagger_parameters)
     request = filonov_service.CreativeMapGenerateRequest(
-      source='googleads', tagger_parameters=tagger_parameters
+      source='fake', tagger_parameters=tagger_parameters
     )
-    assert request.tagger_parameters == {'n_tags': 100}
+    expected_parameters.update({'n_tags': 100})
+    assert request.tagger_parameters == expected_parameters
 
 
 class TestFilonovService:
   @pytest.fixture
-  def service(self):
-    return filonov_service.FilonovService(
+  def db_uri(self, tmp_path):
+    db_path = tmp_path / 'test.db'
+    return f'sqlite:///{str(db_path)}'
+
+  def test_generate_creative_maps_returns_filonov_error_when_no_tagger_or_repo(
+    self,
+  ):
+    service = filonov_service.FilonovService()
+    with pytest.raises(
+      exceptions.FilonovError,
+      match='Failed to get tagging results from DB. MediaTaggingService missing',
+    ):
+      service.generate_creative_map(
+        request=filonov_service.CreativeMapGenerateRequest(
+          source='fake', media_type='IMAGE'
+        ),
+      )
+
+  def test_generate_creative_maps_returns_filonov_error_when_no_media_data(
+    self,
+  ):
+    fake_fetcher = media_fetching.sources.fake.FakeFetcher(
+      garf_core.GarfReport(results=[], column_names=['media_url'])
+    )
+    fake_fetching_service = media_fetching.MediaFetchingService(
+      source_fetcher=fake_fetcher
+    )
+    service = filonov_service.FilonovService(
+      fetching_service=fake_fetching_service,
       tagging_service=media_tagging.MediaTaggingService(
         media_tagging.repositories.SqlAlchemyTaggingResultsRepository()
       ),
-      similarity_service=None,
-    )
-
-  def test_generate_creative_maps_returns_filonov_error_when_no_media_urls(
-    self, service, mocker
-  ):
-    mocker.patch(
-      'filonov.inputs.input_service.MediaInputService.generate_media_info',
-      return_value=({}, {}),
     )
     with pytest.raises(
       exceptions.FilonovError, match='No performance data found for the context'
     ):
       service.generate_creative_map(
-        source='googleads',
-        request=filonov_service.CreativeMapGenerateRequest(source='googleads'),
+        request=filonov_service.CreativeMapGenerateRequest(
+          source='fake', media_type='IMAGE'
+        ),
       )
 
-  def test_generate_creative_maps_returns_filonov_error_when_no_tagging_results(
-    self, service, mocker
-  ):
-    mocker.patch(
-      'filonov.inputs.input_service.MediaInputService.generate_media_info',
-      return_value=(
-        {
-          'test_media': interfaces.MediaInfo(
-            media_name='test_media',
-            media_path='test_image.png',
-            info={},
-            series={},
-          )
-        },
-        {},
+  def test_generate_creative_maps_returns_generated_map(self, db_uri):
+    fake_fetcher = media_fetching.sources.fake.FakeFetcher(DATA)
+    fake_fetching_service = media_fetching.MediaFetchingService(
+      source_fetcher=fake_fetcher
+    )
+    service = filonov_service.FilonovService(
+      fetching_service=fake_fetching_service,
+      tagging_service=media_tagging.MediaTaggingService(
+        media_tagging.repositories.SqlAlchemyTaggingResultsRepository(db_uri)
+      ),
+      similarity_service=(
+        media_similarity.MediaSimilarityService.from_connection_string(db_uri)
       ),
     )
-    mocker.patch(
-      'media_tagging.media_tagging_service.MediaTaggingService.tag_media',
-      return_value=([]),
+    generated_map = service.generate_creative_map(
+      request=filonov_service.CreativeMapGenerateRequest(
+        source='fake', media_type='IMAGE'
+      ),
     )
-    with pytest.raises(
-      exceptions.FilonovError,
-      match='Failed to perform media tagging for the context',
-    ):
-      service.generate_creative_map(
-        source='googleads',
-        request=filonov_service.CreativeMapGenerateRequest(source='googleads'),
-      )
+    assert generated_map
