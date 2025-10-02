@@ -1,0 +1,9 @@
+pillow
+smart_open
+jq
+garf-executors
+pandas
+pydantic
+SQLalchemy>=2.0.0
+tenacity
+google-genai
