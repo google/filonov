@@ -2,5 +2,3 @@ media_tagging
 pandas
 numpy
 igraph
-# dev
-pytest
