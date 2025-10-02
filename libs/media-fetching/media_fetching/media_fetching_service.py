@@ -82,7 +82,7 @@ class MediaFetchingService:
   ) -> MediaFetchingService:
     """Initialized MediaFetchingService from source alias."""
     source_fetcher = _get_source_fetcher(source)
-    return cls(source_fetcher=source_fetcher())
+    return cls(source_fetcher=source_fetcher)
 
   def fetch(
     self,
@@ -107,10 +107,12 @@ class MediaFetchingService:
     return media_data
 
 
-def _get_source_fetcher(source: models.InputSource):
+def _get_source_fetcher(
+  source: models.InputSource,
+) -> models.BaseMediaInfoFetcher:
   if not (fetcher_info := fetcher.FETCHERS.get(source)):
     raise exceptions.MediaFetchingError(
       f'Incorrect source: {source}. Only {get_args(models.InputSource)} '
       'are supported.'
     )
-  return fetcher_info[1]
+  return fetcher_info[1]()
