@@ -7,6 +7,7 @@ name = "media-fetching"
 dependencies = [
   "media-tagging",
   "garf-youtube-data-api",
+  "garf-bid-manager",
   "google-ads-api-report-fetcher",
   "garf-executors[bq,sql]>=0.0.7",
 ]
