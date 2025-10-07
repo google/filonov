@@ -17,6 +17,7 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 from media_fetching.media_fetching_service import MediaFetchingService
+from media_fetching.sources.dbm import BidManagerFetchingParameters
 from media_fetching.sources.fake import FakeFetchingParameters
 from media_fetching.sources.file import FileFetchingParameters
 from media_fetching.sources.googleads import GoogleAdsFetchingParameters
@@ -37,5 +38,6 @@ INPUT_MAPPING = {
   'sqldb': SqlAlchemyQueryFetchingParameters,
   'bq': BigQueryFetchingParameters,
   'fake': FakeFetchingParameters,
+  'dbm': BidManagerFetchingParameters,
 }
 __version__ = '0.2.5'

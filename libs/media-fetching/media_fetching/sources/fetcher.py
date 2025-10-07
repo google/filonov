@@ -16,7 +16,7 @@
 
 """Instantiates concrete fetcher and builds fetching context."""
 
-from media_fetching.sources import fake, file, googleads, sql, youtube
+from media_fetching.sources import dbm, fake, file, googleads, sql, youtube
 
 FETCHERS = {
   'youtube': (youtube.YouTubeFetchingParameters, youtube.Fetcher),
@@ -25,4 +25,5 @@ FETCHERS = {
   'bq': (sql.BigQueryFetchingParameters, sql.BigQueryFetcher),
   'sqldb': (sql.SqlAlchemyQueryFetchingParameters, sql.SqlAlchemyQueryFetcher),
   'fake': (fake.FakeFetchingParameters, fake.FakeFetcher),
+  'dbm': (dbm.BidManagerFetchingParameters, dbm.Fetcher),
 }
