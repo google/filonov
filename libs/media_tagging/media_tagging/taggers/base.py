@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import abc
+import inspect
 import json
 import os
 from collections.abc import MutableSequence, Sequence
@@ -54,7 +55,7 @@ class TaggingOptions(pydantic.BaseModel):
   custom_schema: CustomSchema | None = None
   no_schema: str | bool = False
 
-  def model_post_init(self, __context):  # noqa: D105
+  def model_post_init(self, __context__):  # noqa: D105
     if self.tags:
       if not isinstance(self.tags, MutableSequence):
         self.tags = [tag.strip() for tag in self.tags.split(',')]
@@ -72,8 +73,12 @@ class TaggingOptions(pydantic.BaseModel):
       self.no_schema = self.no_schema.lower() in ['true', '1']
 
   @pydantic.field_serializer('custom_schema')
-  def serialize_custom_schema(self, custom_schema: CustomSchema, _info):
-    if issubclass(custom_schema, pydantic.BaseModel):
+  def serialize_custom_schema(self, custom_schema: CustomSchema | None, _info):
+    if (
+      custom_schema is not None
+      and inspect.isclass(custom_schema)
+      and issubclass(custom_schema, pydantic.BaseModel)
+    ):
       return custom_schema.__name__
     return custom_schema
 
@@ -196,7 +201,7 @@ class BaseTagger(abc.ABC):
     tagging_options: TaggingOptions,
   ) -> tagging_result.TaggingResult:
     """Adds to tagging result extra parameters."""
-    parameters = result.dict()
+    parameters = result.model_dump()
     if tagging_details := tagging_options.dict():
       tagging_details = {k: v for k, v in tagging_details.items() if v}
     else:
