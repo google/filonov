@@ -67,6 +67,13 @@ def main():
     dest='db_uri',
     help='Database connection string to store and retrieve tagging results',
   )
+  parser.add_argument(
+    '--logger',
+    dest='logger',
+    default='rich',
+    choices=['local', 'rich'],
+    help='Type of logger',
+  )
   parser.add_argument('--loglevel', dest='loglevel', default='INFO')
   parser.add_argument('--no-parallel', dest='parallel', action='store_false')
   parser.add_argument('--deduplicate', dest='deduplicate', action='store_true')
@@ -92,12 +99,9 @@ def main():
     ['tagger', args.writer, 'input']
   ).parse(kwargs)
 
-  logging.basicConfig(
-    format='[%(asctime)s][%(name)s][%(levelname)s] %(message)s',
-    level=args.loglevel,
-    datefmt='%Y-%m-%d %H:%M:%S',
+  logger = garf_utils.init_logging(
+    loglevel=args.loglevel, logger_type=args.logger
   )
-  logging.getLogger(__file__)
 
   media_paths = args.media_paths or utils.get_media_paths_from_file(
     utils.InputConfig(path=args.input, **extra_parameters.get('input'))
@@ -109,6 +113,7 @@ def main():
     tagging_options=extra_parameters.get('tagger'),
     parallel_threshold=args.parallel_threshold,
   )
+  logger.info(request)
   path_processor = extra_parameters.get('tagger', {}).get('path_processor')
   if args.action == 'tag':
     tagging_results = tagging_service.tag_media(request, path_processor)
@@ -117,7 +122,7 @@ def main():
   if args.no_output:
     sys.exit()
   if not tagging_results:
-    logging.error('No tagging tagging results found.')
+    logger.error('No tagging tagging results found.')
     sys.exit(1)
 
   writer_parameters = extra_parameters.get(args.writer) or {}
