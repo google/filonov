@@ -35,6 +35,6 @@ jobs:
           uv pip install -e libs/media_tagging/.[all]
           uv pip install -e libs/media-fetching/
           uv pip install -e libs/media_similarity/
-          uv pip install -e libs/filonov/
+          uv pip install -e libs/filonov/[all]
           cd libs/filonov
           pytest tests/unit

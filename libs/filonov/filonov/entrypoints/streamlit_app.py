@@ -30,6 +30,7 @@ import streamlit as st
 from pydantic_settings import BaseSettings
 
 import filonov
+from filonov import exceptions
 from filonov.entrypoints import utils
 
 
@@ -59,7 +60,7 @@ def streamlit_app():
   st.title('Creative Map Generator')
 
   source = st.selectbox(
-    'Source', ['youtube', 'googleads', 'file', 'bq', 'sqldb']
+    'Source', ['youtube', 'googleads', 'file', 'bq', 'sqldb', 'dbm']
   )
 
   with st.form('creative_map_form'):
@@ -150,15 +151,28 @@ def streamlit_app():
           'segments': segments.split(','),
         }
       )
-    else:
+    elif source == 'youtube':
       media_type = 'YOUTUBE_VIDEO'
       tagger_type = 'gemini'
       channel = st.text_input('YouTube Channel ID', '')
       input_parameters = {'channel': channel}
-      if not os.getenv('GOOGLE_API_KEY'):
+      if not os.getenv('GARF_YOUTUBE_DATA_API_KEY'):
         st.error(
-          'Add GOOGLE_API_KEY environmental variable to work with YouTube.'
+          'Add GARF_YOUTUBE_DATA_API_KEY environmental variable '
+          'to work with YouTube.'
         )
+    elif source == 'dbm':
+      media_type = 'YOUTUBE_VIDEO'
+      tagger_type = 'gemini'
+      advertiser = st.text_input('DV 360 Advertiser ID', '')
+      input_parameters = {'advertiser': advertiser}
+      if not os.getenv('GARF_BID_MANAGER_CREDENTIALS_FILE'):
+        st.error(
+          'Add GARF_BID_MANAGER_CREDENTIALS_FILE environmental variable '
+          'to work with Bid Manager.'
+        )
+    else:
+      raise exceptions.FilonovError(f'Unsupported source: {source}')
     if not settings.media_tagging_db_url:
       st.warning(
         'No tagging data is saved between runs. '
@@ -241,10 +255,10 @@ def build_cli_command(
     '{source_parameters} \\\n'
     '\t--output-name {output}'
   )
-  source = request.source
+  source = request.source.value
   source_parameters = []
   for name, value in request.source_parameters.model_dump().items():
-    if name == 'media_type':
+    if not value or name == 'media_type':
       continue
     if isinstance(value, str):
       source_parameters.append(f'\t--{source}.{name}={value}')
@@ -254,7 +268,7 @@ def build_cli_command(
 
   source_parameters = ' \\\n'.join(source_parameters)
   params = {
-    'source': request.source,
+    'source': source,
     'media_type': request.media_type,
     'tagger': request.tagger,
     'output': request.output_parameters.output_name,
