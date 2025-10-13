@@ -56,6 +56,13 @@ def main():
     dest='db_uri',
     help='Database connection string to store tagging results',
   )
+  parser.add_argument(
+    '--logger',
+    dest='logger',
+    default='rich',
+    choices=['local', 'rich'],
+    help='Type of logger',
+  )
   parser.add_argument('--loglevel', dest='loglevel', default='INFO')
   args, kwargs = parser.parse_known_args()
 
@@ -64,14 +71,12 @@ def main():
   )
   extra_parameters = garf_utils.ParamsParser(['loader']).parse(kwargs)
 
-  logging.basicConfig(
-    format='[%(asctime)s][%(name)s][%(levelname)s] %(message)s',
-    level=args.loglevel,
-    datefmt='%Y-%m-%d %H:%M:%S',
+  logger = garf_utils.init_logging(
+    loglevel=args.loglevel, logger_type=args.logger
   )
-  logging.getLogger(__file__)
 
   for location in args.location:
+    logger.info('Getting tagging results from %s', location)
     parameters = {
       'loader_type': args.loader,
       'media_type': args.media_type,
