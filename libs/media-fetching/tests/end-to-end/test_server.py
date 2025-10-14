@@ -87,7 +87,7 @@ class TestMediaFetcher:
       response = client.post('/media_fetching/fetch:file', json=request)
       assert response.status_code == fastapi.status.HTTP_200_OK
 
-  @pytest.mark.file
+  @pytest.mark.bq
   class TestBigQueryFetcher:
     def test_fetch(self):
       request = {
@@ -101,7 +101,7 @@ class TestMediaFetcher:
       response = client.post('/media_fetching/fetch:bq', json=request)
       assert response.status_code == fastapi.status.HTTP_200_OK
 
-  @pytest.mark.file
+  @pytest.mark.sqldb
   class TestSqlAlchemyQueryFetcher:
     def test_fetch(self):
       request = {
