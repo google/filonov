@@ -36,15 +36,15 @@ _SUPPORTED_VIDEO_FILE_EXTENSIONS = (
 )
 
 
-class MediaTypeEnum(enum.Enum):
+class MediaTypeEnum(str, enum.Enum):
   """Represents type of a Medium."""
 
-  UNKNOWN = 0
-  IMAGE = 1
-  VIDEO = 2
-  YOUTUBE_VIDEO = 3
-  TEXT = 4
-  WEBPAGE = 5
+  UNKNOWN = 'UNKNOWN'
+  IMAGE = 'IMAGE'
+  VIDEO = 'VIDEO'
+  YOUTUBE_VIDEO = 'YOUTUBE_VIDEO'
+  TEXT = 'TEXT'
+  WEBPAGE = 'WEBPAGE'
 
   @classmethod
   def options(cls) -> list[str]:
