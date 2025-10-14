@@ -9,6 +9,7 @@ dependencies = [
   "media-similarity",
   "garf-youtube-data-api",
   "google-ads-api-report-fetcher",
+  "typer",
 ]
 authors = [
   {name = "Andrei Markin", email = "amarkin@google.com"},
@@ -59,5 +60,5 @@ markers = [
 ]
 
 [project.scripts]
-filonov="filonov.entrypoints.cli:main"
+filonov="filonov.entrypoints.cli:typer_app"
 filonov-ui="filonov.entrypoints.streamlit_cli:main"
