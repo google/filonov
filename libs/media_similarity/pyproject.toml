@@ -7,6 +7,7 @@ name = "media-similarity"
 dependencies = [
   "media-tagging",
   "igraph",
+  "typer",
 ]
 authors = [
   {name = "Andrei Markin", email = "amarkin@google.com"},
@@ -53,4 +54,4 @@ markers = [
 ]
 
 [project.scripts]
-media-similarity="media_similarity.entrypoints.cli:main"
+media-similarity="media_similarity.entrypoints.cli:typer_app"

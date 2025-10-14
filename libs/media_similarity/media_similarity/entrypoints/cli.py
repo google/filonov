@@ -15,128 +15,244 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-import argparse
 import functools
 import operator
-import sys
+from typing import Optional
 
+import typer
 from garf_executors.entrypoints import utils as garf_utils
 from garf_io import writer as garf_writer
 from media_tagging import media
 from media_tagging.entrypoints import utils as tagging_utils
+from typing_extensions import Annotated
 
 import media_similarity
 
+typer_app = typer.Typer()
 
-def main():  # noqa: D103
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-    'action',
-    nargs='?',
-    choices=['cluster', 'search', 'compare'],
-    help='Action to perform',
-  )
-  parser.add_argument(
-    'media_paths', nargs='*', help='Paths to local/remote files or URLs'
-  )
-  parser.add_argument(
-    '--input', dest='input', default=None, help='File with media_paths'
-  )
-  parser.add_argument(
-    '--media-type',
-    dest='media_type',
-    choices=media.MediaTypeEnum.options(),
-    default='UNKNOWN',
-    help='Type of media.',
-  )
-  parser.add_argument(
-    '--tagger',
-    dest='tagger',
-    default=None,
-    help='Type of tagger',
-  )
-  parser.add_argument(
-    '--db-uri',
-    dest='db_uri',
-    help='Database connection string to store and retrieve tagging results',
-  )
-  parser.add_argument('--writer', dest='writer', default='json')
-  parser.add_argument('--output', dest='output', default='similarity_results')
-  parser.add_argument(
-    '--parallel-threshold',
-    dest='parallel_threshold',
-    default=10,
-    type=int,
-    help='Number of parallel processes to perform media similarity calculation',
-  )
-  parser.add_argument(
-    '--custom-threshold',
-    dest='custom_threshold',
-    default=None,
-    type=float,
-    help='Custom threshold of identifying similar media',
-  )
-  parser.add_argument('--normalize', dest='normalize', action='store_true')
-  parser.add_argument('--no-normalize', dest='normalize', action='store_false')
-  parser.add_argument('-v', '--version', dest='version', action='store_true')
-  parser.set_defaults(normalize=False)
-  args, kwargs = parser.parse_known_args()
 
-  if args.version:
+MediaPaths = Annotated[
+  Optional[list[str]],
+  typer.Argument(
+    help='Media paths',
+  ),
+]
+Input = Annotated[
+  Optional[str],
+  typer.Option(
+    help='File with media_paths',
+    case_sensitive=False,
+  ),
+]
+MediaType = Annotated[
+  media.MediaTypeEnum,
+  typer.Option(
+    help='Type of media',
+    case_sensitive=False,
+  ),
+]
+
+Writer = Annotated[
+  garf_writer.WriterOption,
+  typer.Option(
+    help='Type of writer used to write resulting report',
+  ),
+]
+
+Output = Annotated[
+  str,
+  typer.Option(
+    help='Name of output file',
+  ),
+]
+Logger = Annotated[
+  garf_utils.LoggerEnum,
+  typer.Option(
+    help='Type of logger',
+  ),
+]
+LogLevel = Annotated[
+  str,
+  typer.Option(
+    help='Level of logging',
+  ),
+]
+
+
+def _version_callback(show_version: bool) -> None:
+  if show_version:
     print(f'media-similarity version: {media_similarity.__version__}')
-    sys.exit()
-  garf_utils.init_logging(logger_type='rich')
-  extra_parameters = garf_utils.ParamsParser([args.writer, 'input']).parse(
-    kwargs
+    raise typer.Exit()
+
+
+@typer_app.command(
+  context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
+)
+def cluster(
+  ctx: typer.Context,
+  media_paths: MediaPaths = None,
+  input: Input = None,
+  media_type: MediaType = 'IMAGE',
+  tagger: Annotated[
+    Optional[str],
+    typer.Option(
+      help='Type of tagger',
+      case_sensitive=False,
+    ),
+  ] = 'gemini',
+  db_uri: Annotated[
+    Optional[str],
+    typer.Option(
+      help='Database connection string to store and retrieve results',
+    ),
+  ] = None,
+  writer: Writer = 'json',
+  output: Output = 'similarity_results',
+  normalize: Annotated[
+    bool,
+    typer.Option(
+      help='Whether to normalize similarity results',
+    ),
+  ] = False,
+  custom_threshold: Annotated[
+    Optional[float],
+    typer.Option(
+      help='Custom threshold to identify similar pairs',
+    ),
+  ] = None,
+  logger: Logger = 'rich',
+  loglevel: LogLevel = 'INFO',
+  parallel_threshold: Annotated[
+    int,
+    typer.Option(
+      help='Number of parallel processes to perform media tagging',
+    ),
+  ] = 10,
+):
+  garf_utils.init_logging(logger_type=logger, loglevel=loglevel)
+  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(ctx.args)
+  media_paths = media_paths or tagging_utils.get_media_paths_from_file(
+    tagging_utils.InputConfig(path=input, **extra_parameters.get('input'))
   )
   similarity_service = media_similarity.MediaSimilarityService(
     media_similarity_repository=(
-      media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
-        args.db_uri
-      )
+      media_similarity.repositories.SqlAlchemySimilarityPairsRepository(db_uri)
     ),
   )
-  media_paths = args.media_paths or tagging_utils.get_media_paths_from_file(
-    tagging_utils.InputConfig(path=args.input, **extra_parameters.get('input'))
+  request = media_similarity.MediaClusteringRequest(
+    media_paths=media_paths,
+    media_type=media_type,
+    tagger_type=tagger,
+    normalize=normalize,
+    custom_threshold=custom_threshold,
+    parallel_threshold=parallel_threshold,
   )
-  writer_parameters = extra_parameters.get(args.writer) or {}
-  writer = garf_writer.create_writer(args.writer, **writer_parameters)
-  if args.action == 'cluster':
-    request = media_similarity.MediaClusteringRequest(
-      media_paths=media_paths,
-      media_type=args.media_type,
-      tagger_type=args.tagger,
-      normalize=args.normalize,
-      custom_threshold=args.custom_threshold,
-      parallel_threshold=args.parallel_threshold,
-    )
-    clustering_results = similarity_service.cluster_media(request)
-    report = clustering_results.to_garf_report()
+  clustering_results = similarity_service.cluster_media(request)
+  report = clustering_results.to_garf_report()
+  writer_parameters = extra_parameters.get(writer) or {}
+  garf_writer.create_writer(writer, **writer_parameters).write(report, output)
 
-  elif args.action == 'compare':
-    media_comparison_results = similarity_service.compare_media(
-      media_similarity.MediaSimilarityComparisonRequest(
-        media_paths=media_paths,
-        media_type=args.media_type,
-      )
+
+@typer_app.command(
+  context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
+)
+def compare(
+  ctx: typer.Context,
+  media_type: MediaType,
+  db_uri: Annotated[
+    str,
+    typer.Option(
+      help='Database connection string to store and retrieve results',
+    ),
+  ],
+  media_paths: MediaPaths = None,
+  input: Input = None,
+  writer: Writer = 'json',
+  output: Output = 'comparison_results',
+  logger: Logger = 'rich',
+  loglevel: LogLevel = 'INFO',
+):
+  garf_utils.init_logging(logger_type=logger, loglevel=loglevel)
+  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(ctx.args)
+  media_paths = media_paths or tagging_utils.get_media_paths_from_file(
+    tagging_utils.InputConfig(path=input, **extra_parameters.get('input'))
+  )
+  similarity_service = media_similarity.MediaSimilarityService(
+    media_similarity_repository=(
+      media_similarity.repositories.SqlAlchemySimilarityPairsRepository(db_uri)
+    ),
+  )
+  media_comparison_results = similarity_service.compare_media(
+    media_similarity.MediaSimilarityComparisonRequest(
+      media_paths=media_paths,
+      media_type=media_type,
     )
-    report = functools.reduce(
-      operator.add,
-      [result.to_garf_report() for result in media_comparison_results],
+  )
+  report = functools.reduce(
+    operator.add,
+    [result.to_garf_report() for result in media_comparison_results],
+  )
+  writer_parameters = extra_parameters.get(writer) or {}
+  garf_writer.create_writer(writer, **writer_parameters).write(report, output)
+
+
+@typer_app.command(
+  context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
+)
+def search(
+  ctx: typer.Context,
+  media_type: MediaType,
+  db_uri: Annotated[
+    str,
+    typer.Option(
+      help='Database connection string to store and retrieve results',
+    ),
+  ],
+  media_paths: MediaPaths = None,
+  input: Input = None,
+  writer: Writer = 'json',
+  output: Output = 'comparison_results',
+  logger: Logger = 'rich',
+  loglevel: LogLevel = 'INFO',
+):
+  garf_utils.init_logging(logger_type=logger, loglevel=loglevel)
+  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(ctx.args)
+  media_paths = media_paths or tagging_utils.get_media_paths_from_file(
+    tagging_utils.InputConfig(path=input, **extra_parameters.get('input'))
+  )
+  similarity_service = media_similarity.MediaSimilarityService(
+    media_similarity_repository=(
+      media_similarity.repositories.SqlAlchemySimilarityPairsRepository(db_uri)
+    ),
+  )
+  similarity_search_results = similarity_service.find_similar_media(
+    media_similarity.MediaSimilaritySearchRequest(
+      media_paths=media_paths,
+      media_type=media_type,
     )
-  elif args.action == 'search':
-    similarity_search_results = similarity_service.find_similar_media(
-      media_similarity.MediaSimilaritySearchRequest(
-        media_paths=media_paths,
-        media_type=args.media_type,
-      )
-    )
-    report = functools.reduce(
-      operator.add,
-      [result.to_garf_report() for result in similarity_search_results],
-    )
-  writer.write(report, args.output)
+  )
+  report = functools.reduce(
+    operator.add,
+    [result.to_garf_report() for result in similarity_search_results],
+  )
+  writer_parameters = extra_parameters.get(writer) or {}
+  garf_writer.create_writer(writer, **writer_parameters).write(report, output)
+
+
+@typer_app.callback(invoke_without_command=True)
+def main(
+  ctx: typer.Context,
+  version: Annotated[
+    bool,
+    typer.Option(
+      help='Display library version',
+      callback=_version_callback,
+      is_eager=True,
+      expose_value=False,
+    ),
+  ] = False,
+): ...
 
 
 if __name__ == '__main__':
-  main()
+  typer_app()
