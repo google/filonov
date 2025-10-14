@@ -15,130 +15,133 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-import argparse
-import sys
-from typing import get_args
+from typing import Optional
 
 import media_fetching
 import media_similarity
 import media_tagging
+import typer
 from garf_executors.entrypoints import utils as garf_utils
+from media_fetching.sources import models
 from media_tagging import media
+from typing_extensions import Annotated
 
 import filonov
 from filonov.entrypoints import utils
 
-AVAILABLE_TAGGERS = list(media_tagging.taggers.TAGGERS.keys())
+typer_app = typer.Typer()
 
 
-def main():  # noqa: D103
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-    '--source',
-    dest='source',
-    choices=get_args(media_fetching.sources.models.InputSource),
-    default='googleads',
-    help='Which datasources to use for generating a map',
-  )
-  parser.add_argument(
-    '--media-type',
-    dest='media_type',
-    choices=media.MediaTypeEnum.options(),
-    help='Type of media.',
-  )
-  parser.add_argument(
-    '--tagger',
-    dest='tagger',
-    choices=AVAILABLE_TAGGERS,
-    default=None,
-    help='Type of tagger',
-  )
-  parser.add_argument(
-    '--size-base',
-    dest='size_base',
-    help='Metric to base node sizes on',
-  )
-  parser.add_argument(
-    '--db-uri',
-    dest='db_uri',
-    help='Database connection string to store and retrieve results',
-  )
-  parser.add_argument(
-    '--output-name',
-    dest='output_name',
-    default='creative_map',
-    help='Name of output file',
-  )
-  parser.add_argument(
-    '--trim-tags-threshold',
-    dest='trim_tags_threshold',
-    default=None,
-    type=float,
-    help='Min allowed score for tags',
-  )
-  parser.add_argument(
-    '--parallel-threshold',
-    dest='parallel_threshold',
-    default=10,
-    type=int,
-    help='Number of parallel processes to perform media tagging',
-  )
-  parser.add_argument(
-    '--loglevel',
-    dest='loglevel',
-    default='INFO',
-    help='Log level',
-  )
-  parser.add_argument(
-    '--logger',
-    dest='logger',
-    default='rich',
-    choices=['local', 'rich'],
-    help='Type of logger',
-  )
-  parser.add_argument('-v', '--version', dest='version', action='store_true')
-  args, kwargs = parser.parse_known_args()
+def _version_callback(show_version: bool) -> None:
+  if show_version:
+    print(f'media-fetcher version: {media_fetching.__version__}')
+    raise typer.Exit()
 
-  if args.version:
-    print(f'filonov version: {filonov.__version__}')
-    sys.exit()
 
-  _ = garf_utils.init_logging(loglevel=args.loglevel, logger_type=args.logger)
+@typer_app.command(
+  context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
+)
+def main(
+  ctx: typer.Context,
+  source: Annotated[
+    models.InputSource,
+    typer.Option(
+      help='Source to get data from',
+      case_sensitive=False,
+    ),
+  ] = 'googleads',
+  media_type: Annotated[
+    media.MediaTypeEnum,
+    typer.Option(
+      help='Type of media',
+      case_sensitive=False,
+    ),
+  ] = 'IMAGE',
+  tagger: Annotated[
+    Optional[str],
+    typer.Option(
+      help='Type of tagger',
+      case_sensitive=False,
+    ),
+  ] = 'gemini',
+  output_name: Annotated[
+    str,
+    typer.Option(
+      help='Name of output file',
+    ),
+  ] = 'creative_map',
+  db_uri: Annotated[
+    Optional[str],
+    typer.Option(
+      help='Database connection string to store and retrieve results',
+    ),
+  ] = None,
+  trim_tags_threshold: Annotated[
+    Optional[float],
+    typer.Option(
+      help='Min allowed score for tags',
+    ),
+  ] = None,
+  parallel_threshold: Annotated[
+    int,
+    typer.Option(
+      help='Number of parallel processes to perform media tagging',
+    ),
+  ] = 10,
+  logger: Annotated[
+    garf_utils.LoggerEnum,
+    typer.Option(
+      help='Type of logger',
+    ),
+  ] = 'rich',
+  loglevel: Annotated[
+    str,
+    typer.Option(
+      help='Level of logging',
+    ),
+  ] = 'INFO',
+  version: Annotated[
+    bool,
+    typer.Option(
+      help='Display library version',
+      callback=_version_callback,
+      is_eager=True,
+      expose_value=False,
+    ),
+  ] = False,
+):  # noqa: D103
+  _ = garf_utils.init_logging(loglevel=loglevel, logger_type=logger)
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
   )
   parsed_param_keys = set(
-    [args.source, 'tagger', 'similarity'] + list(supported_enrichers)
+    [source, 'tagger', 'similarity'] + list(supported_enrichers)
   )
-  extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(kwargs)
-  fetching_service = media_fetching.MediaFetchingService(args.source)
+  extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(ctx.args)
+  fetching_service = media_fetching.MediaFetchingService(source)
   tagging_service = media_tagging.MediaTaggingService(
     tagging_results_repository=(
-      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
+      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(db_uri)
     )
   )
   similarity_service = media_similarity.MediaSimilarityService(
-    media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
-      args.db_uri
-    )
+    media_similarity.repositories.SqlAlchemySimilarityPairsRepository(db_uri)
   )
-  tagger = args.tagger
-  media_type = args.media_type
-  if args.source == 'youtube':
+  if source == 'youtube':
     media_type = 'YOUTUBE_VIDEO'
     tagger = 'gemini'
   request = filonov.CreativeMapGenerateRequest(
-    source=args.source,
+    source=source,
     media_type=media_type,
     tagger=tagger,
     tagger_parameters=extra_parameters.get('tagger'),
     similarity_parameters=extra_parameters.get('similarity'),
-    source_parameters=extra_parameters.get(args.source),
+    source_parameters=extra_parameters.get(source),
     output_parameters=filonov.filonov_service.OutputParameters(
-      output_name=args.output_name
+      output_name=output_name
     ),
-    parallel_threshold=args.parallel_threshold,
-    trim_tags_threshold=args.trim_tags_threshold,
+    parallel_threshold=parallel_threshold,
+    trim_tags_threshold=trim_tags_threshold,
     context=extra_parameters,
   )
   filonov_service = filonov.FilonovService(
@@ -152,4 +155,4 @@ def main():  # noqa: D103
 
 
 if __name__ == '__main__':
-  main()
+  typer_app()
