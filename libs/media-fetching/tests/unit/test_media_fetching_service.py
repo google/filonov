@@ -13,7 +13,7 @@
 # limitations under the License.
 import pytest
 from media_fetching import MediaFetchingService, exceptions
-from media_fetching.sources import file, googleads, sql, youtube
+from media_fetching.sources import dbm, file, googleads, models, sql, youtube
 
 
 class TestMediaFetchingService:
@@ -37,6 +37,13 @@ class TestMediaFetchingService:
       ('youtube', youtube.Fetcher),
       ('sqldb', sql.SqlAlchemyQueryFetcher),
       ('bq', sql.BigQueryFetcher),
+      ('dbm', dbm.Fetcher),
+      (models.InputSource.file, file.Fetcher),
+      (models.InputSource.googleads, googleads.Fetcher),
+      (models.InputSource.youtube, youtube.Fetcher),
+      (models.InputSource.sqldb, sql.SqlAlchemyQueryFetcher),
+      (models.InputSource.bq, sql.BigQueryFetcher),
+      (models.InputSource.dbm, dbm.Fetcher),
     ],
   )
   def test_init_from_alias_returns_correct_source_class(

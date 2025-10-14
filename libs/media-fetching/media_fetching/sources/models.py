@@ -17,14 +17,22 @@
 """Models and interfaces for media fetching library."""
 
 import abc
-from typing import Literal
+import enum
 
 import pydantic
 from garf_core import report
 
-InputSource = Literal[
-  'googleads', 'youtube', 'file', 'bq', 'sqldb', 'fake', 'dbm'
-]
+
+class InputSource(str, enum.Enum):
+  """Specifies supported sources for getting media performance."""
+
+  googleads = 'googleads'
+  youtube = 'youtube'
+  file = 'file'
+  bq = 'bq'
+  sqldb = 'sqldb'
+  fake = 'fake'
+  dbm = 'dbm'
 
 
 class FetchingParameters(pydantic.BaseModel):

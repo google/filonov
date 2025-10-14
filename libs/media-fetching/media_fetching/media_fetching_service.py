@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import enum
 import logging
 import warnings
 from typing import Any, get_args
@@ -41,7 +42,7 @@ class MediaFetchingService:
 
   def __init__(
     self,
-    source: models.InputSource | None = None,
+    source: str | models.InputSource | None = None,
     source_fetcher: models.BaseMediaInfoFetcher | None = None,
   ) -> None:
     """Initializes MediaFetchingService.
@@ -78,7 +79,7 @@ class MediaFetchingService:
   @classmethod
   def from_source_alias(
     cls,
-    source: models.InputSource = 'googleads',
+    source: str | models.InputSource = 'googleads',
   ) -> MediaFetchingService:
     """Initialized MediaFetchingService from source alias."""
     source_fetcher = _get_source_fetcher(source)
@@ -108,8 +109,10 @@ class MediaFetchingService:
 
 
 def _get_source_fetcher(
-  source: models.InputSource,
+  source: str | models.InputSource,
 ) -> models.BaseMediaInfoFetcher:
+  if isinstance(source, enum.Enum):
+    source = source.value
   if not (fetcher_info := fetcher.FETCHERS.get(source)):
     raise exceptions.MediaFetchingError(
       f'Incorrect source: {source}. Only {get_args(models.InputSource)} '

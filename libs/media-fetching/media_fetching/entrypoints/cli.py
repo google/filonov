@@ -16,85 +16,113 @@
 
 """CLI entrypoint for fetching media data."""
 
-import argparse
-import sys
-from typing import get_args
+from typing import Optional
 
+import typer
 from garf_executors.entrypoints import utils as garf_utils
-from garf_io import writer
+from garf_io import writer as garf_writer
 from media_tagging import media
+from typing_extensions import Annotated
 
 import media_fetching
-from media_fetching.sources import fetcher
+from media_fetching.sources import fetcher, models
+
+typer_app = typer.Typer()
 
 
-def main():  # noqa: D103
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-    '--source',
-    dest='source',
-    choices=get_args(media_fetching.sources.models.InputSource),
-    default='googleads',
-    help='Which datasources to use for fetching media data',
-  )
-  parser.add_argument(
-    '--media-type',
-    dest='media_type',
-    choices=media.MediaTypeEnum.options(),
-    help='Type of media.',
-  )
-  parser.add_argument(
-    '--extra-info',
-    dest='extra_info',
-    default=None,
-    help=(
-      'Comma separated modules to add extra information to fetched data '
-      'specified in "module.method" format'
-    ),
-  )
-  parser.add_argument(
-    '--writer',
-    dest='writer',
-    default='json',
-    help='Type of writer used to write resulting report.',
-  )
-  parser.add_argument(
-    '--output',
-    dest='output',
-    default='media_results',
-    help='Destination of written report.',
-  )
-  parser.add_argument('-v', '--version', dest='version', action='store_true')
-  args, kwargs = parser.parse_known_args()
-
-  if args.version:
+def _version_callback(show_version: bool) -> None:
+  if show_version:
     print(f'media-fetcher version: {media_fetching.__version__}')
-    sys.exit()
+    raise typer.Exit()
+
+
+@typer_app.command(
+  context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
+)
+def main(
+  ctx: typer.Context,
+  media_type: Annotated[
+    media.MediaTypeEnum,
+    typer.Option(
+      help='Type of media',
+      case_sensitive=False,
+    ),
+  ] = 'IMAGE',
+  source: Annotated[
+    models.InputSource,
+    typer.Option(
+      help='Type of media',
+      case_sensitive=False,
+    ),
+  ] = 'googleads',
+  extra_info: Annotated[
+    Optional[str],
+    typer.Option(
+      help=(
+        'Comma separated modules to add extra information to fetched data '
+        'specified in "module.method" format'
+      )
+    ),
+  ] = None,
+  writer: Annotated[
+    garf_writer.WriterOption,
+    typer.Option(
+      help='Type of writer used to write resulting report',
+    ),
+  ] = 'json',
+  output: Annotated[
+    str,
+    typer.Option(
+      help='Destination of written report',
+    ),
+  ] = 'media_results',
+  logger: Annotated[
+    garf_utils.LoggerEnum,
+    typer.Option(
+      help='Type of logger',
+    ),
+  ] = 'rich',
+  loglevel: Annotated[
+    str,
+    typer.Option(
+      help='Level of logging',
+    ),
+  ] = 'INFO',
+  version: Annotated[
+    bool,
+    typer.Option(
+      help='Display library version',
+      callback=_version_callback,
+      is_eager=True,
+      expose_value=False,
+    ),
+  ] = False,
+):  # noqa: D103
+  _ = garf_utils.init_logging(loglevel=loglevel.upper(), logger_type=logger)
 
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
   )
-  parsed_param_keys = set(
-    [args.source, args.writer] + list(supported_enrichers)
-  )
-  extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(kwargs)
+  parsed_param_keys = set([source, writer] + list(supported_enrichers))
+  extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(ctx.args)
   fetching_service = media_fetching.MediaFetchingService.from_source_alias(
-    args.source
+    source
   )
-  request_class, _ = fetcher.FETCHERS.get(args.source)
+  request_class, _ = fetcher.FETCHERS.get(source)
+  request = request_class(
+    **extra_parameters.get(source),
+    extra_info=extra_info,
+    media_type=media_type,
+  )
 
   report = fetching_service.fetch(
-    request=request_class(
-      **extra_parameters.get(args.source),
-      extra_info=args.extra_info,
-      media_type=args.media_type,
-    ),
+    request=request,
     extra_parameters=extra_parameters,
   )
-  writer.create_writer(
-    args.writer, **(extra_parameters.get(args.writer) or {})
-  ).write(report, args.output)
+  garf_writer.create_writer(
+    writer, **(extra_parameters.get(writer) or {})
+  ).write(report, output)
 
 
 if __name__ == '__main__':
-  main()
+  typer_app()

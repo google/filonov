@@ -77,8 +77,17 @@ async def fetch_sqldb(
   return fetch('sqldb', request, writer_options)
 
 
+@router.post('/fetch:dbm')
+async def fetch_dbm(
+  request: media_fetching.sources.dbm.BidManagerFetchingParameters,
+  writer_options: WriterOptions,
+) -> fastapi.responses.JSONResponse:
+  """Fetches media data from Bid Manager API."""
+  return fetch('dbm', request, writer_options)
+
+
 def fetch(
-  source: models.InputSource,
+  source: str | models.InputSource,
   request: models.FetchingParameters,
   writer_options: WriterOptions,
 ):
