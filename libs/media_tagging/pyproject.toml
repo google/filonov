@@ -14,6 +14,7 @@ dependencies = [
     "SQLalchemy>=2.0.0",
     "tenacity",
     "google-genai",
+    "typer",
 ]
 authors = [
   {name = "Andrei Markin", email = "amarkin@google.com"},
@@ -29,6 +30,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Operating System :: OS Independent",
@@ -84,5 +86,5 @@ markers = [
 ]
 
 [project.scripts]
-media-tagger="media_tagging.entrypoints.cli:main"
-media-loader="media_tagging.loaders.entrypoints.cli:main"
+media-tagger="media_tagging.entrypoints.cli:typer_app"
+media-loader="media_tagging.loaders.entrypoints.cli:typer_app"

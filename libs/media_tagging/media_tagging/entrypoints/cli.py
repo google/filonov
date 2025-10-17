@@ -15,118 +15,212 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-import argparse
-import logging
-import sys
+from typing import Optional
 
+import typer
 from garf_executors.entrypoints import utils as garf_utils
+from garf_io import writer as garf_writer
+from typing_extensions import Annotated
 
 import media_tagging
 from media_tagging import media, media_tagging_service, repositories
 from media_tagging.entrypoints import utils
 
+typer_app = typer.Typer()
 
-def main():
-  """Main entrypoint."""
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-    'action',
-    nargs='?',
-    choices=['tag', 'describe'],
-    help='Action to perform',
-    default='tag',
-  )
-  parser.add_argument(
-    'media_paths', nargs='*', help='Paths to local/remote files or URLs'
-  )
-  parser.add_argument(
-    '--input', dest='input', default=None, help='File with media_paths'
-  )
-  parser.add_argument(
-    '--media-type',
-    dest='media_type',
-    choices=media.MediaTypeEnum.options(),
-    help='Type of media.',
-  )
-  parser.add_argument(
-    '--tagger',
-    dest='tagger',
-    default='gemini',
+MediaPaths = Annotated[
+  Optional[list[str]],
+  typer.Argument(
+    help='Media paths',
+  ),
+]
+Input = Annotated[
+  Optional[str],
+  typer.Option(
+    help='File with media_paths',
+    case_sensitive=False,
+  ),
+]
+MediaType = Annotated[
+  media.MediaTypeEnum,
+  typer.Option(
+    help='Type of media',
+    case_sensitive=False,
+  ),
+]
+Tagger = Annotated[
+  Optional[str],
+  typer.Option(
     help='Type of tagger',
-  )
-  parser.add_argument('--writer', dest='writer', default='json')
-  parser.add_argument('--output', dest='output', default='tagging_results')
-  parser.add_argument(
-    '--no-output',
-    dest='no_output',
-    action='store_true',
-    help='Skip writing tagging results',
-  )
-  parser.add_argument(
-    '--db-uri',
-    dest='db_uri',
-    help='Database connection string to store and retrieve tagging results',
-  )
-  parser.add_argument(
-    '--logger',
-    dest='logger',
-    default='rich',
-    choices=['local', 'rich'],
+  ),
+]
+DbUri = Annotated[
+  Optional[str],
+  typer.Option(
+    help='Database connection string to store and retrieve results',
+  ),
+]
+
+Writer = Annotated[
+  garf_writer.WriterOption,
+  typer.Option(
+    help='Type of writer used to write resulting report',
+  ),
+]
+
+Output = Annotated[
+  Optional[str],
+  typer.Option(
+    help='Name of output file',
+  ),
+]
+Logger = Annotated[
+  garf_utils.LoggerEnum,
+  typer.Option(
     help='Type of logger',
-  )
-  parser.add_argument('--loglevel', dest='loglevel', default='INFO')
-  parser.add_argument('--no-parallel', dest='parallel', action='store_false')
-  parser.add_argument('--deduplicate', dest='deduplicate', action='store_true')
-  parser.add_argument(
-    '--parallel-threshold',
-    dest='parallel_threshold',
-    default=10,
-    type=int,
+  ),
+]
+LogLevel = Annotated[
+  str,
+  typer.Option(
+    help='Level of logging',
+  ),
+]
+
+Deduplicate = Annotated[
+  bool,
+  typer.Option(
+    help='Whether cached results of tagging should be deduplicated',
+  ),
+]
+
+ParallelTreshold = Annotated[
+  int,
+  typer.Option(
     help='Number of parallel processes to perform media tagging',
-  )
-  parser.add_argument('-v', '--version', dest='version', action='store_true')
-  parser.set_defaults(parallel=True)
-  parser.set_defaults(deduplicate=False)
-  args, kwargs = parser.parse_known_args()
+  ),
+]
 
-  if args.version:
-    print(f'media-tagger version: {media_tagging.__version__}')
-    sys.exit()
+
+def _version_callback(show_version: bool) -> None:
+  if show_version:
+    print(f'media-tagging version: {media_tagging.__version__}')
+    raise typer.Exit()
+
+
+@typer_app.command(
+  context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
+)
+def tag(
+  ctx: typer.Context,
+  media_type: MediaType,
+  media_paths: MediaPaths = None,
+  input: Input = None,
+  tagger: Tagger = 'gemini',
+  db_uri: DbUri = None,
+  writer: Writer = 'json',
+  output: Output = 'tagging_results',
+  deduplicate: Deduplicate = False,
+  logger: Logger = 'rich',
+  loglevel: LogLevel = 'INFO',
+  parallel_threshold: ParallelTreshold = 10,
+) -> None:
   tagging_service = media_tagging_service.MediaTaggingService(
-    repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
+    repositories.SqlAlchemyTaggingResultsRepository(db_uri)
   )
-  extra_parameters = garf_utils.ParamsParser(
-    ['tagger', args.writer, 'input']
-  ).parse(kwargs)
-
-  logger = garf_utils.init_logging(
-    loglevel=args.loglevel, logger_type=args.logger
+  extra_parameters = garf_utils.ParamsParser(['tagger', writer, 'input']).parse(
+    ctx.args
   )
 
-  media_paths = args.media_paths or utils.get_media_paths_from_file(
-    utils.InputConfig(path=args.input, **extra_parameters.get('input'))
+  logger = garf_utils.init_logging(loglevel=loglevel, logger_type=logger)
+
+  media_paths = media_paths or utils.get_media_paths_from_file(
+    utils.InputConfig(path=input, **extra_parameters.get('input'))
   )
   request = media_tagging_service.MediaTaggingRequest(
-    tagger_type=args.tagger,
-    media_type=args.media_type,
+    tagger_type=tagger,
+    media_type=media_type,
     media_paths=media_paths,
     tagging_options=extra_parameters.get('tagger'),
-    parallel_threshold=args.parallel_threshold,
+    parallel_threshold=parallel_threshold,
+    deduplicate=deduplicate,
   )
   logger.info(request)
   path_processor = extra_parameters.get('tagger', {}).get('path_processor')
-  if args.action == 'tag':
-    tagging_results = tagging_service.tag_media(request, path_processor)
-  else:
-    tagging_results = tagging_service.describe_media(request, path_processor)
-  if args.no_output:
-    sys.exit()
+  tagging_results = tagging_service.tag_media(request, path_processor)
+  if output is None:
+    raise typer.Exit()
   if not tagging_results:
     logger.error('No tagging tagging results found.')
-    sys.exit(1)
+    raise typer.Exit(1)
 
-  writer_parameters = extra_parameters.get(args.writer) or {}
-  tagging_results.save(args.output, args.writer, **writer_parameters)
+  writer_parameters = extra_parameters.get(writer) or {}
+  tagging_results.save(output, writer, **writer_parameters)
+
+
+@typer_app.command(
+  context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
+)
+def describe(
+  ctx: typer.Context,
+  media_type: MediaType,
+  media_paths: MediaPaths = None,
+  input: Input = None,
+  tagger: Tagger = 'gemini',
+  db_uri: DbUri = None,
+  writer: Writer = 'json',
+  output: Output = 'tagging_results',
+  deduplicate: Deduplicate = False,
+  logger: Logger = 'rich',
+  loglevel: LogLevel = 'INFO',
+  parallel_threshold: ParallelTreshold = 10,
+):
+  tagging_service = media_tagging_service.MediaTaggingService(
+    repositories.SqlAlchemyTaggingResultsRepository(db_uri)
+  )
+  extra_parameters = garf_utils.ParamsParser(['tagger', writer, 'input']).parse(
+    ctx.args
+  )
+
+  logger = garf_utils.init_logging(loglevel=loglevel, logger_type=logger)
+
+  media_paths = media_paths or utils.get_media_paths_from_file(
+    utils.InputConfig(path=input, **extra_parameters.get('input'))
+  )
+  request = media_tagging_service.MediaTaggingRequest(
+    tagger_type=tagger,
+    media_type=media_type,
+    media_paths=media_paths,
+    tagging_options=extra_parameters.get('tagger'),
+    parallel_threshold=parallel_threshold,
+    deduplicate=deduplicate,
+  )
+  logger.info(request)
+  path_processor = extra_parameters.get('tagger', {}).get('path_processor')
+  tagging_results = tagging_service.describe_media(request, path_processor)
+  if output is None:
+    raise typer.Exit()
+  if not tagging_results:
+    logger.error('No tagging tagging results found.')
+    raise typer.Exit(1)
+
+  writer_parameters = extra_parameters.get(writer) or {}
+  tagging_results.save(output, writer, **writer_parameters)
+
+
+@typer_app.callback(invoke_without_command=True)
+def main(
+  ctx: typer.Context,
+  version: Annotated[
+    bool,
+    typer.Option(
+      help='Display library version',
+      callback=_version_callback,
+      is_eager=True,
+      expose_value=False,
+    ),
+  ] = False,
+): ...
 
 
 if __name__ == '__main__':
