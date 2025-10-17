@@ -214,7 +214,10 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       ]
 
     return tagging_result.TaggingResult(
-      identifier=medium.name, type=medium.type.name.lower(), content=tags
+      identifier=medium.name,
+      type=medium.type.name.lower(),
+      content=tags,
+      hash=medium.identifier,
     )
 
   @override
@@ -240,6 +243,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       identifier=medium.name,
       type=medium.type.name.lower(),
       content=tagging_result.Description(text=description),
+      hash=medium.identifier,
     )
 
 

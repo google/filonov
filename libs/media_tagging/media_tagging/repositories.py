@@ -1,5 +1,4 @@
 # Copyright 2024 Google LLC
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -17,11 +16,14 @@
 
 import abc
 import collections
+import contextlib
+import hashlib
 import itertools
+import json
 from collections.abc import Sequence
 
 import sqlalchemy
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.pool import StaticPool
 from typing_extensions import override
 
@@ -82,28 +84,59 @@ class InMemoryTaggingResultsRepository(BaseTaggingResultsRepository):
 Base = declarative_base()
 
 
+class TaggingDetails(Base):
+  """ORM model for persisting TaggingDetails."""
+
+  __tablename__ = 'tagging_details'
+  id = sqlalchemy.Column(sqlalchemy.String(32), primary_key=True)
+  content = sqlalchemy.Column(sqlalchemy.JSON)
+
+  info = relationship('TaggingResults', back_populates='tagging_details')
+
+
+class Identifiers(Base):
+  """ORM model for persisting Identifier mapping."""
+
+  __tablename__ = 'identifiers'
+  hash = sqlalchemy.Column(sqlalchemy.String(32), primary_key=True)
+  content = sqlalchemy.Column(sqlalchemy.Text)
+
+  tagging_content = relationship('TaggingResults', back_populates='identifier')
+
+
 class TaggingResults(Base):
   """ORM model for persisting TaggingResult."""
 
   __tablename__ = 'tagging_results'
   processed_at = sqlalchemy.Column(sqlalchemy.DateTime, primary_key=True)
-  identifier = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
+  hash = sqlalchemy.Column(
+    sqlalchemy.String(32),
+    sqlalchemy.ForeignKey('identifiers.hash'),
+    primary_key=True,
+  )
   output = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
   tagger = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
   type = sqlalchemy.Column(sqlalchemy.String(10), primary_key=True)
   content = sqlalchemy.Column(sqlalchemy.JSON)
-  tagging_details = sqlalchemy.Column(sqlalchemy.JSON)
+
+  tagging_details_id = sqlalchemy.Column(
+    sqlalchemy.String(32),
+    sqlalchemy.ForeignKey('tagging_details.id'),
+  )
+  tagging_details = relationship('TaggingDetails', back_populates='info')
+  identifier = relationship('Identifiers', back_populates='tagging_content')
 
   def to_pydantic_model(self) -> tagging_result.TaggingResult:
     """Converts model to pydantic object."""
     return tagging_result.TaggingResult(
       processed_at=self.processed_at,
-      identifier=self.identifier,
+      identifier=self.identifier.content,
       type=self.type,
       content=self.content,
       output=self.output,
       tagger=self.tagger,
-      tagging_details=self.tagging_details,
+      tagging_details=self.tagging_details.content,
+      hash=self.hash,
     )
 
 
@@ -166,13 +199,26 @@ class SqlAlchemyTaggingResultsRepository(
     """Specifies get operations."""
     if isinstance(media_paths, str):
       media_paths = [media_paths]
+    all_media = [
+      media.Medium(media_path=media_path, media_type=media_type)
+      for media_path in media_paths
+    ]
+    media_hashes = []
+    for m in all_media:
+      try:
+        media_hashes.append(m.identifier)
+      except media.InvalidMediaPathError:
+        continue
+    if not media_hashes:
+      return []
     converted_media_paths = [
       media.convert_path_to_media_name(media_path, media_type)
       for media_path in media_paths
     ]
+
     with self.session() as session:
       query = session.query(TaggingResults).where(
-        TaggingResults.identifier.in_(converted_media_paths)
+        TaggingResults.hash.in_(media_hashes)
       )
       if output:
         query = query.where(TaggingResults.output == output)
@@ -183,16 +229,17 @@ class SqlAlchemyTaggingResultsRepository(
         return tagging_results
       dedup = collections.defaultdict(list)
       for result in tagging_results:
-        dedup[result.identifier].append(set(result.content))
+        dedup[result.hash].append(set(result.content))
       return [
         tagging_result.TaggingResult(
           identifier=media_path,
           type=media_type.lower(),
           tagger=tagger_type,
           output=output if output == 'tag' else 'description',
-          content=set(itertools.chain(*dedup[media_path])),
+          content=set(itertools.chain(*dedup[media_hash])),
+          hash=media_hash,
         )
-        for media_path in converted_media_paths
+        for media_path, media_hash in zip(converted_media_paths, media_hashes)
       ]
 
   def add(
@@ -204,8 +251,54 @@ class SqlAlchemyTaggingResultsRepository(
     if isinstance(tagging_results, tagging_result.TaggingResult):
       tagging_results = [tagging_results]
     with self.session() as session:
+      identifiers = [t.hash for t in tagging_results]
+      tagging_details = [
+        hashlib.md5(json.dumps(t.tagging_details).encode('utf-8')).hexdigest()
+        for t in tagging_results
+      ]
+      ids = [
+        i.hash
+        for i in session.query(Identifiers)
+        .where(Identifiers.hash.in_(identifiers))
+        .all()
+      ]
+      tagging_details_ids = [
+        t.id
+        for t in session.query(TaggingDetails)
+        .where(TaggingDetails.id.in_(tagging_details))
+        .all()
+      ]
       for result in tagging_results:
-        session.add(TaggingResults(**result.dict()))
+        content = (
+          [r.model_dump() for r in result.content]
+          if isinstance(result.content, tuple)
+          else result.content.model_dump()
+        )
+        tres = TaggingResults(
+          processed_at=result.processed_at,
+          hash=result.hash,
+          tagger=result.tagger,
+          output=result.output,
+          type=result.type,
+          content=content,
+        )
+        if tres.hash not in ids:
+          tres.identifier = Identifiers(
+            hash=tres.hash, content=result.identifier
+          )
+        if (
+          t_hash := hashlib.md5(
+            json.dumps(result.tagging_details).encode('utf-8')
+          ).hexdigest()
+        ) in tagging_details_ids:
+          tres.tagging_details_id = t_hash
+        else:
+          tres.tagging_details = TaggingDetails(
+            id=t_hash,
+            content=result.tagging_details,
+          )
+
+        session.add(tres)
       session.commit()
 
   def list(self) -> list[tagging_result.TaggingResult]:
