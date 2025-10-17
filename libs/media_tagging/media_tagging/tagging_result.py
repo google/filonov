@@ -89,6 +89,7 @@ class TaggingResult(pydantic.BaseModel):
     tagger: Tagger used to generating the content.
     output: Type of tagging output (tag or description).
     tagging_details: Additional details used to perform the tagging.
+    hash: Media content hash.
   """
 
   processed_at: datetime.datetime = pydantic.Field(
@@ -109,8 +110,9 @@ class TaggingResult(pydantic.BaseModel):
     description='type of output', default=None
   )
   tagging_details: dict[str, Any] | None = pydantic.Field(
-    description='Additional details used during tagging', default=None
+    description='Additional details used during tagging', default_factory=dict
   )
+  hash: str | None = pydantic.Field(description='media hash', default=None)
 
   def trim_tags(self, value: float) -> None:
     """Removes tags from tagging result with low scores."""

@@ -43,11 +43,11 @@ class TestFileLoader:
       ),
       location=location,
       output='tag',
-      media_type=media.MediaTypeEnum.IMAGE,
+      media_type=media.MediaTypeEnum.TEXT,
     )
     expected_result = tagging_result.TaggingResult(
       identifier='test_media',
-      type=media.MediaTypeEnum.IMAGE.name.lower(),
+      type='text',
       tagger='loader',
       content=(
         tagging_result.Tag(name='test_tag1', score=1.0),
