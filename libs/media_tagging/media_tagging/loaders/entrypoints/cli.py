@@ -16,78 +16,116 @@
 
 """CLI utility for loading tagging results to DB."""
 
-import argparse
-import logging
+import enum
 
+import typer
 from garf_executors.entrypoints import utils as garf_utils
+from typing_extensions import Annotated
 
+import media_tagging
 from media_tagging import media, repositories
 from media_tagging.loaders import media_loader_service
 
+typer_app = typer.Typer()
 
-def main():
-  """Main entrypoint."""
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-    'location', nargs='*', help='Paths to local/remote files or URLs'
-  )
-  parser.add_argument(
-    '--action',
-    dest='action',
-    choices=['tag', 'describe'],
-    help='Action to perform',
-    default='tag',
-  )
-  parser.add_argument(
-    '--loader',
-    dest='loader',
-    # choices=list(media_loader_service.LOADERS.keys()),
-    default='file',
-    help='Type of loader',
-  )
-  parser.add_argument(
-    '--media-type',
-    dest='media_type',
-    choices=media.MediaTypeEnum.options(),
-    help='Type of media.',
-  )
-  parser.add_argument(
-    '--db-uri',
-    dest='db_uri',
-    help='Database connection string to store tagging results',
-  )
-  parser.add_argument(
-    '--logger',
-    dest='logger',
-    default='rich',
-    choices=['local', 'rich'],
+MediaType = Annotated[
+  media.MediaTypeEnum,
+  typer.Option(
+    help='Type of media',
+    case_sensitive=False,
+  ),
+]
+Input = Annotated[
+  list[str],
+  typer.Argument(
+    help='Paths to local/remove files or URLs',
+  ),
+]
+
+Logger = Annotated[
+  garf_utils.LoggerEnum,
+  typer.Option(
     help='Type of logger',
-  )
-  parser.add_argument('--loglevel', dest='loglevel', default='INFO')
-  args, kwargs = parser.parse_known_args()
+  ),
+]
+LogLevel = Annotated[
+  str,
+  typer.Option(
+    help='Level of logging',
+  ),
+]
 
+
+class Action(str, enum.Enum):
+  tag = 'tag'
+  describe = 'describe'
+
+
+def _version_callback(show_version: bool) -> None:
+  if show_version:
+    print(f'media-loader version: {media_tagging.__version__}')
+    raise typer.Exit()
+
+
+@typer_app.command(
+  context_settings={'allow_extra_args': True, 'ignore_unknown_options': True},
+)
+def main(
+  location: Input,
+  media_type: MediaType,
+  db_uri: Annotated[
+    str,
+    typer.Option(
+      help='Database connection string to store and retrieve results',
+    ),
+  ],
+  action: Action = Action.tag,
+  loader: Annotated[
+    str,
+    typer.Option(
+      help='Type of loader',
+      case_sensitive=False,
+    ),
+  ] = 'file',
+  logger: Logger = 'rich',
+  loglevel: LogLevel = 'INFO',
+  version: Annotated[
+    bool,
+    typer.Option(
+      help='Display library version',
+      callback=_version_callback,
+      is_eager=True,
+      expose_value=False,
+    ),
+  ] = False,
+):
+  found_file_locations = []
+  parameters = []
+  for loc in location:
+    if loc.startswith('--'):
+      parameters.append(loc)
+    else:
+      found_file_locations.append(loc)
   loader_service = media_loader_service.MediaLoaderService(
-    repositories.SqlAlchemyTaggingResultsRepository(args.db_uri)
+    repositories.SqlAlchemyTaggingResultsRepository(db_uri)
   )
-  extra_parameters = garf_utils.ParamsParser(['loader']).parse(kwargs)
+  extra_parameters = garf_utils.ParamsParser(['loader']).parse(parameters)
 
-  logger = garf_utils.init_logging(
-    loglevel=args.loglevel, logger_type=args.logger
-  )
+  logger = garf_utils.init_logging(loglevel=loglevel, logger_type=logger)
 
-  for location in args.location:
-    logger.info('Getting tagging results from %s', location)
+  for loc in found_file_locations:
+    logger.info('Getting tagging results from %s', loc)
     parameters = {
-      'loader_type': args.loader,
-      'media_type': args.media_type,
-      'location': location,
+      'loader_type': loader,
+      'media_type': media_type,
+      'location': loc,
       'loader_parameters': extra_parameters.get('loader'),
     }
-    if args.action == 'tag':
+    if action == 'tag':
       loader_service.load_media_tags(**parameters)
     else:
       loader_service.load_media_descriptions(**parameters)
 
 
 if __name__ == '__main__':
-  main()
+  typer_app()
