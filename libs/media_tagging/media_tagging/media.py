@@ -20,6 +20,7 @@ links does not have content).
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import enum
+import hashlib
 import os
 
 import smart_open
@@ -61,15 +62,37 @@ class Medium:
   def __init__(
     self,
     media_path: str | os.PathLike[str],
-    media_type: MediaTypeEnum = MediaTypeEnum.UNKNOWN,
+    media_type: MediaTypeEnum | str = MediaTypeEnum.UNKNOWN,
     media_name: str = '',
     content: bytes = bytes(),
   ) -> None:
     """Initializes Medium."""
     self._media_path = str(media_path)
-    self._media_type = media_type
+    self._media_type = (
+      media_type
+      if isinstance(media_type, MediaTypeEnum)
+      else MediaTypeEnum[media_type.upper()]
+    )
     self._name = media_name
     self._content: bytes = content
+
+  @property
+  def identifier(self) -> str:
+    """Represents unique identifier of a medium.
+
+    For YOUTUBE_VIDEO it is video_id which is already unique.
+    For IMAGE all links to tpc.googlesyndication.com/simgad are considered
+    unique.
+    For the rest media type the md5 hash of medium content is taken.
+    """
+    if self.type == MediaTypeEnum.YOUTUBE_VIDEO or (
+      self.type == MediaTypeEnum.IMAGE
+      and self._media_path.startswith(
+        'https://tpc.googlesyndication.com/simgad'
+      )
+    ):
+      return self.name
+    return hashlib.md5(self.content).hexdigest()
 
   @property
   def media_path(self) -> str:
@@ -93,7 +116,7 @@ class Medium:
   def content(self) -> bytes:
     """Content of media as bytes."""
     if self.type in (MediaTypeEnum.TEXT, MediaTypeEnum.WEBPAGE):
-      return self._media_path
+      return self._media_path.encode('utf-8')
     if self._content or (
       self.type == MediaTypeEnum.YOUTUBE_VIDEO
       and not str(self._media_path).endswith(_SUPPORTED_VIDEO_FILE_EXTENSIONS)
@@ -107,7 +130,7 @@ class Medium:
         content = bytes()
       else:
         raise InvalidMediaPathError(
-          f'Cannot read media from path {self._media_path}'
+          f'Cannot read media {self.type.name} from path {self._media_path}'
         ) from e
     self._content = content
     return content
