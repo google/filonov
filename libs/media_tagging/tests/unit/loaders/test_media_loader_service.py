@@ -15,7 +15,7 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 import pandas as pd
 import pytest
-from media_tagging import media, repositories, tagging_result
+from media_tagging import repositories, tagging_result
 from media_tagging.loaders import media_loader_service
 
 
@@ -39,7 +39,7 @@ class TestMediaLoaderService:
     results.to_csv(location)
     expected_result = tagging_result.TaggingResult(
       identifier='test_media',
-      type=media.MediaTypeEnum.IMAGE.name.lower(),
+      type='text',
       tagger='loader',
       content=(
         tagging_result.Tag(name='test_tag1', score=1.0),
@@ -50,11 +50,11 @@ class TestMediaLoaderService:
     )
     service.load_media_tags(
       loader_type='file',
-      media_type='IMAGE',
+      media_type='text',
       location=location,
     )
     found_tagging_results = service.repo.get(
-      ['test_media'], 'image', 'loader', 'tag'
+      ['test_media'], 'text', 'loader', 'tag'
     )
     assert found_tagging_results[0] == expected_result
 
@@ -72,7 +72,7 @@ class TestMediaLoaderService:
     results.to_csv(location)
     expected_result = tagging_result.TaggingResult(
       identifier='test_media',
-      type=media.MediaTypeEnum.IMAGE.name.lower(),
+      type='text',
       tagger='loader',
       content=tagging_result.Description(text='test_description'),
       output='description',
@@ -80,10 +80,10 @@ class TestMediaLoaderService:
     )
     service.load_media_descriptions(
       loader_type='file',
-      media_type='IMAGE',
+      media_type='text',
       location=location,
     )
     found_tagging_results = service.repo.get(
-      ['test_media'], 'image', 'loader', 'description'
+      ['test_media'], 'text', 'loader', 'description'
     )
     assert found_tagging_results[0] == expected_result

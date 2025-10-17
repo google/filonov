@@ -14,6 +14,8 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
+import hashlib
+
 import pytest
 from media_tagging import repositories, tagging_result
 
@@ -26,27 +28,30 @@ class TestSqlAlchemyTaggingResultsRepository:
   def test_get_dedup_tags(self, repo):
     tagging_result_1 = tagging_result.TaggingResult(
       identifier='test1',
-      type='image',
+      type='text',
       tagger='gemini',
       output='tag',
       content=[tagging_result.Tag(name='tag1', score=0.1)],
       tagging_details={'tags': 'tag1'},
+      hash=hashlib.md5(b'test1').hexdigest(),
     )
     tagging_result_2 = tagging_result.TaggingResult(
       identifier='test1',
-      type='image',
+      type='text',
       tagger='gemini',
       output='tag',
       content=[tagging_result.Tag(name='tag2', score=0.1)],
       tagging_details={'n_tags': 1},
+      hash=hashlib.md5(b'test1').hexdigest(),
     )
     tagging_result_3 = tagging_result.TaggingResult(
       identifier='test1',
-      type='image',
+      type='text',
       tagger='gemini',
       output='tag',
       content=[tagging_result.Tag(name='tag2', score=0.1)],
       tagging_details={'n_tags': 1},
+      hash=hashlib.md5(b'test1').hexdigest(),
     )
 
     repo.add(tagging_result_1)
@@ -55,7 +60,7 @@ class TestSqlAlchemyTaggingResultsRepository:
 
     tagging_results = repo.get(
       media_paths='test1',
-      media_type='image',
+      media_type='text',
       tagger_type='gemini',
       output='tag',
       deduplicate=True,
@@ -63,13 +68,14 @@ class TestSqlAlchemyTaggingResultsRepository:
 
     expected_tagging_results = tagging_result.TaggingResult(
       identifier='test1',
-      type='image',
+      type='text',
       tagger='gemini',
       output='tag',
       content=[
         tagging_result.Tag(name='tag1', score=0.1),
         tagging_result.Tag(name='tag2', score=0.1),
       ],
+      hash=hashlib.md5(b'test1').hexdigest(),
     )
 
     assert len(tagging_results) == 1
@@ -78,24 +84,27 @@ class TestSqlAlchemyTaggingResultsRepository:
   def test_get_dedup_descriptions(self, repo):
     tagging_result_1 = tagging_result.TaggingResult(
       identifier='test1',
-      type='image',
+      type='text',
       tagger='gemini',
       output='description',
       content=tagging_result.Description(text='test1'),
+      hash=hashlib.md5(b'test1').hexdigest(),
     )
     tagging_result_2 = tagging_result.TaggingResult(
       identifier='test1',
-      type='image',
+      type='text',
       tagger='gemini',
       output='description',
       content=tagging_result.Description(text='test2'),
+      hash=hashlib.md5(b'test1').hexdigest(),
     )
     tagging_result_3 = tagging_result.TaggingResult(
       identifier='test1',
-      type='image',
+      type='text',
       tagger='gemini',
       output='description',
       content=tagging_result.Description(text='test2'),
+      hash=hashlib.md5(b'test1').hexdigest(),
     )
 
     repo.add(tagging_result_1)
@@ -104,21 +113,22 @@ class TestSqlAlchemyTaggingResultsRepository:
 
     tagging_results = repo.get(
       media_paths='test1',
-      media_type='image',
+      media_type='text',
       tagger_type='gemini',
-      output='describe',
+      output='description',
       deduplicate=True,
     )
 
     expected_tagging_results = tagging_result.TaggingResult(
       identifier='test1',
-      type='image',
+      type='text',
       tagger='gemini',
       output='description',
-      content={
+      content=[
         tagging_result.Description(text='test1'),
         tagging_result.Description(text='test2'),
-      },
+      ],
+      hash=hashlib.md5(b'test1').hexdigest(),
     )
 
     assert len(tagging_results) == 1

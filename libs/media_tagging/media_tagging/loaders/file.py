@@ -96,14 +96,22 @@ class FileLoader(base.BaseLoader):
       )
       output = 'description'
 
-    return [
-      tagging_result.TaggingResult(
-        identifier=row[identifier],
-        type=media_type.name.lower(),
-        tagger='loader',
-        content=row.content,
-        output=output,
-        tagging_details={'loader_type': self.alias},
+    all_media = [
+      (
+        row.content,
+        media.Medium(media_path=row.media_url, media_type=media_type),
       )
       for _, row in data.iterrows()
+    ]
+    return [
+      tagging_result.TaggingResult(
+        identifier=m.name,
+        type=media_type.name.lower(),
+        tagger='loader',
+        content=content,
+        output=output,
+        tagging_details={'loader_type': self.alias},
+        hash=m.identifier,
+      )
+      for content, m in all_media
     ]

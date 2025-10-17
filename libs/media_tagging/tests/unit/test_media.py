@@ -14,8 +14,15 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
+import hashlib
+import pathlib
+
 import pytest
 from media_tagging import media
+
+_IMAGE_HASH = '600ffddc4fb5441d2dfed314e37feb91'
+_VIDEO_HASH = 'f0552d31fd297ce9cd72588f62fc5c2a'
+_SCRIPT_PATH = pathlib.Path(__file__).parent
 
 
 class TestMedium:
@@ -62,3 +69,28 @@ class TestMedium:
       media_path=test_media_path, media_type=media.MediaTypeEnum.WEBPAGE
     )
     assert test_medium.name == test_media_path
+
+  @pytest.mark.parametrize(
+    ('path', 'media_type', 'identifier'),
+    [
+      ('example.com', 'WEBPAGE', hashlib.md5(b'example.com').hexdigest()),
+      (_SCRIPT_PATH / 'data/test_image.png', 'IMAGE', _IMAGE_HASH),
+      (_SCRIPT_PATH / 'data/test_image_same.png', 'IMAGE', _IMAGE_HASH),
+      (_SCRIPT_PATH / 'data/test_video.mp4', 'VIDEO', _VIDEO_HASH),
+      (_SCRIPT_PATH / 'data/test_video_same.mp4', 'VIDEO', _VIDEO_HASH),
+      ('test text', 'TEXT', hashlib.md5(b'test text').hexdigest()),
+      (
+        'https://www.youtube.com/watch?v=12345789000',
+        'YOUTUBE_VIDEO',
+        '12345789000',
+      ),
+      (
+        'https://tpc.googlesyndication.com/simgad/11111111111111111111',
+        'IMAGE',
+        '11111111111111111111',
+      ),
+    ],
+  )
+  def test_identifier(self, path, media_type, identifier):
+    medium = media.Medium(path, media_type)
+    assert medium.identifier == str(identifier)

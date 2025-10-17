@@ -20,12 +20,22 @@ import media_similarity
 import media_tagging
 import pytest
 from filonov import exceptions, filonov_service
+from garf_io import writer
+from media_tagging.loaders import media_loader_service
 
 DATA = garf_core.GarfReport(
   results=[
     ['example.com', 'example', 1],
   ],
   column_names=['media_url', 'media_name', 'clicks'],
+)
+
+TAGS = garf_core.GarfReport(
+  results=[
+    ['example.com', 'test_tag_1', 1],
+    ['example.com', 'test_tag_2', 1],
+  ],
+  column_names=['media_url', 'tag', 'score'],
 )
 
 
@@ -61,7 +71,7 @@ class TestFilonovService:
     ):
       service.generate_creative_map(
         request=filonov_service.CreativeMapGenerateRequest(
-          source='fake', media_type='IMAGE'
+          source='fake', media_type='WEBPAGE'
         ),
       )
 
@@ -85,11 +95,21 @@ class TestFilonovService:
     ):
       service.generate_creative_map(
         request=filonov_service.CreativeMapGenerateRequest(
-          source='fake', media_type='IMAGE'
+          source='fake', media_type='WEBPAGE'
         ),
       )
 
-  def test_generate_creative_maps_returns_generated_map(self, db_uri):
+  def test_generate_creative_maps_returns_generated_map(self, db_uri, tmp_path):
+    writer.create_writer('csv', destination_folder=tmp_path).write(
+      TAGS, 'test_tags'
+    )
+    tags_location = tmp_path / 'test_tags.csv'
+    loader_service = media_loader_service.MediaLoaderService(
+      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(db_uri)
+    )
+    loader_service.load_media_tags(
+      loader_type='file', media_type='WEBPAGE', location=tags_location
+    )
     fake_fetcher = media_fetching.sources.fake.FakeFetcher(DATA)
     fake_fetching_service = media_fetching.MediaFetchingService(
       source_fetcher=fake_fetcher
@@ -105,7 +125,7 @@ class TestFilonovService:
     )
     generated_map = service.generate_creative_map(
       request=filonov_service.CreativeMapGenerateRequest(
-        source='fake', media_type='IMAGE'
+        source='fake', media_type='WEBPAGE'
       ),
     )
     assert generated_map

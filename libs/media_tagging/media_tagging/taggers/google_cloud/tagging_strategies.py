@@ -69,7 +69,7 @@ class ImageTaggingStrategy(base.TaggingStrategy):
     if n_tags := tagging_options.n_tags:
       tags = self._limit_number_of_tags(tags, n_tags)
     return tagging_result.TaggingResult(
-      identifier=medium.name, type='image', content=tags
+      identifier=medium.name, type='image', content=tags, hash=medium.identifier
     )
 
   def describe(
@@ -135,7 +135,7 @@ class VideoTaggingStrategy(base.TaggingStrategy):
     if n_tags := tagging_options.n_tags:
       tags = self._limit_number_of_tags(tags, n_tags)
     return tagging_result.TaggingResult(
-      identifier=medium.name, type='video', content=tags
+      identifier=medium.name, type='video', content=tags, hash=medium.identifier
     )
 
   def describe(
