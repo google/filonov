@@ -21,6 +21,7 @@ from typing import Literal
 
 import garf_core
 import pydantic
+from media_tagging import media
 
 from media_fetching.sources import models
 
@@ -28,7 +29,7 @@ from media_fetching.sources import models
 class FakeFetchingParameters(models.FetchingParameters):
   """Parameters for getting media from a supplied data."""
 
-  media_type: Literal['IMAGE', 'VIDEO', 'YOUTUBE_VIDEO', None] = None
+  media_type: Literal[tuple(media.MediaTypeEnum.options())] | None = None
   media_identifier: str = 'media_url'
   media_name: str = 'media_name'
   metrics: Sequence[str] | str = ('clicks', 'impressions')
