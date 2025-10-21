@@ -120,13 +120,18 @@ class CreativeMap:
     tagging_mapping = {
       result.identifier: result.content for result in tagging_results
     }
+    tagging_hash_to_identifier_mapping = {
+      t.hash: t.identifier for t in tagging_results
+    }
+    media_type = tagging_results[0].type
     for node in clustering_results.graph.nodes:
-      node_name = node.get('name', '')
+      node_hash = node.get('name', '')
+      node_name = tagging_hash_to_identifier_mapping.get(node_hash)
       if node_extra_info := extra_info.get(node_name):
-        node['id'] = node_name
+        node['id'] = node_hash
         if size := node_extra_info.size:
           node['size'] = size
-        node['type'] = 'image'
+        node['type'] = media_type
         node['image'] = node_extra_info.media_preview
         node['media_path'] = node_extra_info.media_path
         node['label'] = node_extra_info.media_name or 'Unknown'
@@ -160,12 +165,23 @@ class CreativeMap:
 
   def to_json(self) -> CreativeMapJson:
     """Extracts nodes from Network."""
+    start_date = ''
+    end_date = ''
+    for node in self.nodes:
+      if series := node.get('series'):
+        min_start_date = min(series.keys())
+        max_end_date = max(series.keys())
+        if not start_date or min_start_date < start_date:
+          start_date = min_start_date
+        if not end_date or max_end_date > end_date:
+          end_date = max_end_date
+
     return {
       'graph': {
         'adaptive_threshold': self.adaptive_threshold,
         'period': {
-          'start_date': self.fetching_request.get('start_date', 'null'),
-          'end_date': self.fetching_request.get('end_date', 'null'),
+          'start_date': start_date or 'null',
+          'end_date': end_date or 'null',
         },
       },
       'clusters': self.clusters,
