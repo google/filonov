@@ -331,6 +331,9 @@ class MediaSimilarityService:
         if str(pair) not in calculated_similarity_pairs_keys
       ]
 
+    hash_to_identifiers_mapping = {
+      t.hash: t.identifier for t in tagging_results
+    }
     if not uncalculated_media_pairs:
       logger.info('calculating threshold...')
       threshold = _calculate_threshold(
@@ -339,7 +342,7 @@ class MediaSimilarityService:
       logger.info('threshold is %.2f', threshold.threshold)
       logger.info('assigning clusters...')
       return _calculate_cluster_assignments(
-        calculated_similarity_pairs, threshold
+        calculated_similarity_pairs, threshold, hash_to_identifiers_mapping
       )
     if request.parallel_threshold > 1:
       total_batches = len(uncalculated_media_pairs)
@@ -394,7 +397,9 @@ class MediaSimilarityService:
     )
     logger.info('threshold is %.2f', threshold.threshold)
     logger.info('assigning clusters...')
-    return _calculate_cluster_assignments(similarity_pairs, threshold)
+    return _calculate_cluster_assignments(
+      similarity_pairs, threshold, hash_to_identifiers_mapping
+    )
 
   def find_similar_media(
     self,
@@ -479,6 +484,7 @@ def _calculate_threshold(
 def _calculate_cluster_assignments(
   similarity_pairs: Iterable[media_pair.SimilarityPair],
   threshold: adaptive_threshold.AdaptiveThreshold,
+  hash_to_identifiers_mapping: dict[str, str],
 ) -> ClusteringResults:
   """Assigns cluster number for each media in similarity pairs.
 
@@ -490,6 +496,7 @@ def _calculate_cluster_assignments(
     similarity_pairs: Mapping between media_pair identifier and
       its similarity score.
     threshold: Threshold to identify similar media.
+    hash_to_identifiers_mapping: Mapping between media hash and its identifier.
 
   Returns:
      Results of clustering that contain mapping between media identifier and
@@ -516,8 +523,9 @@ def _calculate_cluster_assignments(
   final_clusters: dict[str, int] = {}
   clusters = graph.community_walktrap().as_clustering()
   for i, cluster_media in enumerate(clusters._formatted_cluster_iterator(), 1):
-    for media in cluster_media.split(', '):
-      final_clusters[media] = i
+    for media_hash in cluster_media.split(', '):
+      if media := hash_to_identifiers_mapping.get(media_hash):
+        final_clusters[media] = i
   return ClusteringResults(
     clusters=final_clusters,
     adaptive_threshold=threshold.threshold,

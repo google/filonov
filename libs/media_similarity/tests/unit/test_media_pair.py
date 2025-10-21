@@ -32,12 +32,14 @@ class TestMediaPair:
       type='image',
       tagger='gemini',
       content=(tagging_result.Tag(name='tag1', score=1.0),),
+      hash='1',
     )
     media_2 = tagging_result.TaggingResult(
       identifier='media_2',
       type='image',
       tagger='google-cloud',
       content=(tagging_result.Tag(name='tag1', score=1.0),),
+      hash='1',
     )
 
     with pytest.raises(media_pair.MediaPairError):

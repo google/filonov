@@ -25,6 +25,7 @@ def media_1():
       tagging_result.Tag(name='tag1', score=1.0),
       tagging_result.Tag(name='tag2', score=1.0),
     ),
+    hash='1',
   )
 
 
@@ -38,6 +39,7 @@ def media_2():
       tagging_result.Tag(name='tag1', score=0.5),
       tagging_result.Tag(name='tag3', score=1.0),
     ),
+    hash='3',
   )
 
 
@@ -51,4 +53,5 @@ def media_3():
       tagging_result.Tag(name='tag3', score=1.0),
       tagging_result.Tag(name='tag4', score=1.0),
     ),
+    hash='2',
   )
