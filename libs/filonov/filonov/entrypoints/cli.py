@@ -63,7 +63,7 @@ def main(
       help='Type of tagger',
       case_sensitive=False,
     ),
-  ] = 'gemini',
+  ] = None,
   output_name: Annotated[
     str,
     typer.Option(
