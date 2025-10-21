@@ -97,16 +97,17 @@ class TestMediaSimilarityService:
 
 def test_calculate_cluster_assisnment():
   similarity_pairs = [
-    SimilarityPair('gemini', ('media_1', 'media_2'), SimilarityScore(score=10)),
-    SimilarityPair('gemini', ('media_2', 'media_3'), SimilarityScore(score=10)),
-    SimilarityPair('gemini', ('media_1', 'media_3'), SimilarityScore(score=10)),
-    SimilarityPair('gemini', ('media_1', 'media_4'), SimilarityScore(score=10)),
-    SimilarityPair('gemini', ('media_2', 'media_4'), SimilarityScore(score=10)),
-    SimilarityPair('gemini', ('media_3', 'media_4'), SimilarityScore(score=10)),
+    SimilarityPair('gemini', ('1', '2'), SimilarityScore(score=10)),
+    SimilarityPair('gemini', ('2', '3'), SimilarityScore(score=10)),
+    SimilarityPair('gemini', ('1', '3'), SimilarityScore(score=10)),
+    SimilarityPair('gemini', ('1', '4'), SimilarityScore(score=10)),
+    SimilarityPair('gemini', ('2', '4'), SimilarityScore(score=10)),
+    SimilarityPair('gemini', ('3', '4'), SimilarityScore(score=10)),
   ]
 
+  mapping_table = {str(i): f'media_{i}' for i in range(1, 5)}
   calculated_clusters = media_similarity_service._calculate_cluster_assignments(
-    similarity_pairs, adaptive_threshold.AdaptiveThreshold(5, 6)
+    similarity_pairs, adaptive_threshold.AdaptiveThreshold(5, 6), mapping_table
   )
   expected_clusters = {
     'media_1': 1,

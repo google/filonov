@@ -120,21 +120,21 @@ class MediaPair:
     )
 
   def __eq__(self, other: MediaPair) -> bool:
-    """Compares two MediaPairs based on their identifiers."""
-    return set(self.media_1.identifier, self.media_2.identifier) == set(
-      other.media_1.identifier, other.media_2.identifier
+    """Compares two MediaPairs based on their hashes."""
+    return set(self.media_1.hash, self.media_2.hash) == set(
+      other.media_1.hash, other.media_2.hash
     )
 
   def __hash__(self) -> int:
-    """Hashes MediaPair based on their identifiers."""
-    return hash(self.media_1.identifier, self.media_2.identifier)
+    """Hashes MediaPair based on their hashes."""
+    return hash(self.media_1.hash, self.media_2.hash)
 
   def __str__(self) -> str:
-    """String representation of MediaPair based on its sorted identifiers."""
+    """String representation of MediaPair based on its sorted hashes."""
     return (
-      f'{self.media_1.identifier}|{self.media_2.identifier}'
-      if self.media_1.identifier < self.media_2.identifier
-      else f'{self.media_2.identifier}|{self.media_1.identifier}'
+      f'{self.media_1.hash}|{self.media_2.hash}'
+      if self.media_1.hash < self.media_2.hash
+      else f'{self.media_2.hash}|{self.media_1.hash}'
     )
 
   def __repr__(self) -> str:
@@ -154,10 +154,10 @@ def build_media_pairs(
     tagging_results: Results of tagging to generate media pairs.
 
   Yields:
-    MediaPair with unique media identifiers.
+    MediaPair with unique media hashes.
   """
   for media_1, media_2 in itertools.combinations(set(tagging_results), 2):
-    if media_1.identifier != media_2.identifier:
+    if media_1.hash != media_2.hash:
       yield MediaPair(media_1, media_2)
 
 
@@ -231,7 +231,7 @@ class SimilarityPair:
     )
 
   def __eq__(self, other: SimilarityPair) -> bool:
-    """Compares two SimilarityPairs based on their identifiers and score."""
+    """Compares two SimilarityPairs based on their keys and score."""
     return (self.key, self.similarity_score) == (
       other.key,
       other.similarity_score,

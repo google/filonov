@@ -28,12 +28,14 @@ media_1 = tagging_result.TaggingResult(
   tagger='gemini',
   type='image',
   content=(tagging_result.Tag(name='test', score=0.0),),
+  hash='1',
 )
 media_2 = tagging_result.TaggingResult(
   identifier='2',
   tagger='gemini',
   type='image',
   content=(tagging_result.Tag(name='test', score=0.0),),
+  hash='2',
 )
 
 test_similarity_pair = SimilarityPair(
