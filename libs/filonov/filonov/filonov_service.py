@@ -67,6 +67,7 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
     output_parameters: Parameters for saving creative maps data.
     parallel_threshold: Tagging and similarity detecting threshold.
     trim_tags_threshold: Keeps tags only with the score higher than threshold.
+    embed_previews: Whether media previews should be embedded into a map.
     context: Overall context of map generation.
   """
 
@@ -83,6 +84,7 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   output_parameters: OutputParameters = OutputParameters()
   parallel_threshold: int = 10
   trim_tags_threshold: float | None = None
+  embed_previews: bool = False
   context: dict[str, Any] = pydantic.Field(default_factory=dict)
 
   def model_post_init(self, __context):  # noqa: D105
@@ -211,8 +213,9 @@ class FilonovService:
     if trim_threshold := request.trim_tags_threshold:
       tagging_response.trim(trim_threshold)
     return creative_map.CreativeMap.from_clustering(
-      clustering_results,
-      tagging_response.results,
-      media_info,
-      request.source_parameters.model_dump(),
+      clustering_results=clustering_results,
+      tagging_results=tagging_response.results,
+      extra_info=media_info,
+      fetching_request=request.source_parameters.model_dump(),
+      embed_previews=request.embed_previews,
     )
