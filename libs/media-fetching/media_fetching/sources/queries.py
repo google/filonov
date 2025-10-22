@@ -203,7 +203,7 @@ class PmaxAssetPerformance(PerformanceQuery):
       self.aspect_ratio = '0'
       self.size = '0'
       self.size_column = 'file_size'
-      self.media_name = 'asset.name'
+      self.media_name = 'asset.text_asset.text'
     else:
       self.media_url = 'asset.youtube_video_asset.youtube_video_id'
       self.aspect_ratio = 0.0
@@ -222,7 +222,7 @@ class SearchAssetPerformance(PerformanceQuery):
     segments.date AS date,
     campaign.id AS campaign_id,
     campaign.advertising_channel_type AS channel_type,
-    asset.name AS media_name,
+    asset.text_asset.text AS media_name,
     asset.id AS asset_id,
     asset.text_asset.text AS media_url,
     ad_group_ad_asset_view.field_type AS format_type,
@@ -264,7 +264,7 @@ class DemandGenTextAssetPerformance(PerformanceQuery):
     segments.date AS date,
     campaign.id AS campaign_id,
     campaign.advertising_channel_type AS channel_type,
-    asset.name AS media_name,
+    asset.text_asset.text AS media_name,
     asset.id AS asset_id,
     asset.text_asset.text AS media_url,
     ad_group_ad_asset_view.field_type AS format_type,
@@ -435,7 +435,7 @@ class AppAssetPerformance(PerformanceQuery):
       self.aspect_ratio = '0'
       self.size = '0'
       self.size_column = 'file_size'
-      self.media_name = 'asset.name'
+      self.media_name = 'asset.text_asset.text'
     else:
       self.media_url = 'asset.youtube_video_asset.youtube_video_id'
       self.aspect_ratio = 0.0
