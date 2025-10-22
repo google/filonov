@@ -18,11 +18,14 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import operator
 import os
+import textwrap
 from collections.abc import Mapping, Sequence
+from io import BytesIO
 from typing import Any, TypeAlias, TypedDict
 
 import numpy as np
@@ -31,6 +34,7 @@ import smart_open
 from garf_core import report
 from media_similarity import media_similarity_service
 from media_tagging import media, tagging_result
+from PIL import Image, ImageDraw, ImageFont
 
 MetricInfo: TypeAlias = dict[str, int | float]
 Info: TypeAlias = dict[str, int | float | str | list[str] | None]
@@ -132,7 +136,10 @@ class CreativeMap:
         if size := node_extra_info.size:
           node['size'] = size
         node['type'] = media_type
-        node['image'] = node_extra_info.media_preview
+        if media_type == 'text':
+          node['image'] = _create_text_image_bytes(node_extra_info.media_path)
+        else:
+          node['image'] = node_extra_info.media_preview
         node['media_path'] = node_extra_info.media_path
         node['label'] = node_extra_info.media_name or 'Unknown'
         node['cluster'] = clustering_results.clusters.get(node_name)
@@ -378,3 +385,38 @@ def _to_youtube_preview_link(video_id: str) -> str:
 
 def _to_youtube_video_link(video_id: str) -> str:
   return f'https://www.youtube.com/watch?v={video_id}'
+
+
+def _create_text_image_bytes(
+  text: str,
+  format: str = 'PNG',
+  font_size: int = 40,
+  font_path: str | None = None,
+  trim_treshold: int = 100,
+):
+  text = text[:trim_treshold]
+  text = '\n'.join(textwrap.wrap(text, width=20))
+  dummy_img = Image.new(mode='RGB', size=(1, 1))
+  dummy_draw = ImageDraw.Draw(dummy_img)
+
+  font = (
+    ImageFont.truetype(font_path, font_size)
+    if font_path
+    else ImageFont.load_default(size=font_size)
+  )
+
+  bbox = dummy_draw.textbbox((0, 0), text, font=font)
+  width = bbox[2] - bbox[0] + 10
+  height = bbox[3] - bbox[1] + 10
+
+  img = Image.new(mode='RGB', size=(width, height), color='white')
+  draw = ImageDraw.Draw(img)
+
+  draw.multiline_text((5, 5), text, fill='black', font=font)
+
+  byte_stream = BytesIO()
+  img.save(byte_stream, format=format)
+
+  image_bytes = byte_stream.getvalue()
+  encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+  return f'data:image/png;base64,{encoded_image}'
