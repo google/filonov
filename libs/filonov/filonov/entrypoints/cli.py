@@ -84,6 +84,12 @@ def main(
       help='Min allowed score for tags',
     ),
   ] = None,
+  embed_previews: Annotated[
+    bool,
+    typer.Option(
+      help='Whether media previews should be embedded into a creative map',
+    ),
+  ] = False,
   parallel_threshold: Annotated[
     int,
     typer.Option(
@@ -154,6 +160,7 @@ def main(
     ),
     parallel_threshold=parallel_threshold,
     trim_tags_threshold=trim_tags_threshold,
+    embed_previews=embed_previews,
     context=extra_parameters,
   )
   filonov_service = filonov.FilonovService(
