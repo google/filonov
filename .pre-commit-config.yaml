@@ -49,6 +49,11 @@ repos:
     entry: pytest -n auto libs/media_tagging/tests/unit
     language: system
     pass_filenames: false
+  - id: fetching-tests
+    name: fetching-tests
+    entry: pytest -n auto libs/media-fetching/tests/unit
+    language: system
+    pass_filenames: false
   - id: similarity-tests
     name: similarity-tests
     entry: pytest -n auto libs/media_similarity/tests/unit
