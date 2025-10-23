@@ -411,6 +411,7 @@ class AppAssetPerformance(PerformanceQuery):
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
     AND {media_url} != ''
     AND metrics.cost_micros > {min_cost}
+    {app_id}
   """
 
   start_date: str
@@ -418,8 +419,14 @@ class AppAssetPerformance(PerformanceQuery):
   media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
+  app_id: str | None = None
 
   def __post_init__(self) -> None:  # noqa: D105
+    self.app_id = (
+      f'AND campaign.app_campaign_setting.app_id = "{self.app_id}"'
+      if self.app_id
+      else ''
+    )
     self.min_cost = int(self.min_cost * 1e6)
     if self.media_type == 'IMAGE':
       self.media_url = 'asset.image_asset.full_size.url'

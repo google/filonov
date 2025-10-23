@@ -75,12 +75,14 @@ class GoogleAdsFetchingParameters(models.FetchingParameters):
 
   @property
   def query_params(self) -> dict[str, str | int]:
-    return {
+    query_params = {
       'start_date': self.start_date,
       'end_date': self.end_date,
       'media_type': self.media_type,
       'min_cost': self.min_cost,
     }
+    query_params.update(self.model_extra)
+    return query_params
 
 
 class Fetcher(models.BaseMediaInfoFetcher):
