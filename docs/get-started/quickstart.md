@@ -12,9 +12,9 @@ You can use `filonov` in one of the following forms:
 
 When generating creative map files with `filonov` you need to provide several elements:
 
-- `source` - where media performance data can be found, check [supported sources](../fetching/overview/#supported-sources).
-- `media-type` - one of [supported media types](../tagging/media/#supported-media-types).
-- `tagger` - one of [supported taggers](../media_tagging/README.md#supported-taggers')
+- `source` - where media performance data can be found, check [supported sources](../fetching/overview.md#supported-sources).
+- `media-type` - one of [supported media types](../tagging/media.md#supported-media-types).
+- `tagger` - one of [supported taggers](../tagging/overview.md#supported-taggers)
 
 You can check full command structure [here](#command-structure).
 
@@ -413,6 +413,69 @@ curl -X 'POST' \
   "output_parameters": {
     "output_name": "map1"
   }
+}'
+```
+///
+
+///
+
+### Preview embedding
+
+If media-type support previews (i.e. YOUTUBE_VIDEO) generated
+`creative_map.json` file will contain links to previews to be downloaded
+during map rendering.
+
+You can include previews directly into the map with `emded-previews` option so
+they will be rendered instantly.
+
+!!! important
+    Embedding previews might significantly increase map size!
+
+
+
+/// tab | cli
+```bash hl_lines="4"
+filonov --source googleads --media-type IMAGE \
+  --tagger gemini \
+  --googleads.account=GOOGLE_ADS_ACCOUNT_ID \
+  --embed-previews
+```
+///
+
+/// tab | python
+
+```python hl_lines="10"
+import filonov
+
+service = filonov.FilonovService()
+
+request = filonov.CreativeMapGenerateRequest(
+  source='googleads',
+  media_type='IMAGE',
+  tagger='gemini',
+  source_parameters={'account': 'GOOGLE_ADS_ACCOUNT_ID'},
+  embed_previews=True,
+)
+
+creative_map = service.generate_creative_map(request)
+creative_map.save('creative_map')
+
+```
+///
+
+/// tab | curl
+```bash hl_lines="11"
+curl -X 'POST' \
+  'http://127.0.0.1:8000/creative_maps/generate:googleads' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "media_type": "IMAGE",
+  "tagger": "gemini",
+  "source_parameters": {
+    "account": "GOOGLE_ADS_ACCOUNT_ID"
+  },
+  "embed_previews": "true",
 }'
 ```
 ///

@@ -4,7 +4,7 @@ By default when analyzing media similarity all intermediate data is saved in the
 
 You can opt-in to persisting data in the database of your choice.
 
-If you're analyzing similarity of the same [media pair](media-iair.md) for the second time its similarity information will be fetched
+If you're analyzing similarity of the same media pair for the second time its similarity information will be fetched
 from DB instead of performing actual similarity calculation.
 
 ## Using shared database

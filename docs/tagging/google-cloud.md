@@ -82,4 +82,4 @@ curl -X 'POST' \
 ### n_tags
 
 `google-cloud` tag support `n_tags` parameter to limit number of tags returned from API.
-Learn [more](tagging.md/#n_tags).
+Learn [more](overview.md#n_tags).
