@@ -24,6 +24,7 @@ from typing_extensions import Annotated
 
 import media_tagging
 from media_tagging import media, repositories
+from media_tagging.entrypoints import utils
 from media_tagging.loaders import media_loader_service
 
 typer_app = typer.Typer()
@@ -54,6 +55,12 @@ LogLevel = Annotated[
     help='Level of logging',
   ),
 ]
+LogName = Annotated[
+  str,
+  typer.Option(
+    help='Name of logger',
+  ),
+]
 
 
 class Action(str, enum.Enum):
@@ -70,6 +77,7 @@ def _version_callback(show_version: bool) -> None:
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True},
 )
+@utils.log_shutdown
 def main(
   location: Input,
   media_type: MediaType,
@@ -89,6 +97,7 @@ def main(
   ] = 'file',
   logger: Logger = 'rich',
   loglevel: LogLevel = 'INFO',
+  log_name: LogName = 'media-loader',
   version: Annotated[
     bool,
     typer.Option(
@@ -99,21 +108,17 @@ def main(
     ),
   ] = False,
 ):
-  found_file_locations = []
-  parameters = []
-  for loc in location:
-    if loc.startswith('--'):
-      parameters.append(loc)
-    else:
-      found_file_locations.append(loc)
+  file_locations, parameters = utils.parse_typer_arguments(location)
   loader_service = media_loader_service.MediaLoaderService(
     repositories.SqlAlchemyTaggingResultsRepository(db_uri)
   )
   extra_parameters = garf_utils.ParamsParser(['loader']).parse(parameters)
 
-  logger = garf_utils.init_logging(loglevel=loglevel, logger_type=logger)
+  logger = garf_utils.init_logging(
+    loglevel=loglevel, logger_type=logger, name=log_name
+  )
 
-  for loc in found_file_locations:
+  for loc in file_locations:
     logger.info('Getting tagging results from %s', loc)
     parameters = {
       'loader_type': loader,

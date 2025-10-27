@@ -24,6 +24,7 @@ import typer
 from garf_executors.entrypoints import utils as garf_utils
 from media_fetching.sources import models
 from media_tagging import media
+from media_tagging.entrypoints import utils as tagging_utils
 from typing_extensions import Annotated
 
 import filonov
@@ -34,13 +35,14 @@ typer_app = typer.Typer()
 
 def _version_callback(show_version: bool) -> None:
   if show_version:
-    print(f'media-fetcher version: {media_fetching.__version__}')
+    print(f'filonov version: {media_fetching.__version__}')
     raise typer.Exit()
 
 
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
+@tagging_utils.log_shutdown
 def main(
   ctx: typer.Context,
   source: Annotated[
@@ -100,6 +102,12 @@ def main(
       help='Level of logging',
     ),
   ] = 'INFO',
+  log_name: Annotated[
+    str,
+    typer.Option(
+      help='Name of logger',
+    ),
+  ] = 'filonov',
   version: Annotated[
     bool,
     typer.Option(
@@ -110,7 +118,9 @@ def main(
     ),
   ] = False,
 ):  # noqa: D103
-  _ = garf_utils.init_logging(loglevel=loglevel, logger_type=logger)
+  garf_utils.init_logging(
+    loglevel=loglevel.upper(), logger_type=logger, name=log_name
+  )
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
   )
@@ -118,7 +128,9 @@ def main(
     [source, 'tagger', 'similarity'] + list(supported_enrichers)
   )
   extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(ctx.args)
-  fetching_service = media_fetching.MediaFetchingService(source)
+  fetching_service = media_fetching.MediaFetchingService.from_source_alias(
+    source
+  )
   tagging_service = media_tagging.MediaTaggingService(
     tagging_results_repository=(
       media_tagging.repositories.SqlAlchemyTaggingResultsRepository(db_uri)

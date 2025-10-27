@@ -16,6 +16,8 @@
 
 """Defines helper functions for media tagging entrypoints."""
 
+import functools
+import logging
 import os
 
 import pandas as pd
@@ -75,3 +77,27 @@ def get_media_paths_from_file(input_config: InputConfig) -> set[str]:
   elif (column_name := input_config.column_name) not in data.columns:
     raise exceptions.MediaTaggingError(f'Column {column_name} not found')
   return set(data[column_name].tolist())
+
+
+def parse_typer_arguments(
+  arguments: list[str] | None,
+) -> tuple[list[str], list[str]]:
+  if not arguments:
+    return [], []
+  found_arguments = []
+  parameters = []
+  for argument in arguments:
+    if argument.startswith('--'):
+      parameters.append(argument)
+    else:
+      found_arguments.append(argument)
+  return found_arguments, parameters
+
+
+def log_shutdown(func):
+  @functools.wraps(func)
+  def fn(*args, **kwargs):
+    func(*args, **kwargs)
+    logging.shutdown()
+
+  return fn

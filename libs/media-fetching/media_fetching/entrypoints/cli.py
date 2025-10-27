@@ -22,6 +22,7 @@ import typer
 from garf_executors.entrypoints import utils as garf_utils
 from garf_io import writer as garf_writer
 from media_tagging import media
+from media_tagging.entrypoints import utils as tagging_utils
 from typing_extensions import Annotated
 
 import media_fetching
@@ -39,6 +40,7 @@ def _version_callback(show_version: bool) -> None:
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
+@tagging_utils.log_shutdown
 def main(
   ctx: typer.Context,
   media_type: Annotated[
@@ -88,6 +90,12 @@ def main(
       help='Level of logging',
     ),
   ] = 'INFO',
+  log_name: Annotated[
+    str,
+    typer.Option(
+      help='Name of logger',
+    ),
+  ] = 'media-fetcher',
   version: Annotated[
     bool,
     typer.Option(
@@ -98,7 +106,9 @@ def main(
     ),
   ] = False,
 ):  # noqa: D103
-  _ = garf_utils.init_logging(loglevel=loglevel.upper(), logger_type=logger)
+  garf_utils.init_logging(
+    loglevel=loglevel.upper(), logger_type=logger, name=log_name
+  )
 
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()

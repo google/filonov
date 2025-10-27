@@ -77,6 +77,12 @@ LogLevel = Annotated[
     help='Level of logging',
   ),
 ]
+LogName = Annotated[
+  str,
+  typer.Option(
+    help='Name of logger',
+  ),
+]
 
 
 def _version_callback(show_version: bool) -> None:
@@ -88,8 +94,8 @@ def _version_callback(show_version: bool) -> None:
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
+@tagging_utils.log_shutdown
 def cluster(
-  ctx: typer.Context,
   media_paths: MediaPaths = None,
   input: Input = None,
   media_type: MediaType = 'IMAGE',
@@ -122,6 +128,7 @@ def cluster(
   ] = None,
   logger: Logger = 'rich',
   loglevel: LogLevel = 'INFO',
+  log_name: LogName = 'media-similarity',
   parallel_threshold: Annotated[
     int,
     typer.Option(
@@ -129,8 +136,11 @@ def cluster(
     ),
   ] = 10,
 ):
-  garf_utils.init_logging(logger_type=logger, loglevel=loglevel)
-  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(ctx.args)
+  garf_utils.init_logging(logger_type=logger, loglevel=loglevel, name=log_name)
+  media_paths, parameters = tagging_utils.parse_typer_arguments(media_paths)
+  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(
+    parameters
+  )
   media_paths = media_paths or tagging_utils.get_media_paths_from_file(
     tagging_utils.InputConfig(path=input, **extra_parameters.get('input'))
   )
@@ -156,6 +166,7 @@ def cluster(
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
+@tagging_utils.log_shutdown
 def compare(
   ctx: typer.Context,
   media_type: MediaType,
@@ -171,9 +182,13 @@ def compare(
   output: Output = 'comparison_results',
   logger: Logger = 'rich',
   loglevel: LogLevel = 'INFO',
+  log_name: LogName = 'media-similarity',
 ):
-  garf_utils.init_logging(logger_type=logger, loglevel=loglevel)
-  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(ctx.args)
+  garf_utils.init_logging(logger_type=logger, loglevel=loglevel, name=log_name)
+  media_paths, parameters = tagging_utils.parse_typer_arguments(media_paths)
+  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(
+    parameters
+  )
   media_paths = media_paths or tagging_utils.get_media_paths_from_file(
     tagging_utils.InputConfig(path=input, **extra_parameters.get('input'))
   )
@@ -199,6 +214,7 @@ def compare(
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
+@tagging_utils.log_shutdown
 def search(
   ctx: typer.Context,
   media_type: MediaType,
@@ -214,9 +230,13 @@ def search(
   output: Output = 'comparison_results',
   logger: Logger = 'rich',
   loglevel: LogLevel = 'INFO',
+  log_name: LogName = 'media-similarity',
 ):
-  garf_utils.init_logging(logger_type=logger, loglevel=loglevel)
-  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(ctx.args)
+  garf_utils.init_logging(logger_type=logger, loglevel=loglevel, name=log_name)
+  media_paths, parameters = tagging_utils.parse_typer_arguments(media_paths)
+  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(
+    parameters
+  )
   media_paths = media_paths or tagging_utils.get_media_paths_from_file(
     tagging_utils.InputConfig(path=input, **extra_parameters.get('input'))
   )

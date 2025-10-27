@@ -8,7 +8,7 @@ dependencies = [
     "pillow",
     "smart_open",
     "jq",
-    "garf-executors>=0.0.5",
+    "garf-executors>=0.0.12",
     "pandas",
     "pydantic",
     "SQLalchemy>=2.0.0",
