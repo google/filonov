@@ -86,6 +86,12 @@ LogLevel = Annotated[
     help='Level of logging',
   ),
 ]
+LogName = Annotated[
+  str,
+  typer.Option(
+    help='Name of logger',
+  ),
+]
 
 Deduplicate = Annotated[
   bool,
@@ -111,8 +117,8 @@ def _version_callback(show_version: bool) -> None:
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
+@utils.log_shutdown
 def tag(
-  ctx: typer.Context,
   media_type: MediaType,
   media_paths: MediaPaths = None,
   input: Input = None,
@@ -123,16 +129,20 @@ def tag(
   deduplicate: Deduplicate = False,
   logger: Logger = 'rich',
   loglevel: LogLevel = 'INFO',
+  log_name: LogName = 'media-tagger',
   parallel_threshold: ParallelTreshold = 10,
 ) -> None:
   tagging_service = media_tagging_service.MediaTaggingService(
     repositories.SqlAlchemyTaggingResultsRepository(db_uri)
   )
+  media_paths, parameters = utils.parse_typer_arguments(media_paths)
   extra_parameters = garf_utils.ParamsParser(['tagger', writer, 'input']).parse(
-    ctx.args
+    parameters
   )
 
-  logger = garf_utils.init_logging(loglevel=loglevel, logger_type=logger)
+  logger = garf_utils.init_logging(
+    loglevel=loglevel, logger_type=logger, name=log_name
+  )
 
   media_paths = media_paths or utils.get_media_paths_from_file(
     utils.InputConfig(path=input, **extra_parameters.get('input'))
@@ -161,8 +171,8 @@ def tag(
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
+@utils.log_shutdown
 def describe(
-  ctx: typer.Context,
   media_type: MediaType,
   media_paths: MediaPaths = None,
   input: Input = None,
@@ -173,16 +183,20 @@ def describe(
   deduplicate: Deduplicate = False,
   logger: Logger = 'rich',
   loglevel: LogLevel = 'INFO',
+  log_name: LogName = 'media-tagger',
   parallel_threshold: ParallelTreshold = 10,
 ):
   tagging_service = media_tagging_service.MediaTaggingService(
     repositories.SqlAlchemyTaggingResultsRepository(db_uri)
   )
+  media_paths, parameters = utils.parse_typer_arguments(media_paths)
   extra_parameters = garf_utils.ParamsParser(['tagger', writer, 'input']).parse(
-    ctx.args
+    parameters
   )
 
-  logger = garf_utils.init_logging(loglevel=loglevel, logger_type=logger)
+  logger = garf_utils.init_logging(
+    loglevel=loglevel, logger_type=logger, name=log_name
+  )
 
   media_paths = media_paths or utils.get_media_paths_from_file(
     utils.InputConfig(path=input, **extra_parameters.get('input'))
@@ -224,4 +238,4 @@ def main(
 
 
 if __name__ == '__main__':
-  main()
+  typer_app()
