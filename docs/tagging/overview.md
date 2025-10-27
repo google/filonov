@@ -2,7 +2,7 @@
 [![Downloads PyPI](https://img.shields.io/pypi/dw/media-tagging?logo=pypi)](https://pypi.org/project/media-tagging/)
 [![Open in Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google/filonov/blob/main/libs/media_tagging/media_tagging_demo.ipynb)
 
-`media-tagger` performs tagging of [supported media](/media.md) based on various taggers.
+`media-tagger` performs tagging of [supported media](media.md) based on various taggers.
 It generates [tagging results](tagging-result.md) which can written to local / remove storage or further processed in Python.
 
 

@@ -4,7 +4,7 @@ Source customizations are performed via `--extra-info module.method` syntax (i.e
 
 ## Prerequisites
 
-- (Optional) If using `tagging` enricher - media-tagger must be [configured](../tagging/tagging.md#prerequisites)
+- (Optional) If using `tagging` enricher - media-tagger must be [configured](../tagging/gemini.md#prerequisites)
 
 ## Usage
 
