@@ -1,4 +1,4 @@
-Analyze this {media_type} and generate {n_tags} tags that uniquely describe it.
+Analyze this {media_type} and generate up to {n_tags} tags that uniquely describe it.
 {tags}
 
 Important guidelines:
@@ -8,3 +8,6 @@ Important guidelines:
   1 is the most important tag being used, and everything in between '
   represents a degree of presence. Make sure that tags are lowercase and unique.
 - Include both obvious and subtle elements that could differentiate this {media_type}
+- Ensure that tags are semantically unique.
+- Tags should be all lowercase with no hyphens or underscores.
+- If text or visual element is in the language other than English, normalize it to English.
