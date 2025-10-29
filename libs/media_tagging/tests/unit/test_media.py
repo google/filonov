@@ -64,9 +64,10 @@ class TestMedium:
     assert test_medium.name == 'test_image'
 
   def test_media_name_inferred_correctly_from_webpage(self):
-    test_media_path = 'https://github.com/google/filonov'
+    test_media_path = 'github.com/google/filonov'
     test_medium = media.Medium(
-      media_path=test_media_path, media_type=media.MediaTypeEnum.WEBPAGE
+      media_path=f'https://{test_media_path}',
+      media_type=media.MediaTypeEnum.WEBPAGE,
     )
     assert test_medium.name == test_media_path
 
@@ -94,3 +95,37 @@ class TestMedium:
   def test_identifier(self, path, media_type, identifier):
     medium = media.Medium(path, media_type)
     assert medium.identifier == str(identifier)
+
+
+@pytest.mark.parametrize(
+  ('path', 'media_type', 'expected_name'),
+  [
+    ('https://example.com/', 'WEBPAGE', 'example.com'),
+    ('https://www.example.com', 'WEBPAGE', 'example.com'),
+    ('www.example.com', 'WEBPAGE', 'example.com'),
+    ('example.com', 'WEBPAGE', 'example.com'),
+    ('example.com?utm_source=test', 'WEBPAGE', 'example.com'),
+    ('example.com/page', 'WEBPAGE', 'example.com/page'),
+    ('example.com/page.html', 'WEBPAGE', 'example.com/page'),
+    (_SCRIPT_PATH / 'data/test_image.png', 'IMAGE', 'test_image'),
+    (_SCRIPT_PATH / 'data/test_video.mp4', 'VIDEO', 'test_video'),
+    ('test text', 'TEXT', 'test text'),
+    ('test/text', 'TEXT', 'test/text'),
+    ('test.text', 'TEXT', 'test.text'),
+    (
+      'https://www.youtube.com/watch?v=12345789000',
+      'YOUTUBE_VIDEO',
+      '12345789000',
+    ),
+    (
+      'https://tpc.googlesyndication.com/simgad/11111111111111111111',
+      'IMAGE',
+      '11111111111111111111',
+    ),
+  ],
+)
+def test_convert_path_to_name(path, media_type, expected_name):
+  assert (
+    media.convert_path_to_media_name(media_path=path, media_type=media_type)
+    == expected_name
+  )
