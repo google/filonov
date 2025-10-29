@@ -22,6 +22,8 @@ links does not have content).
 import enum
 import hashlib
 import os
+import re
+import urllib
 
 import smart_open
 
@@ -162,13 +164,15 @@ def convert_path_to_media_name(
   """Extracts file name without extension."""
   if isinstance(media_type, str):
     media_type = MediaTypeEnum[media_type.upper()]
-  if media_type == MediaTypeEnum.WEBPAGE:
+  if media_type == MediaTypeEnum.TEXT:
     return media_path
+  if media_type == MediaTypeEnum.WEBPAGE:
+    return _normalize_website_url(media_path)
   if media_type == MediaTypeEnum.YOUTUBE_VIDEO and not media_path.endswith(
     _SUPPORTED_VIDEO_FILE_EXTENSIONS
   ):
     return _convert_youtube_link_to_id(media_path)
-  base_name = media_path.split('/')[-1]
+  base_name = str(media_path).split('/')[-1]
   return base_name.split('.')[0]
 
 
@@ -202,3 +206,16 @@ def _convert_youtube_link_to_id(youtube_video_link: str) -> str:
       'or https://youtube.com/shorts/<VIDEO_ID> format'
     )
   return youtube_video_id
+
+
+def _normalize_website_url(media_path: str) -> str:
+  if (
+    '://' not in media_path and not media_path.startswith('www.')
+  ) or media_path.startswith('www.'):
+    media_path = f'https://{media_path}'
+  elements = urllib.parse.urlsplit(media_path)
+  domain = re.sub('^www.', '', elements.netloc)
+  if path := elements.path.lstrip('/'):
+    clean_path, *rest = path.split('.')
+    return f'{domain}/{clean_path}'
+  return domain
