@@ -53,7 +53,7 @@ class TaggingOptions(pydantic.BaseModel):
   tags: str | Sequence[str] | None = None
   custom_prompt: str | os.PathLike[str] | None = None
   custom_schema: CustomSchema | None = None
-  no_schema: str | bool = False
+  no_schema: str | bool | None = None
 
   def model_post_init(self, __context__):  # noqa: D105
     if self.tags:

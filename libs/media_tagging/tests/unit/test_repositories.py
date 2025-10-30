@@ -25,6 +25,38 @@ class TestSqlAlchemyTaggingResultsRepository:
   def repo(self):
     return repositories.SqlAlchemyTaggingResultsRepository()
 
+  def test_get_takes_into_account_tagging_details(self, repo):
+    tagging_result_1 = tagging_result.TaggingResult(
+      identifier='test1',
+      type='text',
+      tagger='gemini',
+      output='tag',
+      content=[tagging_result.Tag(name='tag1', score=0.1)],
+      tagging_details={'tags': 'tag1'},
+      hash=hashlib.md5(b'test1').hexdigest(),
+    )
+    tagging_result_2 = tagging_result.TaggingResult(
+      identifier='test1',
+      type='text',
+      tagger='gemini',
+      output='tag',
+      content=[tagging_result.Tag(name='tag2', score=0.1)],
+      tagging_details={'n_tags': 1},
+      hash=hashlib.md5(b'test1').hexdigest(),
+    )
+    repo.add(tagging_result_1)
+    repo.add(tagging_result_2)
+
+    tagging_results = repo.get(
+      media_paths='test1',
+      media_type='text',
+      tagger_type='gemini',
+      output='tag',
+      tagging_details={'n_tags': 1},
+    )
+
+    assert len(tagging_results) == 1
+
   def test_get_dedup_tags(self, repo):
     tagging_result_1 = tagging_result.TaggingResult(
       identifier='test1',

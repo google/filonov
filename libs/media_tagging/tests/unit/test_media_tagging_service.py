@@ -38,12 +38,14 @@ class TestMediaTaggingService:
     test_llm_response = FakeLLMResponse(
       text=json.dumps({'text': 'Test description.'})
     )
+    n_runs = 5
     expected_result = tagging_result.TaggingResult(
       identifier='test',
       tagger='gemini',
       output='description',
       type='text',
       content=tagging_result.Description(text='Test description.'),
+      tagging_details={'n_runs': n_runs},
       hash=hashlib.md5(b'test').hexdigest(),
     )
     mocker.patch(
@@ -56,12 +58,15 @@ class TestMediaTaggingService:
         media_type='TEXT',
         media_paths=['test'],
         parallel_threshold=0,
+        tagging_options={'n_runs': 5},
       )
     )
 
-    assert test_tagging_result == media_tagging_service.MediaTaggingResponse(
-      results=[expected_result]
+    expected_response = media_tagging_service.MediaTaggingResponse(
+      results=[expected_result] * n_runs
     )
+
+    assert test_tagging_result == expected_response
 
   def test_tag_media_returns_correct_tagging_result(self, service, mocker):
     test_llm_response = FakeLLMResponse(
@@ -89,6 +94,45 @@ class TestMediaTaggingService:
       )
     )
 
+    assert test_tagging_result == media_tagging_service.MediaTaggingResponse(
+      results=[expected_result]
+    )
+
+  def test_tag_media_returns_correct_tagging_result(self, service, mocker):
+    test_llm_response = FakeLLMResponse(
+      text=json.dumps([{'name': 'test', 'score': 0.5}])
+    )
+    mocker.patch(
+      'media_tagging.taggers.llm.gemini.tagging_strategies.GeminiTaggingStrategy.get_llm_response',
+      return_value=test_llm_response,
+    )
+    service.tag_media(
+      media_tagging_service.MediaTaggingRequest(
+        tagger_type='gemini',
+        media_type='TEXT',
+        media_paths=['test'],
+        parallel_threshold=0,
+        tagging_options={'n_tags': 5},
+      )
+    )
+    test_tagging_result = service.tag_media(
+      media_tagging_service.MediaTaggingRequest(
+        tagger_type='gemini',
+        media_type='TEXT',
+        media_paths=['test'],
+        parallel_threshold=0,
+        tagging_options={'n_tags': 10},
+      )
+    )
+    expected_result = tagging_result.TaggingResult(
+      identifier='test',
+      tagger='gemini',
+      output='tag',
+      type='text',
+      content=[tagging_result.Tag(name='test', score=0.5)],
+      tagging_details={'n_tags': 10},
+      hash=hashlib.md5(b'test').hexdigest(),
+    )
     assert test_tagging_result == media_tagging_service.MediaTaggingResponse(
       results=[expected_result]
     )

@@ -35,7 +35,13 @@ class BaseTaggingResultsRepository(abc.ABC):
 
   @abc.abstractmethod
   def get(
-    self, media_paths: str | Sequence[str], media_type: media.MediaTypeEnum
+    self,
+    media_paths: str | Sequence[str],
+    media_type: str,
+    tagger_type: str | None = None,
+    output: str | None = None,
+    deduplicate: bool = False,
+    tagging_details: dict[str, str] | None = None,
   ) -> list[tagging_result.TaggingResult]:
     """Specifies get operations."""
 
@@ -61,7 +67,13 @@ class InMemoryTaggingResultsRepository(BaseTaggingResultsRepository):
 
   @override
   def get(
-    self, media_paths: Sequence[str], media_type: media.MediaTypeEnum
+    self,
+    media_paths: str | Sequence[str],
+    media_type: str,
+    tagger_type: str | None = None,
+    output: str | None = None,
+    deduplicate: bool = False,
+    tagging_details: dict[str, str] | None = None,
   ) -> list[tagging_result.TaggingResult]:
     converted_media_paths = [
       media.convert_path_to_media_name(media_path, media_type)
@@ -122,6 +134,7 @@ class TaggingResults(Base):
   tagging_details_id = sqlalchemy.Column(
     sqlalchemy.String(32),
     sqlalchemy.ForeignKey('tagging_details.id'),
+    primary_key=True,
   )
   tagging_details = relationship('TaggingDetails', back_populates='info')
   identifier = relationship('Identifiers', back_populates='tagging_content')
@@ -195,6 +208,7 @@ class SqlAlchemyTaggingResultsRepository(
     tagger_type: str | None = None,
     output: str | None = None,
     deduplicate: bool = False,
+    tagging_details: dict[str, str] | None = None,
   ) -> list[tagging_result.TaggingResult]:
     """Specifies get operations."""
     if isinstance(media_paths, str):
@@ -219,6 +233,14 @@ class SqlAlchemyTaggingResultsRepository(
         query = query.where(TaggingResults.output == output)
       if tagger_type:
         query = query.where(TaggingResults.tagger == tagger_type)
+      if tagging_details:
+        tagging_details_hash = hashlib.md5(
+          json.dumps(tagging_details).encode('utf-8')
+        ).hexdigest()
+        query = query.where(
+          TaggingResults.tagging_details_id == tagging_details_hash
+        )
+
       if not (results := query.all()):
         return []
       tagging_results = [res.to_pydantic_model() for res in results]

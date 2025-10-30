@@ -193,11 +193,11 @@ class MediaTaggingService:
     fetching_request: MediaFetchingRequest,
   ) -> MediaTaggingResponse:
     results = self.repo.get(
-      fetching_request.media_paths,
-      fetching_request.media_type,
-      fetching_request.tagger_type,
-      fetching_request.output,
-      fetching_request.deduplicate,
+      media_paths=fetching_request.media_paths,
+      media_type=fetching_request.media_type,
+      tagger_type=fetching_request.tagger_type,
+      output=fetching_request.output,
+      deduplicate=fetching_request.deduplicate,
     )
     return MediaTaggingResponse(results=results)
 
@@ -277,11 +277,14 @@ class MediaTaggingService:
     tagged_media = []
     if self.repo and (
       tagged_media := self.repo.get(
-        tagging_request.media_paths,
-        tagging_request.media_type,
-        tagging_request.tagger_type,
-        output,
-        deduplicate,
+        media_paths=tagging_request.media_paths,
+        media_type=tagging_request.media_type,
+        tagger_type=tagging_request.tagger_type,
+        output=output,
+        deduplicate=deduplicate,
+        tagging_details=tagging_request.tagging_options.model_dump(
+          exclude_none=True
+        ),
       )
     ):
       logger.info('Reusing %d already tagged media', len(tagged_media))
