@@ -36,6 +36,9 @@ server = [
 ui = [
   "streamlit"
 ]
+playwright = [
+  "playwright",
+]
 all = [
   "filonov[server,ui]"
 ]

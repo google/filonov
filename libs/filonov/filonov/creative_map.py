@@ -36,6 +36,8 @@ from media_similarity import media_similarity_service
 from media_tagging import media, tagging_result
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
+from filonov import exceptions
+
 MetricInfo: TypeAlias = dict[str, int | float]
 Info: TypeAlias = dict[str, int | float | str | list[str] | None]
 
@@ -129,6 +131,15 @@ class CreativeMap:
       t.hash: t.identifier for t in tagging_results
     }
     media_type = tagging_results[0].type
+    if media_type == 'webpage' and embed_previews:
+      try:
+        from playwright.sync_api import sync_playwright
+      except ImportError as e:
+        raise exceptions.FilonovError(
+          'Missing playwright dependency. '
+          'Install it with `pip install filonov[playwright]` '
+          'and configure with `playwright install`'
+        ) from e
     for node in clustering_results.graph.nodes:
       node_hash = node.get('name', '')
       node_name = tagging_hash_to_identifier_mapping.get(node_hash)
@@ -140,7 +151,12 @@ class CreativeMap:
         if media_type == 'text':
           node['image'] = _create_text_image_bytes(node_extra_info.media_path)
         elif embed_previews:
-          node['image'] = _embed_preview(node_extra_info.media_preview)
+          if media_type == 'webpage':
+            node['image'] = _create_webpage_image_bytes(
+              node_extra_info.media_path
+            )
+          else:
+            node['image'] = _embed_preview(node_extra_info.media_preview)
         else:
           node['image'] = node_extra_info.media_preview
         node['media_path'] = node_extra_info.media_path
@@ -388,6 +404,22 @@ def _to_youtube_preview_link(video_id: str) -> str:
 
 def _to_youtube_video_link(video_id: str) -> str:
   return f'https://www.youtube.com/watch?v={video_id}'
+
+
+def _create_webpage_image_bytes(
+  url: str,
+  width: int = 800,
+  height: int = 600,
+) -> str:
+  with sync_playwright() as p:
+    browser = p.chromium.launch()
+    page = browser.new_page()
+    page.set_viewport_size({'width': width, 'height': height})
+    page.goto(url)
+    screenshot = page.screenshot()
+    browser.close()
+    encoded_image = base64.b64encode(screenshot).decode('utf-8')
+    return f'data:image/png;base64,{encoded_image}'
 
 
 def _create_text_image_bytes(
