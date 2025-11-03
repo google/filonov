@@ -9,6 +9,7 @@ dependencies = [
     "smart_open",
     "jq",
     "garf-executors>=0.0.12",
+    "garf-io>=0.0.16",
     "pandas",
     "pydantic",
     "SQLalchemy>=2.0.0",
