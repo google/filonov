@@ -161,7 +161,7 @@ def main(request):
   _setup_cloud_logging()
 
   if request.data and 'message' in (request_json :=
-                                     request.get_json(silent=True) or {}):
+                                    request.get_json(silent=True) or {}):
     logging.info('Processing Pub/Sub message')
     # Pub/Sub call
     data = base64.b64decode(request_json['message']['data']).decode('utf-8')
@@ -172,12 +172,20 @@ def main(request):
     # HTTP call
     payload = request.get_json(silent=True)
 
-  # Set log level based on request/env var, defaulting to INFO.
-  log_level_name = (
-      payload.get('log_level') if payload else None
-      or os.environ.get('LOG_LEVEL', 'INFO')
-  ).upper()
-  log_level = getattr(logging, log_level_name, logging.INFO)
+  # Determine log level from request payload, then environment variable,
+  # then default to INFO.
+  log_level_name = None
+  if payload and isinstance(payload, dict):
+    log_level_name = payload.get('log_level')
+
+  if not log_level_name:
+    log_level_name = os.environ.get('LOG_LEVEL')
+
+  if not isinstance(log_level_name, str) or not log_level_name:
+    log_level_name = 'INFO'
+
+  # Set the log level.
+  log_level = getattr(logging, log_level_name.upper(), logging.INFO)
   logging.getLogger().setLevel(log_level)
 
   if not payload:
@@ -214,8 +222,7 @@ def main(request):
       log_file_path = f"{output_gcs_folder.rstrip(' / ')}/{job_id}.log"
       gcs_log_handler = GCSLoggingHandler(log_file_path)
       # Add a formatter to include timestamps in the GCS log file.
-      formatter = logging.Formatter(
-          '%(asctime)s - %(levelname)s - %(message)s')
+      formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
       gcs_log_handler.setFormatter(formatter)
       logging.getLogger().addHandler(gcs_log_handler)
       _update_status(output_gcs_folder, job_id, 'running')
