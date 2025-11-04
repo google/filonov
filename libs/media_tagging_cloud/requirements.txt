@@ -2,3 +2,4 @@ functions-framework
 google-cloud-storage
 media_tagging
 smart_open
+google-cloud-logging

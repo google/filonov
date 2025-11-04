@@ -122,16 +122,15 @@ deploy_functions() {
   local trigger
   trigger=$(_get_arg_value "--trigger" "$@" || git config -f $SETTING_FILE functions.trigger)
   if [[ -z $trigger ]]; then
-    trigger="http"
+    trigger="pubsub"
   fi
   local topic
-  topic=$(_get_arg_value "--topic" "$@" || git config -f $SETTING_FILE pubsub.topic)
+  topic=$(_get_arg_value "--topic" "$@" || git config -f $SETTING_FILE pubsub.topic || echo "tag_media")
 
   local trigger_flags
   local timeout
   if [[ "$trigger" == "http" ]]; then
     trigger_flags="--trigger-http --no-allow-unauthenticated"
-    timeout="--timeout=3600s"
   elif [[ "$trigger" == "pubsub" ]]; then
     if [[ -z $topic ]]; then
       echo -e "${RED}Please provide a topic via --topic argument${NC}"
@@ -139,12 +138,11 @@ deploy_functions() {
     fi
     create_pubsub_topic
     trigger_flags="--trigger-topic=$topic"
-    timeout="--timeout=540s"
   else
     echo -e "${RED}Unsupported trigger type: $trigger${NC}"
     return 1
   fi
-
+  timeout="--timeout=3600s"
   gcloud functions deploy media_tagging \
       $trigger_flags \
       --entry-point=main \

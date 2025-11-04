@@ -23,10 +23,15 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import functions_framework
+import google.cloud.logging
 import smart_open
 from google.cloud import storage
+from google.cloud.logging.handlers import CloudLoggingHandler
 from media_tagging import MediaTaggingRequest, MediaTaggingService
 from media_tagging.taggers.base import TaggingOptions
+
+LOGGER_NAME = 'media_tagger'
+_cloud_logging_configured = False
 
 
 class GCSLoggingHandler(logging.Handler):
@@ -49,6 +54,20 @@ class GCSLoggingHandler(logging.Handler):
       with smart_open.open(self.gcs_path, 'w') as f:
         f.write(log_content)
     super().close()
+
+
+def _setup_cloud_logging():
+  """Initializes Cloud Logging if it hasn't been already."""
+  global _cloud_logging_configured
+  if _cloud_logging_configured:
+    return
+
+  client = google.cloud.logging.Client()
+  handler = CloudLoggingHandler(client, name=LOGGER_NAME)
+  # The log level will be set overwritten in the main function.
+  logging.getLogger().setLevel(logging.INFO)
+  logging.getLogger().addHandler(handler)
+  _cloud_logging_configured = True
 
 
 def _update_status(output_gcs_folder: str, job_id: str, status: str):
@@ -139,12 +158,10 @@ def main(request):
 
   It supports both HTTP and Pub/Sub triggers with the single entrypoint.
   """
-  # Base logging config
-  logging.basicConfig(
-      level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+  _setup_cloud_logging()
 
   if request.data and 'message' in (request_json :=
-                                    request.get_json(silent=True) or {}):
+                                     request.get_json(silent=True) or {}):
     logging.info('Processing Pub/Sub message')
     # Pub/Sub call
     data = base64.b64decode(request_json['message']['data']).decode('utf-8')
@@ -154,6 +171,14 @@ def main(request):
     logging.info('Processing HTTP request')
     # HTTP call
     payload = request.get_json(silent=True)
+
+  # Set log level based on request/env var, defaulting to INFO.
+  log_level_name = (
+      payload.get('log_level') if payload else None
+      or os.environ.get('LOG_LEVEL', 'INFO')
+  ).upper()
+  log_level = getattr(logging, log_level_name, logging.INFO)
+  logging.getLogger().setLevel(log_level)
 
   if not payload:
     logging.error('Invalid request: No payload')
@@ -188,6 +213,10 @@ def main(request):
       # Set up GCS logging and initial status
       log_file_path = f"{output_gcs_folder.rstrip(' / ')}/{job_id}.log"
       gcs_log_handler = GCSLoggingHandler(log_file_path)
+      # Add a formatter to include timestamps in the GCS log file.
+      formatter = logging.Formatter(
+          '%(asctime)s - %(levelname)s - %(message)s')
+      gcs_log_handler.setFormatter(formatter)
       logging.getLogger().addHandler(gcs_log_handler)
       _update_status(output_gcs_folder, job_id, 'running')
 
