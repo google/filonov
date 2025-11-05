@@ -28,4 +28,4 @@ __all__ = [
   'CreativeMap',
 ]
 
-__version__ = '0.7.2'
+__version__ = '0.8.0'

@@ -18,14 +18,11 @@
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import operator
 import os
-import textwrap
 from collections.abc import Mapping, Sequence
-from io import BytesIO
 from typing import Any, TypeAlias, TypedDict
 
 import numpy as np
@@ -34,7 +31,8 @@ import smart_open
 from garf_core import report
 from media_similarity import media_similarity_service
 from media_tagging import media, tagging_result
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+
+from filonov import previews
 
 MetricInfo: TypeAlias = dict[str, int | float]
 Info: TypeAlias = dict[str, int | float | str | list[str] | None]
@@ -129,6 +127,9 @@ class CreativeMap:
       t.hash: t.identifier for t in tagging_results
     }
     media_type = tagging_results[0].type
+    preview_strategy = previews.get_media_preview_strategy(
+      media_type=media_type, embed_previews=embed_previews
+    )
     for node in clustering_results.graph.nodes:
       node_hash = node.get('name', '')
       node_name = tagging_hash_to_identifier_mapping.get(node_hash)
@@ -137,10 +138,8 @@ class CreativeMap:
         if size := node_extra_info.size:
           node['size'] = size
         node['type'] = media_type
-        if media_type == 'text':
-          node['image'] = _create_text_image_bytes(node_extra_info.media_path)
-        elif embed_previews:
-          node['image'] = _embed_preview(node_extra_info.media_preview)
+        if preview_strategy:
+          node['image'] = preview_strategy(node_extra_info)
         else:
           node['image'] = node_extra_info.media_preview
         node['media_path'] = node_extra_info.media_path
@@ -388,48 +387,3 @@ def _to_youtube_preview_link(video_id: str) -> str:
 
 def _to_youtube_video_link(video_id: str) -> str:
   return f'https://www.youtube.com/watch?v={video_id}'
-
-
-def _create_text_image_bytes(
-  text: str,
-  format: str = 'PNG',
-  font_size: int = 40,
-  font_path: str | None = None,
-  trim_treshold: int = 100,
-  border=1,
-):
-  text = text[:trim_treshold]
-  text = '\n'.join(textwrap.wrap(text, width=20))
-  dummy_img = Image.new(mode='RGB', size=(1, 1))
-  dummy_draw = ImageDraw.Draw(dummy_img)
-
-  font = (
-    ImageFont.truetype(font_path, font_size)
-    if font_path
-    else ImageFont.load_default(size=font_size)
-  )
-
-  bbox = dummy_draw.textbbox((0, 0), text, font=font)
-  width = bbox[2] - bbox[0] + 10
-  height = bbox[3] - bbox[1] + 10
-
-  img = Image.new(mode='RGB', size=(width, height), color='white')
-  img = ImageOps.expand(img, border=border, fill=(211, 211, 211))
-  draw = ImageDraw.Draw(img)
-
-  draw.multiline_text((5, 5), text, fill='black', font=font)
-
-  byte_stream = BytesIO()
-  img.save(byte_stream, format=format)
-
-  image_bytes = byte_stream.getvalue()
-  encoded_image = base64.b64encode(image_bytes).decode('utf-8')
-  return f'data:image/png;base64,{encoded_image}'
-
-
-def _embed_preview(url: str) -> str:
-  logging.info('Embedding preview for url %s', url)
-  with smart_open.open(url, 'rb') as f:
-    image_preview = f.read()
-  encoded_image = base64.b64encode(image_preview).decode('utf-8')
-  return f'data:image/png;base64,{encoded_image}'
