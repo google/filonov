@@ -1,6 +1,14 @@
 # Getting data from YouTube channel
 
-You can extract video performance data (`likes` and `views`) from publicly available video in YouTube channel.
+You can extract media data (including some performance data, i.e. `likes` and `views`)
+from publicly available videos in YouTube channel.
+
+Supported types of content:
+
+* Video file
+* Video description
+* Video thumbnail
+* Video commentaries
 
 ## Prerequisites
 
@@ -12,7 +20,7 @@ You can extract video performance data (`likes` and `views`) from publicly avail
 ```bash
 media-fetcher \
   --source youtube \
-  --youtube.account=CHANNEL_ID
+  --youtube.channel=CHANNEL_ID
 ```
 ///
 
@@ -38,3 +46,30 @@ report = fetcher.fetch(request)
 ###  Mandatory
 
 * `channel` - YouTube channel Id.
+
+###  Optional
+
+* `type` - Type of content to get from channel. One of `videos`, `thumbnails`, `descriptions`, `commentaries`.
+
+/// tab | cli
+```bash hl_lines="4"
+media-fetcher \
+  --source youtube \
+  --youtube.channel=CHANNEL_ID \
+  --youtube.type=commentaries
+```
+///
+
+/// tab | python
+
+```python hl_lines="7"
+import media_fetching
+from media_fetching.sources import youtube
+
+fetcher = media_fetching.MediaFetchingService(source='youtube')
+request = youtube.YouTubeFetchingParameters(
+  channel='CHANNEL_ID',
+  type='commentaries',
+)
+report = fetcher.fetch(request)
+```
