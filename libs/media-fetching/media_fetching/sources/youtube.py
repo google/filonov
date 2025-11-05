@@ -17,6 +17,7 @@
 """Defines fetching data from YouTube channel."""
 
 from collections.abc import Sequence
+from typing import Literal
 
 import garf_youtube_data_api
 import pydantic
@@ -33,6 +34,9 @@ class YouTubeFetchingParameters(models.FetchingParameters):
     'views',
     'likes',
   ]
+  type: Literal['videos', 'descriptions', 'commentaries', 'thumbnails'] = (
+    'videos'
+  )
   segments: Sequence[str] | None = None
   extra_info: Sequence[str] | None = pydantic.Field(default_factory=list)
 
@@ -67,13 +71,43 @@ class Fetcher(models.BaseMediaInfoFetcher):
       maxResults=50,
     ).to_list(row_type='scalar', distinct=True)
 
-    video_performance_query = """
+    query = QUERIES_MAPPING.get(fetching_request.type)
+    if fetching_request.type == 'commentaries':
+      return youtube_api_fetcher.fetch(query, videoId=videos)
+    return youtube_api_fetcher.fetch(query, id=videos)
+
+
+QUERIES_MAPPING = {
+  'videos': """
     SELECT
       id AS media_url,
       snippet.title AS media_name,
       contentDetails.duration AS video_duration,
       statistics.viewCount AS views,
       statistics.likeCount AS likes
-    FROM videos
-    """
-    return youtube_api_fetcher.fetch(video_performance_query, id=videos)
+    FROM videos""",
+  'thumbnails': """
+    SELECT
+      snippet.thumbnails.standard.url AS media_url,
+      snippet.title AS media_name,
+      contentDetails.duration AS video_duration,
+      statistics.viewCount AS views,
+      statistics.likeCount AS likes
+    FROM videos""",
+  'commentaries': """
+    SELECT
+      snippet.topLevelComment.snippet.textDisplay AS media_url,
+      snippet.videoId AS video_id,
+      snippet.topLevelComment.snippet.textDisplay AS media_name,
+      snippet.topLevelComment.snippet.likeCount AS likes,
+    FROM commentThreads
+  """,
+  'descriptions': """
+    SELECT
+      id AS media_url,
+      snippet.description AS media_name,
+      contentDetails.duration AS video_duration,
+      statistics.viewCount AS views,
+      statistics.likeCount AS likes
+    FROM videos""",
+}
