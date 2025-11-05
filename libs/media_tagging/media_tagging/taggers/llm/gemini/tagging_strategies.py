@@ -20,6 +20,7 @@ import functools
 import json
 import logging
 import os
+import re
 from collections.abc import Mapping
 from typing import Final
 
@@ -167,7 +168,11 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
         medium.name,
         response.usage_metadata.dict(),
       )
-    return response
+    if medium.type == media.MediaTypeEnum.WEBPAGE:
+      if output == tagging_result.Description:
+        return {'text': response.text}
+      return _parse_json(response.text)
+    return json.loads(response.text)
 
   def build_prompt(
     self,
@@ -189,6 +194,17 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     )
     self._prompt = prompt.format(**parameters)
     if media_type == media.MediaTypeEnum.WEBPAGE:
+      prompt_schema = """
+      Format the response as a JSON object with the following schema:
+      [
+       {{
+         "name": "<name of a tag>",
+         "score": <float>
+       }},
+       ...
+      ]
+      """
+      self._prompt += prompt_schema
       self._prompt += '{url}'
     return self._prompt
 
@@ -199,14 +215,9 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     tagging_options: base.TaggingOptions = base.TaggingOptions(),
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
-    if medium.type == media.MediaTypeEnum.WEBPAGE:
-      raise GeminiTaggingError(
-        'Tagging is not supported for WEBPAGE media type'
-      )
     if not tagging_options:
       tagging_options.n_tags = MAX_NUMBER_LLM_TAGS
-    result = self.get_llm_response(medium, tagging_result.Tag, tagging_options)
-    tags = json.loads(result.text)
+    tags = self.get_llm_response(medium, tagging_result.Tag, tagging_options)
     if not tagging_options.no_schema and not tagging_options.custom_schema:
       tags = [
         tagging_result.Tag(name=r.get('name'), score=r.get('score'))
@@ -227,14 +238,9 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     tagging_options: base.TaggingOptions = base.TaggingOptions(),
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
-    result = self.get_llm_response(
+    description = self.get_llm_response(
       medium, tagging_result.Description, tagging_options
     )
-
-    if medium.type == media.MediaTypeEnum.WEBPAGE:
-      description = {'text': result.text}
-    else:
-      description = json.loads(result.text)
     if not tagging_options.no_schema and not tagging_options.custom_schema:
       description = description.get('text')
     if isinstance(description, Mapping):
@@ -292,6 +298,15 @@ class YouTubeVideoTaggingStrategy(GeminiTaggingStrategy):
     if video_metadata := _get_video_metadata(**kwargs):
       content.video_metadata = video_metadata
     return content
+
+
+def _parse_json(text: str) -> list[dict[str, str | float]]:
+  """Extracts json from ```json mark and formats it as valid json."""
+  match = re.search(r'```json\n(.*)\n```', text, re.DOTALL)
+  if match:
+    json_string = match.group(1)
+    return json.loads(json_string)
+  raise GeminiTaggingError(f'Could not find json in the text: {text}')
 
 
 def _get_video_metadata(**kwargs: str) -> genai.types.VideoMetadata | None:

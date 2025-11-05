@@ -89,9 +89,7 @@ class Medium:
     """
     if self.type == MediaTypeEnum.YOUTUBE_VIDEO or (
       self.type == MediaTypeEnum.IMAGE
-      and self._media_path.startswith(
-        'https://tpc.googlesyndication.com/simgad'
-      )
+      and self._media_path.startswith('https://tpc.googlesyndication.com/')
     ):
       return self.name
     return hashlib.md5(self.content).hexdigest()
