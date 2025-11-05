@@ -35,9 +35,7 @@ class TestMediaTaggingService:
     return media_tagging_service.MediaTaggingService()
 
   def test_describe_media_returns_correct_tagging_result(self, service, mocker):
-    test_llm_response = FakeLLMResponse(
-      text=json.dumps({'text': 'Test description.'})
-    )
+    fake_response = {'text': 'Test description.'}
     n_runs = 5
     expected_result = tagging_result.TaggingResult(
       identifier='test',
@@ -50,7 +48,7 @@ class TestMediaTaggingService:
     )
     mocker.patch(
       'media_tagging.taggers.llm.gemini.tagging_strategies.GeminiTaggingStrategy.get_llm_response',
-      return_value=test_llm_response,
+      return_value=fake_response,
     )
     test_tagging_result = service.describe_media(
       media_tagging_service.MediaTaggingRequest(
@@ -69,9 +67,7 @@ class TestMediaTaggingService:
     assert test_tagging_result == expected_response
 
   def test_tag_media_returns_correct_tagging_result(self, service, mocker):
-    test_llm_response = FakeLLMResponse(
-      text=json.dumps([{'name': 'test', 'score': 0.5}])
-    )
+    fake_response = [{'name': 'test', 'score': 0.5}]
     expected_result = tagging_result.TaggingResult(
       identifier='test',
       tagger='gemini',
@@ -83,7 +79,7 @@ class TestMediaTaggingService:
     )
     mocker.patch(
       'media_tagging.taggers.llm.gemini.tagging_strategies.GeminiTaggingStrategy.get_llm_response',
-      return_value=test_llm_response,
+      return_value=fake_response,
     )
     test_tagging_result = service.tag_media(
       media_tagging_service.MediaTaggingRequest(
@@ -98,13 +94,13 @@ class TestMediaTaggingService:
       results=[expected_result]
     )
 
-  def test_tag_media_returns_correct_tagging_result(self, service, mocker):
-    test_llm_response = FakeLLMResponse(
-      text=json.dumps([{'name': 'test', 'score': 0.5}])
-    )
+  def test_tag_media_returns_correct_tagging_result_for_different_tagging_details(
+    self, service, mocker
+  ):
+    fake_response = [{'name': 'test', 'score': 0.5}]
     mocker.patch(
       'media_tagging.taggers.llm.gemini.tagging_strategies.GeminiTaggingStrategy.get_llm_response',
-      return_value=test_llm_response,
+      return_value=fake_response,
     )
     service.tag_media(
       media_tagging_service.MediaTaggingRequest(
