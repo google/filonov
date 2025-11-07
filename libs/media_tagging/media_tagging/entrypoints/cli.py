@@ -144,7 +144,7 @@ def tag(
     loglevel=loglevel, logger_type=logger, name=log_name
   )
 
-  media_paths = media_paths or utils.get_media_paths_from_file(
+  media_paths = media_paths or media.get_media_paths_from_file(
     utils.InputConfig(path=input, **extra_parameters.get('input'))
   )
   request = media_tagging_service.MediaTaggingRequest(
@@ -198,7 +198,7 @@ def describe(
     loglevel=loglevel, logger_type=logger, name=log_name
   )
 
-  media_paths = media_paths or utils.get_media_paths_from_file(
+  media_paths = media_paths or media.get_media_paths_from_file(
     utils.InputConfig(path=input, **extra_parameters.get('input'))
   )
   request = media_tagging_service.MediaTaggingRequest(

@@ -141,8 +141,8 @@ def cluster(
   extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(
     parameters
   )
-  media_paths = media_paths or tagging_utils.get_media_paths_from_file(
-    tagging_utils.InputConfig(path=input, **extra_parameters.get('input'))
+  media_paths = media_paths or media.get_media_paths_from_file(
+    media.InputConfig(path=input, **extra_parameters.get('input'))
   )
   similarity_service = media_similarity.MediaSimilarityService(
     media_similarity_repository=(
@@ -189,8 +189,8 @@ def compare(
   extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(
     parameters
   )
-  media_paths = media_paths or tagging_utils.get_media_paths_from_file(
-    tagging_utils.InputConfig(path=input, **extra_parameters.get('input'))
+  media_paths = media_paths or media.get_media_paths_from_file(
+    media.InputConfig(path=input, **extra_parameters.get('input'))
   )
   similarity_service = media_similarity.MediaSimilarityService(
     media_similarity_repository=(
@@ -237,8 +237,8 @@ def search(
   extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(
     parameters
   )
-  media_paths = media_paths or tagging_utils.get_media_paths_from_file(
-    tagging_utils.InputConfig(path=input, **extra_parameters.get('input'))
+  media_paths = media_paths or media.get_media_paths_from_file(
+    media.InputConfig(path=input, **extra_parameters.get('input'))
   )
   similarity_service = media_similarity.MediaSimilarityService(
     media_similarity_repository=(
