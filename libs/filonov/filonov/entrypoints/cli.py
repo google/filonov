@@ -90,6 +90,12 @@ def main(
       help='Whether media previews should be embedded into a creative map',
     ),
   ] = False,
+  omit_series: Annotated[
+    bool,
+    typer.Option(
+      help='Whether omit time series data from creative map',
+    ),
+  ] = False,
   parallel_threshold: Annotated[
     int,
     typer.Option(
@@ -161,6 +167,7 @@ def main(
     parallel_threshold=parallel_threshold,
     trim_tags_threshold=trim_tags_threshold,
     embed_previews=embed_previews,
+    omit_series=omit_series,
     context=extra_parameters,
   )
   filonov_service = filonov.FilonovService(

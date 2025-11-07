@@ -76,7 +76,7 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   source: media_fetching.sources.models.InputSource
   media_type: Literal[tuple(media.MediaTypeEnum.options())] | None = None
   tagger: Literal['gemini', 'google-cloud', 'loader', None] = None
-  tagger_parameters: dict[str, str | int] = default_tagger_parameters
+  tagger_parameters: dict[str, str | int] | None = None
   similarity_parameters: SimilarityParameters = SimilarityParameters()
   source_parameters: dict[str, str | Sequence[str]] = pydantic.Field(
     default_factory=dict
@@ -85,13 +85,10 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   parallel_threshold: int = 10
   trim_tags_threshold: float | None = None
   embed_previews: bool = False
+  omit_series: bool = False
   context: dict[str, Any] = pydantic.Field(default_factory=dict)
 
   def model_post_init(self, __context):  # noqa: D105
-    if not self.tagger_parameters:
-      self.tagger_parameters = self.default_tagger_parameters
-    if 'n_tags' not in self.tagger_parameters:
-      self.tagger_parameters.update(self.default_tagger_parameters)
     if self.source == 'youtube':
       self.media_type = 'YOUTUBE_VIDEO'
       self.tagger = 'gemini'
@@ -159,6 +156,7 @@ class FilonovService:
       metric_columns=request.source_parameters.metrics,
       segment_columns=request.source_parameters.segments,
       modules=request.source_parameters.extra_info,
+      omit_time_series=request.omit_series,
     )
     media_urls = {media.media_path for media in media_info.values()}
     if not (tagging_service := self.tagging_service):
@@ -180,7 +178,7 @@ class FilonovService:
         MediaTaggingRequest(
           tagger_type=request.tagger,
           media_type=request.media_type,
-          tagging_options=request.tagger_parameters,
+          tagging_options=CreativeMapGenerateRequest.default_tagger_parameters,
           media_paths=media_urls,
           parallel_threshold=request.parallel_threshold,
           deduplicate=True,
@@ -201,7 +199,7 @@ class FilonovService:
     clustering_request = media_similarity.MediaClusteringRequest(
       media_type=request.media_type,
       tagger_type=request.tagger,
-      tagging_options=request.tagger_parameters,
+      tagging_options=CreativeMapGenerateRequest.default_tagger_parameters,
       normalize=request.similarity_parameters.normalize,
       custom_threshold=request.similarity_parameters.custom_threshold,
       algorithm=request.similarity_parameters.algorithm,
@@ -209,6 +207,19 @@ class FilonovService:
       tagging_response=tagging_response,
     )
     clustering_results = similarity_service.cluster_media(clustering_request)
+    if request.tagger and request.tagger_parameters:
+      logger.info('Generating custom tags...')
+      tagging_response = tagging_service.tag_media(
+        MediaTaggingRequest(
+          tagger_type=request.tagger,
+          media_type=request.media_type,
+          tagging_options=request.tagger_parameters,
+          media_paths=media_urls,
+          parallel_threshold=request.parallel_threshold,
+          deduplicate=True,
+        ),
+        path_processor=request.tagger_parameters.get('path_processor'),
+      )
     logger.info('Generating creative map...')
     if trim_threshold := request.trim_tags_threshold:
       tagging_response.trim(trim_threshold)
