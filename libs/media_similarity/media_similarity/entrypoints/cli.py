@@ -19,6 +19,7 @@ import functools
 import operator
 from typing import Optional
 
+import media_tagging
 import typer
 from garf_executors.entrypoints import utils as garf_utils
 from garf_io import writer as garf_writer
@@ -91,6 +92,26 @@ def _version_callback(show_version: bool) -> None:
     raise typer.Exit()
 
 
+def _build_similarity_service(
+  db_uri: str, extra_parameters: dict[str, dict[str, str]]
+) -> media_similarity.MediaSimilarityService:
+  if extra_parameters.get('tagger', {}).get('db_uri'):
+    tagging_db_uri = extra_parameters.get('tagger').pop('db_uri')
+    tagging_service = media_tagging.MediaTaggingService(
+      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(
+        tagging_db_uri
+      )
+    )
+  else:
+    tagging_service = None
+  return media_similarity.MediaSimilarityService(
+    media_similarity_repository=(
+      media_similarity.repositories.SqlAlchemySimilarityPairsRepository(db_uri)
+    ),
+    tagging_service=tagging_service,
+  )
+
+
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
@@ -138,17 +159,13 @@ def cluster(
 ):
   garf_utils.init_logging(logger_type=logger, loglevel=loglevel, name=log_name)
   media_paths, parameters = tagging_utils.parse_typer_arguments(media_paths)
-  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(
+  extra_parameters = garf_utils.ParamsParser([writer, 'input', 'tagger']).parse(
     parameters
   )
   media_paths = media_paths or media.get_media_paths_from_file(
     media.InputConfig(path=input, **extra_parameters.get('input'))
   )
-  similarity_service = media_similarity.MediaSimilarityService(
-    media_similarity_repository=(
-      media_similarity.repositories.SqlAlchemySimilarityPairsRepository(db_uri)
-    ),
-  )
+  similarity_service = _build_similarity_service(db_uri, extra_parameters)
   request = media_similarity.MediaClusteringRequest(
     media_paths=media_paths,
     media_type=media_type,
@@ -168,7 +185,6 @@ def cluster(
 )
 @tagging_utils.log_shutdown
 def compare(
-  ctx: typer.Context,
   media_type: MediaType,
   db_uri: Annotated[
     str,
@@ -186,17 +202,13 @@ def compare(
 ):
   garf_utils.init_logging(logger_type=logger, loglevel=loglevel, name=log_name)
   media_paths, parameters = tagging_utils.parse_typer_arguments(media_paths)
-  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(
+  extra_parameters = garf_utils.ParamsParser([writer, 'input', 'tagger']).parse(
     parameters
   )
   media_paths = media_paths or media.get_media_paths_from_file(
     media.InputConfig(path=input, **extra_parameters.get('input'))
   )
-  similarity_service = media_similarity.MediaSimilarityService(
-    media_similarity_repository=(
-      media_similarity.repositories.SqlAlchemySimilarityPairsRepository(db_uri)
-    ),
-  )
+  similarity_service = _build_similarity_service(db_uri, extra_parameters)
   media_comparison_results = similarity_service.compare_media(
     media_similarity.MediaSimilarityComparisonRequest(
       media_paths=media_paths,
@@ -216,7 +228,6 @@ def compare(
 )
 @tagging_utils.log_shutdown
 def search(
-  ctx: typer.Context,
   media_type: MediaType,
   db_uri: Annotated[
     str,
@@ -234,17 +245,13 @@ def search(
 ):
   garf_utils.init_logging(logger_type=logger, loglevel=loglevel, name=log_name)
   media_paths, parameters = tagging_utils.parse_typer_arguments(media_paths)
-  extra_parameters = garf_utils.ParamsParser([writer, 'input']).parse(
+  extra_parameters = garf_utils.ParamsParser([writer, 'input', 'tagger']).parse(
     parameters
   )
   media_paths = media_paths or media.get_media_paths_from_file(
     media.InputConfig(path=input, **extra_parameters.get('input'))
   )
-  similarity_service = media_similarity.MediaSimilarityService(
-    media_similarity_repository=(
-      media_similarity.repositories.SqlAlchemySimilarityPairsRepository(db_uri)
-    ),
-  )
+  similarity_service = _build_similarity_service(db_uri, extra_parameters)
   similarity_search_results = similarity_service.find_similar_media(
     media_similarity.MediaSimilaritySearchRequest(
       media_paths=media_paths,
