@@ -40,9 +40,11 @@ class FilonovSettings(BaseSettings):
 
   Attributes:
     media_tagging_db_url: Connection string to DB with tagging results.
+    similarity_db_uri: Connection string to DB with similarity results.
   """
 
   media_tagging_db_url: str | None = None
+  similarity_db_url: str | None = None
 
 
 class Dependencies:
@@ -54,9 +56,17 @@ class Dependencies:
         settings.media_tagging_db_url
       )
     )
+    similarity_db_url = (
+      settings.similarity_db_url or settings.media_tagging_db_url
+    )
     self.similarity_service = media_similarity.MediaSimilarityService(
       media_similarity_repository=(
         media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
+          similarity_db_url
+        )
+      ),
+      tagging_service=media_tagging.MediaTaggingService(
+        media_tagging.repositories.SqlAlchemyTaggingResultsRepository(
           settings.media_tagging_db_url
         )
       ),

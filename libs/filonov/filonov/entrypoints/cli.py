@@ -143,13 +143,31 @@ def main(
   fetching_service = media_fetching.MediaFetchingService.from_source_alias(
     source
   )
+
+  if extra_parameters.get('tagger', {}).get('db_uri'):
+    tagging_db_uri = extra_parameters.get('tagger').pop('db_uri')
+  else:
+    tagging_db_uri = db_uri
   tagging_service = media_tagging.MediaTaggingService(
     tagging_results_repository=(
-      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(db_uri)
+      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(
+        tagging_db_uri
+      )
     )
   )
+  if extra_parameters.get('similarity', {}).get('db_uri'):
+    similarity_db_uri = extra_parameters.get('similarity').pop('db_uri')
+  else:
+    similarity_db_uri = db_uri
   similarity_service = media_similarity.MediaSimilarityService(
-    media_similarity.repositories.SqlAlchemySimilarityPairsRepository(db_uri)
+    media_similarity_repository=media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
+      similarity_db_uri
+    ),
+    tagging_service=media_tagging.MediaTaggingService(
+      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(
+        tagging_db_uri
+      )
+    ),
   )
   if source == 'youtube':
     media_type = 'YOUTUBE_VIDEO'

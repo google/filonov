@@ -16,6 +16,7 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import fastapi
+import media_tagging
 import uvicorn
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
@@ -33,9 +34,11 @@ class MediaSimilaritySettings(BaseSettings):
 
   Attributes:
     media_tagging_db_url: Connection string to DB with tagging results.
+    similarity_db_uri: Connection string to DB with similarity results.
   """
 
   media_tagging_db_url: str | None = None
+  similarity_db_url: str | None = None
 
 
 class Dependencies:
@@ -45,6 +48,11 @@ class Dependencies:
     self.similarity_service = media_similarity.MediaSimilarityService(
       media_similarity_repository=(
         media_similarity.repositories.SqlAlchemySimilarityPairsRepository(
+          settings.similarity_db_url or settings.media_tagging_db_url
+        )
+      ),
+      tagging_service=media_tagging.MediaTaggingService(
+        media_tagging.repositories.SqlAlchemyTaggingResultsRepository(
           settings.media_tagging_db_url
         )
       ),
