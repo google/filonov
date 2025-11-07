@@ -106,12 +106,15 @@ curl -X 'POST' \
 ```
 ///
 
+!!!note
+    Instead of explicitly listing media paths you can [provide them in a file](#reading-media-from-a-file).
+
 #### n_tags
 
 By default `media-tagger` returns only 10 tags for the media. You can change this number with `n_tags` parameter.
 
 /// tab | cli
-```bash
+```bash hl_lines="4"
 media-tagger tag MEDIA_PATHs \
   --media-type IMAGE \
   --tagger gemini \
@@ -122,7 +125,7 @@ media-tagger tag MEDIA_PATHs \
 ///
 
 /// tab | python
-```python
+```python hl_lines="8"
 import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
@@ -144,7 +147,7 @@ result.save(output='tagging_results', writer='csv')
 
 > Start API by running `python -m media_tagging.entrypoints.server`.
 
-```bash
+```bash hl_lines="12-14"
 curl -X 'POST' \
   'http://127.0.0.1:8000/media_tagging/tag' \
   -H 'accept: application/json' \
@@ -169,7 +172,7 @@ curl -X 'POST' \
 You can use `media-tagger` to find specific tags in your media using `tags` parameter.
 
 /// tab | cli
-```bash
+```bash hl_lines="4"
 media-tagger tag MEDIA_PATHs \
   --media-type IMAGE \
   --tagger gemini \
@@ -180,7 +183,7 @@ media-tagger tag MEDIA_PATHs \
 ///
 
 /// tab | python
-```python
+```python hl_lines="8"
 import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
@@ -201,7 +204,7 @@ result.save(output='tagging_results', writer='csv')
 
 > Start API by running `python -m media_tagging.entrypoints.server`.
 
-```bash
+```bash hl_lines="12-14"
 curl -X 'POST' \
   'http://127.0.0.1:8000/media_tagging/tag' \
   -H 'accept: application/json' \
@@ -273,12 +276,15 @@ curl -X 'POST' \
 ```
 ///
 
+!!!note
+    Instead of explicitly listing media paths you can [provide them in a file](#reading-media-from-a-file).
+
 #### custom_prompt
 
 If you want to change the default prompt used when describing media you can specify `custom_prompt` parameter. `custom_prompt` can be either a prompt or a file path (local or remote) with `.txt` extension.
 
 /// tab | cli
-```bash
+```bash hl_lines="4"
 media-tagger describe MEDIA_PATHs \
   --media-type IMAGE \
   --tagger gemini \
@@ -289,7 +295,7 @@ media-tagger describe MEDIA_PATHs \
 ///
 
 /// tab | python
-```python
+```python hl_lines="8-10"
 import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
@@ -312,7 +318,7 @@ result.save(output='tagging_results', writer='csv')
 
 > Start API by running `python -m media_tagging.entrypoints.server`.
 
-```bash
+```bash hl_lines="12-14"
 curl -X 'POST' \
   'http://127.0.0.1:8000/media_tagging/describe' \
   -H 'accept: application/json' \
@@ -337,7 +343,7 @@ curl -X 'POST' \
 When passing custom prompt you can opt out of using built in schemas in `media-tagger` by using `--tagger.no-schema=True` or provide a [custom schema](https://ai.google.dev/gemini-api/docs/structured-output#json-schemas) via `custom_schema` parameter.
 
 /// tab | cli
-```bash
+```bash hl_lines="4-5"
 media-tagger describe MEDIA_PATHs \
   --media-type IMAGE \
   --tagger gemini \
@@ -349,7 +355,7 @@ media-tagger describe MEDIA_PATHs \
 ///
 
 /// tab | python
-```python
+```python hl_lines="2 5-6 14-17"
 import media_tagging
 import pydantic
 
@@ -379,7 +385,7 @@ result.save(output='tagging_results', writer='csv')
 
 > Start API by running `python -m media_tagging.entrypoints.server`.
 
-```bash
+```bash hl_lines="12-15"
 curl -X 'POST' \
   'http://127.0.0.1:8000/media_tagging/describe' \
   -H 'accept: application/json' \
@@ -400,6 +406,20 @@ curl -X 'POST' \
 ```
 ///
 
+
+!!!example
+    Here's an example schema for getting a json with a single attribute `main_theme`.
+    ```json
+    {
+    	"type": "OBJECT",
+    	"properties":  {
+    		"main_theme": {
+    			"type": "STRING"
+    		}
+    	}
+    }
+    ```
+
 ### Common tagger parameters
 
 All the taggers support the following parameters.
@@ -409,7 +429,7 @@ All the taggers support the following parameters.
 `n_runs=N` parameter to repeat tagging process `N` times.
 
 /// tab | cli
-```bash
+```bash hl_lines="4"
 media-tagger tag MEDIA_PATHs \
   --media-type IMAGE \
   --tagger gemini \
@@ -420,7 +440,7 @@ media-tagger tag MEDIA_PATHs \
 ///
 
 /// tab | python
-```python
+```python hl_lines="8-10"
 import media_tagging
 
 media_tagger = media_tagging.MediaTaggingService()
@@ -443,7 +463,7 @@ result.save(output='tagging_results', writer='csv')
 
 > Start API by running `python -m media_tagging.entrypoints.server`.
 
-```bash
+```bash hl_lines="12-14"
 curl -X 'POST' \
   'http://127.0.0.1:8000/media_tagging/tag' \
   -H 'accept: application/json' \
@@ -461,4 +481,53 @@ curl -X 'POST' \
     "
   }'
 ```
+///
+
+### Reading media from a file
+
+Instead of explicitly listing media paths you can provide them in a file.
+
+`media-tagger` supports two types of files:
+
+* `.txt` files - expects each media paths to be on its own line. No column names or extra columns is expected.
+* `.csv` files - you can specify which column to use to read media paths.
+
+#### Configuration
+
+* `path` - location of the file with media paths; can be local or remote.
+* `column_name`- name of the column where media_paths can be found (`media_url` by default)
+* `skip_rows` - if CSV does not start with a first row, how many rows to skip (`0` by default)
+
+/// tab | cli
+```bash hl_lines="2-3"
+media-tagger tag \
+  --input media.csv \
+  --input.column_name=url \
+  --media-type IMAGE \
+  --tagger gemini \
+  --writer csv \
+  --output tagging_results
+```
+///
+
+/// tab | python
+```python hl_lines="2 5 9"
+import media_tagging
+from media_tagging import media
+
+media_tagger = media_tagging.MediaTaggingService()
+media_paths = media.get_media_paths_from_file({'path': 'media.csv'})
+
+request = media_tagging.MediaTaggingRequest(
+  media_type='IMAGE',
+  media_paths=media_paths,
+  tagger_type='gemini',
+)
+result = media_tagger.tag_media(request)
+
+result.save(output='tagging_results', writer='csv')
+```
+///
+/// tab | curl
+**Reading media from a file currently not supported**
 ///
