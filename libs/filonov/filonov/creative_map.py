@@ -211,6 +211,7 @@ def convert_report_to_media_info(
   segment_columns: Sequence[str] | None = None,
   modules: Sequence[str] | None = None,
   with_size_base: str | None = None,
+  omit_time_series: bool = False,
 ) -> dict[str, MediaInfo]:
   """Convert report to MediaInfo mappings.
 
@@ -221,6 +222,7 @@ def convert_report_to_media_info(
     segment_columns:  Name of segments to be calculated.
     modules: Optional column names to be added to media_info.
     with_size_base: Optional column name for regulating size of media info.
+    omit_time_series: Whether to exclude time series data from media info.
 
   Returns:
     Mapping between media identifier and its media info.
@@ -261,7 +263,7 @@ def convert_report_to_media_info(
       if segment_columns
       else {}
     )
-    if values[0].get('date'):
+    if values[0].get('date') and not omit_time_series:
       series = build_segments(values, ['date'], metric_columns).get('date', {})
     else:
       series = {}

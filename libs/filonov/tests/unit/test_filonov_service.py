@@ -51,7 +51,6 @@ class TestCreativeMapGenerateRequest:
     request = filonov_service.CreativeMapGenerateRequest(
       source='fake', tagger_parameters=tagger_parameters
     )
-    expected_parameters.update({'n_tags': 100})
     assert request.tagger_parameters == expected_parameters
 
 
