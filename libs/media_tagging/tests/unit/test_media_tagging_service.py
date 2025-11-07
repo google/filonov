@@ -15,7 +15,6 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import, missing-module-docstring, missing-class-docstring, missing-function-docstring
 
 import hashlib
-import json
 
 import pydantic
 import pytest
@@ -128,6 +127,75 @@ class TestMediaTaggingService:
       content=[tagging_result.Tag(name='test', score=0.5)],
       tagging_details={'n_tags': 10},
       hash=hashlib.md5(b'test').hexdigest(),
+    )
+    assert test_tagging_result == media_tagging_service.MediaTaggingResponse(
+      results=[expected_result]
+    )
+
+  def test_get_media_returns_correct_tagging_result_for_different_tagging_details(
+    self, service
+  ):
+    media_hash = hashlib.md5(b'test1').hexdigest()
+    tagging_result_1 = tagging_result.TaggingResult(
+      identifier='test1',
+      type='text',
+      tagger='gemini',
+      output='tag',
+      content=[tagging_result.Tag(name='tag1', score=0.1)],
+      tagging_options={'n_tags': 5},
+      hash=media_hash,
+    )
+    tagging_result_2 = tagging_result.TaggingResult(
+      identifier='test1',
+      type='text',
+      tagger='gemini',
+      output='tag',
+      content=[tagging_result.Tag(name='tag2', score=0.1)],
+      tagging_details={'n_tags': 10},
+      hash=media_hash,
+    )
+    service.repo.add(tagging_result_1)
+    service.repo.add(tagging_result_2)
+    test_tagging_result = service.get_media(
+      media_tagging_service.MediaFetchingRequest(
+        tagger_type='gemini',
+        output='tag',
+        media_type='TEXT',
+        media_paths=['test1'],
+        tagging_options={'n_tags': 10},
+      )
+    )
+    expected_result = tagging_result.TaggingResult(
+      identifier='test1',
+      tagger='gemini',
+      output='tag',
+      type='text',
+      content=[tagging_result.Tag(name='tag2', score=0.1)],
+      tagging_details={'n_tags': 10},
+      hash=media_hash,
+    )
+    assert test_tagging_result == media_tagging_service.MediaTaggingResponse(
+      results=[expected_result]
+    )
+    test_tagging_result = service.get_media(
+      media_tagging_service.MediaFetchingRequest(
+        tagger_type='gemini',
+        output='tag',
+        media_type='TEXT',
+        media_paths=['test1'],
+        deduplicate=True,
+      )
+    )
+    expected_result = tagging_result.TaggingResult(
+      identifier='test1',
+      tagger='gemini',
+      output='tag',
+      type='text',
+      content=[
+        tagging_result.Tag(name='tag1', score=0.1),
+        tagging_result.Tag(name='tag2', score=0.1),
+      ],
+      hash=media_hash,
     )
     assert test_tagging_result == media_tagging_service.MediaTaggingResponse(
       results=[expected_result]

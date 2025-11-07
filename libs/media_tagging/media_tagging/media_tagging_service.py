@@ -117,6 +117,7 @@ class MediaFetchingRequest(pydantic.BaseModel):
   output: Literal['tag', 'description']
   tagger_type: str = 'loader'
   deduplicate: bool = False
+  tagging_options: base_tagger.TaggingOptions | None = None
 
 
 class MediaTaggingResponse(pydantic.BaseModel):
@@ -192,12 +193,15 @@ class MediaTaggingService:
     self,
     fetching_request: MediaFetchingRequest,
   ) -> MediaTaggingResponse:
+    if tagging_details := fetching_request.tagging_options:
+      tagging_details = tagging_details.model_dump(exclude_none=True)
     results = self.repo.get(
       media_paths=fetching_request.media_paths,
       media_type=fetching_request.media_type,
       tagger_type=fetching_request.tagger_type,
       output=fetching_request.output,
       deduplicate=fetching_request.deduplicate,
+      tagging_details=tagging_details,
     )
     return MediaTaggingResponse(results=results)
 
