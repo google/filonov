@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "media-similarity"
 dependencies = [
-  "media-tagging>=2.0.0",
+  "media-tagging>=2.2.1",
   "igraph",
   "typer",
 ]
