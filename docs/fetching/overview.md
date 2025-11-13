@@ -9,6 +9,7 @@ It gives you information on a single media coupled with its performance.
 
 * [googleads](googleads.md) - fetch media performance metrics from a Google Ads account / MCC.
 * [youtube](youtube.md) - fetch public videos from a YouTube channel.
+* [dbm](bid-manager.md) - load YouTube performance metrics from Display & Video 360.
 * [file](file.md) - load media performance metrics from CSV files
 * [bq](bq.md) - load media performance metrics from BigQuery table.
 * [sql](sql.md) - load media performance metrics from SqlAlchemy supported DB.
