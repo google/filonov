@@ -60,6 +60,7 @@ nav:
       - Fetchers:
         - Google Ads: fetching/googleads.md
         - YouTube: fetching/youtube.md
+        - DV360: fetching/bid-manager.md
         - File: fetching/file.md
         - BigQuery: fetching/bq.md
         - SQL DB: fetching/sql.md
