@@ -89,6 +89,10 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   context: dict[str, Any] = pydantic.Field(default_factory=dict)
 
   def model_post_init(self, __context):  # noqa: D105
+    if not self.tagger_parameters:
+      self.tagger_parameters = self.default_tagger_parameters
+    if 'n_tags' not in self.tagger_parameters:
+      self.tagger_parameters.update(self.default_tagger_parameters)
     if self.source == 'youtube':
       self.media_type = 'YOUTUBE_VIDEO'
       self.tagger = 'gemini'
@@ -178,7 +182,7 @@ class FilonovService:
         MediaTaggingRequest(
           tagger_type=request.tagger,
           media_type=request.media_type,
-          tagging_options=CreativeMapGenerateRequest.default_tagger_parameters,
+          tagging_options=request.tagger_parameters,
           media_paths=media_urls,
           parallel_threshold=request.parallel_threshold,
           deduplicate=True,
