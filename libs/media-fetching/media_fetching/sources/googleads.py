@@ -47,6 +47,7 @@ class GoogleAdsFetchingParameters(models.FetchingParameters):
   ).strftime('%Y-%m-%d')
   min_cost: int = 0
   campaign_types: Sequence[queries.SupportedCampaignTypes] | str = ('app',)
+  countries: list[str] | str = pydantic.Field(default_factory=list)
   ads_config: str = os.getenv(
     'GOOGLE_ADS_CONFIGURATION_FILE_PATH',
     str(pathlib.Path.home() / 'google-ads.yaml'),
@@ -68,6 +69,8 @@ class GoogleAdsFetchingParameters(models.FetchingParameters):
       self.campaign_types = self.campaign_types.split(',')
     if isinstance(self.segments, str):
       self.segments = self.segments.split(',')
+    if isinstance(self.countries, str):
+      self.countries = self.countries.split(',')
     if isinstance(self.metrics, str):
       self.metrics = self.metrics.split(',')
     if isinstance(self.extra_info, str):
@@ -193,11 +196,20 @@ class Fetcher(models.BaseMediaInfoFetcher):
       Report with media performance.
     """
     performance_reports = []
+    if countries := fetching_request.countries:
+      campaign_ids = self._get_campaign_ids_for_countries(countries)
+      if not campaign_ids:
+        raise exceptions.MediaFetchingError(
+          'No campaigns with the following dominant countries '
+          f'found: {countries}'
+        )
+    else:
+      campaign_ids = []
     for campaign_type, query in performance_queries.items():
       fetching_parameters = fetching_request.query_params
       fetching_parameters['campaign_type'] = campaign_type
       performance = self.fetcher.fetch(
-        query(**fetching_parameters),
+        query(**fetching_parameters, campaign_ids=campaign_ids),
         self.accounts,
       )
       if len(performance_queries) == 1:
@@ -295,3 +307,59 @@ class Fetcher(models.BaseMediaInfoFetcher):
       video_id = row.media_url
       row['orientation'] = video_orientations.get(video_id, 0.0)
       row['duration'] = video_durations.get(video_id, 0.0)
+
+  def _get_campaign_ids_for_countries(self, countries: list[str]) -> list[int]:
+    threshold = 0.5
+
+    def get_dominant_country(group):
+      dominant_country_row = group[group['share'] > threshold]
+      if dominant_country_row.empty:
+        return 'Unknown'
+      return dominant_country_row['country'].iloc[0]
+
+    campaign_geos = """
+    SELECT
+      campaign.id AS campaign_id,
+      user_location_view.country_criterion_id AS country_id,
+     metrics.cost_micros / 1e6 AS cost
+    FROM user_location_view
+    """
+
+    geo_targets_query = """
+    SELECT
+      geo_target_constant.id AS country_id,
+      geo_target_constant.name AS country_name
+    FROM geo_target_constant
+    WHERE geo_target_constant.id BETWEEN 2000 AND 3000
+    """
+
+    country_mapping = self.fetcher.fetch(
+      geo_targets_query, self.accounts[0]
+    ).to_dict(
+      key_column='country_id',
+      value_column='country_name',
+      value_column_output='scalar',
+    )
+    geo_extra_info = self.fetcher.fetch(
+      campaign_geos, self.accounts
+    ).to_pandas()
+    geo_extra_info['country'] = geo_extra_info['country_id'].map(
+      country_mapping
+    )
+    geo_extra_info['country'] = geo_extra_info['country'].fillna('Unknown')
+    geo_extra_info['total_campaign_cost'] = geo_extra_info.groupby(
+      'campaign_id'
+    )['cost'].transform('sum')
+    geo_extra_info['share'] = (
+      geo_extra_info['cost'] / geo_extra_info['total_campaign_cost']
+    )
+    geo_info = (
+      geo_extra_info.groupby('campaign_id')
+      .apply(get_dominant_country)
+      .to_dict()
+    )
+    return [
+      campaign_id
+      for campaign_id, country in geo_info.items()
+      if country in countries
+    ]

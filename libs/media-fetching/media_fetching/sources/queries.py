@@ -100,6 +100,7 @@ class DisplayAssetPerformance(PerformanceQuery):
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
     AND ad_group_ad.ad.image_ad.image_url != ''
     AND metrics.cost_micros > {min_cost}
+    {campaign_ids}
   """
 
   start_date: str
@@ -107,9 +108,11 @@ class DisplayAssetPerformance(PerformanceQuery):
   media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
+  campaign_ids: list[int] | None = None
 
   def __post_init__(self) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
+    self.campaign_ids = _format_campaign_ids(self.campaign_ids)
 
 
 @dataclasses.dataclass
@@ -140,6 +143,7 @@ class VideoPerformance(PerformanceQuery):
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
     AND video.id != ''
     AND metrics.cost_micros > {min_cost}
+    {campaign_ids}
   """
 
   start_date: str
@@ -147,9 +151,11 @@ class VideoPerformance(PerformanceQuery):
   media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
+  campaign_ids: list[int] | None = None
 
   def __post_init__(self) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
+    self.campaign_ids = _format_campaign_ids(self.campaign_ids)
 
 
 @dataclasses.dataclass
@@ -180,6 +186,7 @@ class PmaxAssetPerformance(PerformanceQuery):
     AND campaign.advertising_channel_type = PERFORMANCE_MAX
     AND {media_url} != ''
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
+    {campaign_ids}
   """
 
   start_date: str
@@ -187,8 +194,10 @@ class PmaxAssetPerformance(PerformanceQuery):
   media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
+  campaign_ids: list[int] | None = None
 
   def __post_init__(self) -> None:  # noqa: D105
+    self.campaign_ids = _format_campaign_ids(self.campaign_ids)
     if self.media_type == 'IMAGE':
       self.media_url = 'asset.image_asset.full_size.url'
       self.aspect_ratio = (
@@ -242,6 +251,7 @@ class SearchAssetPerformance(PerformanceQuery):
     AND asset.text_asset.text != ''
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
     AND metrics.cost_micros > {min_cost}
+    {campaign_ids}
   """
 
   start_date: str
@@ -249,9 +259,11 @@ class SearchAssetPerformance(PerformanceQuery):
   media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
+  campaign_ids: list[int] | None = None
 
   def __post_init__(self) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
+    self.campaign_ids = _format_campaign_ids(self.campaign_ids)
 
 
 @dataclasses.dataclass
@@ -284,6 +296,7 @@ class DemandGenTextAssetPerformance(PerformanceQuery):
     AND asset.text_asset.text != ''
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
     AND metrics.cost_micros > {min_cost}
+    {campaign_ids}
   """
 
   start_date: str
@@ -291,9 +304,11 @@ class DemandGenTextAssetPerformance(PerformanceQuery):
   media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
+  campaign_ids: list[int] | None = None
 
   def __post_init__(self) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
+    self.campaign_ids = _format_campaign_ids(self.campaign_ids)
 
 
 @dataclasses.dataclass
@@ -330,6 +345,7 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
     AND asset.image_asset.full_size.url != ''
     AND metrics.cost_micros > {min_cost}
+    {campaign_ids}
   """
 
   start_date: str
@@ -337,9 +353,11 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
   media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
+  campaign_ids: list[int] | None = None
 
   def __post_init__(self) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
+    self.campaign_ids = _format_campaign_ids(self.campaign_ids)
 
 
 @dataclasses.dataclass
@@ -369,6 +387,7 @@ class DemandGenVideoAssetPerformance(PerformanceQuery):
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
     AND video.id != ''
     AND metrics.cost_micros > {min_cost}
+    {campaign_ids}
   """
 
   start_date: str
@@ -376,9 +395,11 @@ class DemandGenVideoAssetPerformance(PerformanceQuery):
   media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
+  campaign_ids: list[int] | None = None
 
   def __post_init__(self) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
+    self.campaign_ids = _format_campaign_ids(self.campaign_ids)
 
 
 @dataclasses.dataclass
@@ -412,6 +433,7 @@ class AppAssetPerformance(PerformanceQuery):
     AND {media_url} != ''
     AND metrics.cost_micros > {min_cost}
     {app_id}
+    {campaign_ids}
   """
 
   start_date: str
@@ -420,6 +442,7 @@ class AppAssetPerformance(PerformanceQuery):
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
   app_id: str | None = None
+  campaign_ids: list[int] | None = None
 
   def __post_init__(self) -> None:  # noqa: D105
     self.app_id = (
@@ -427,6 +450,7 @@ class AppAssetPerformance(PerformanceQuery):
       if self.app_id
       else ''
     )
+    self.campaign_ids = _format_campaign_ids(self.campaign_ids)
     self.min_cost = int(self.min_cost * 1e6)
     if self.media_type == 'IMAGE':
       self.media_url = 'asset.image_asset.full_size.url'
@@ -474,3 +498,12 @@ CAMPAIGN_TYPES_MAPPING: dict[str, str] = {
   'video': 'VIDEO',
   'demandgen': 'DEMAND_GEN',
 }
+
+
+def _format_campaign_ids(campaign_ids: list[str] | None) -> str:
+  if campaign_ids:
+    campaign_ids_joined = ','.join(
+      str(campaign_id) for campaign_id in campaign_ids
+    )
+    return f'AND campaign.id IN ({campaign_ids_joined})'
+  return ''
