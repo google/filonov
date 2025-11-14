@@ -55,6 +55,7 @@ report = fetcher.fetch(request)
     * `video`
 * `start-date` - First date of the period in `YYYY-MM-DD` format (i.e. `2025-01-01`). Defaults to 30 days ago.
 * `end-date` - Last date of the period in `YYYY-MM-DD` format. Defaults to yesterday.
+* `countries` - list of countries to get data from. Country is inferred from campaign level as one that has greater than 50% cost.
 
 
 /// tab | cli
@@ -66,7 +67,8 @@ media-fetcher \
   --googleads.campaign-types=pmax,demandgen \
   --googleads.start-date=2025-01-01 \
   --googleads.end-date=2025-01-31 \
-  --googleads.ads-config=google-ads-custom.yaml
+  --googleads.ads-config=google-ads-custom.yaml \
+  --googleads.countries='United States,United Kingdom'
 
 ```
 ///
@@ -85,6 +87,7 @@ request = googleads.GoogleAdsFetchingParameters(
   start_date='2025-01-01',
   end_date='2025-01-31',
   ads_config='google-ads-custom.yaml',
+  countries=['United States', 'United Kingdom'],
 )
 report = fetcher.fetch(request)
 ```
