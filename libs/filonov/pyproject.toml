@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "filonov"
 dependencies = [
-  "media-fetching",
-  "media-similarity",
-  "garf-youtube-data-api",
-  "google-ads-api-report-fetcher",
+  "media-fetching>=0.3.6",
+  "media-similarity>=0.7.2",
+  "garf-youtube-data-api>=0.0.11",
+  "google-ads-api-report-fetcher>=1.17.4",
   "typer",
 ]
 authors = [

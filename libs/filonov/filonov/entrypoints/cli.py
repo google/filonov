@@ -35,7 +35,7 @@ typer_app = typer.Typer()
 
 def _version_callback(show_version: bool) -> None:
   if show_version:
-    print(f'filonov version: {media_fetching.__version__}')
+    print(f'filonov version: {filonov.__version__}')
     raise typer.Exit()
 
 
