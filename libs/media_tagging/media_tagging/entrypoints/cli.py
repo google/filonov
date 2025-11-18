@@ -25,7 +25,10 @@ from typing_extensions import Annotated
 import media_tagging
 from media_tagging import media, media_tagging_service, repositories
 from media_tagging.entrypoints import utils
+from media_tagging.entrypoints.tracer import initialize_tracer
+from media_tagging.telemetry import tracer
 
+initialize_tracer()
 typer_app = typer.Typer()
 
 MediaPaths = Annotated[
@@ -117,6 +120,7 @@ def _version_callback(show_version: bool) -> None:
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
+@tracer.start_as_current_span('media_tagger.cli.tag')
 @utils.log_shutdown
 def tag(
   media_type: MediaType,
@@ -172,6 +176,7 @@ def tag(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
 @utils.log_shutdown
+@tracer.start_as_current_span('media_tagger.cli.describe')
 def describe(
   media_type: MediaType,
   media_paths: MediaPaths = None,

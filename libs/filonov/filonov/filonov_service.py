@@ -31,6 +31,7 @@ from media_tagging.media_tagging_service import (
 )
 
 from filonov import creative_map, exceptions
+from filonov.telemetry import tracer
 
 logger = logging.getLogger('filonov')
 
@@ -120,6 +121,7 @@ class FilonovService:
     self.tagging_service = tagging_service
     self.similarity_service = similarity_service
 
+  @tracer.start_as_current_span('generate_creative_map')
   def generate_creative_map(
     self,
     request: CreativeMapGenerateRequest,

@@ -105,7 +105,7 @@ class TestGoogleCloudTagger:
     assert result == expected_result
 
   def test_tag_raises_tagger_error_on_unsupported_media_type(self):
-    media_type = media.MediaTypeEnum.YOUTUBE_VIDEO
+    media_type = media.MediaTypeEnum.TEXT
     test_tagger = tagger.GoogleCloudTagger(project='test')
     with pytest.raises(base.TaggerError):
       test_tagger.tag(media.Medium('test', media_type))

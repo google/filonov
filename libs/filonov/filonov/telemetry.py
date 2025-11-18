@@ -13,21 +13,8 @@
 # limitations under the License.
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
+from opentelemetry import trace
 
-"""Simplifies imports from inner modules."""
-
-from media_similarity.media_similarity_service import (
-  MediaClusteringRequest,
-  MediaSimilarityComparisonRequest,
-  MediaSimilaritySearchRequest,
-  MediaSimilarityService,
+tracer = trace.get_tracer(
+  instrumenting_module_name='filonov',
 )
-
-__all__ = [
-  'MediaSimilarityService',
-  'MediaSimilarityComparisonRequest',
-  'MediaSimilaritySearchRequest',
-  'MediaClusteringRequest',
-]
-
-__version__ = '0.8.0'

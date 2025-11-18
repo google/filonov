@@ -9,8 +9,11 @@ dependencies = [
   "garf-youtube-data-api",
   "garf-bid-manager>=0.0.6",
   "google-ads-api-report-fetcher",
-  "garf-executors[bq,sql]>=0.0.12",
+  "garf-executors[bq,sql]>=0.1.2",
   "typer",
+  "opentelemetry-api",
+  "opentelemetry-sdk",
+  "opentelemetry-exporter-otlp",
 ]
 authors = [
   {name = "Andrei Markin", email = "amarkin@google.com"},

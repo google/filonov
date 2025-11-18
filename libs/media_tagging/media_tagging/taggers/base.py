@@ -26,8 +26,10 @@ from typing import Any, Dict, Literal
 import pydantic
 import smart_open
 import tenacity
+from opentelemetry import trace
 
 from media_tagging import exceptions, media, tagging_result
+from media_tagging.telemetry import tracer
 
 CustomSchema = (
   str | os.PathLike[str] | Dict[str, Any] | type[pydantic.BaseModel]
@@ -161,6 +163,7 @@ class BaseTagger(abc.ABC):
     retry=tenacity.retry_if_exception_type(pydantic.ValidationError),
     reraise=True,
   )
+  @tracer.start_as_current_span('tag')
   def tag(
     self,
     medium: media.Medium,
@@ -168,6 +171,10 @@ class BaseTagger(abc.ABC):
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
     """Tags media based on specified parameters."""
+    span = trace.get_current_span()
+    span.set_attribute('tag.media.name', medium.name)
+    span.set_attribute('tag.media.type', medium.type)
+    span.set_attribute('tag.media.path', medium.media_path)
     result = self.get_tagging_strategy(medium.type).tag(
       medium, tagging_options, **kwargs
     )
@@ -180,6 +187,7 @@ class BaseTagger(abc.ABC):
     retry=tenacity.retry_if_exception_type(pydantic.ValidationError),
     reraise=True,
   )
+  @tracer.start_as_current_span('tag')
   def describe(
     self,
     medium: media.Medium,

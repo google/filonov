@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import itertools
 import logging
 import os
@@ -38,6 +39,7 @@ from media_similarity import (
   media_pair,
   repositories,
 )
+from media_similarity.telemetry import tracer
 
 BATCH_SIZE: Final[int] = 1_000
 
@@ -258,6 +260,7 @@ class MediaSimilarityService:
     repo.initialize()
     return MediaSimilarityService(repo)
 
+  @tracer.start_as_current_span('cluster_media')
   def cluster_media(
     self,
     request: MediaClusteringRequest,
