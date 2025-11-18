@@ -108,10 +108,11 @@ class MediaFetchingService:
           span.set_attribute(f'media_fetching.source.{self.source}.{k}', v)
 
     media_data = self.fetcher.fetch_media_data(request)
+    if not extra_parameters:
+      extra_parameters = request.model_dump()
     if extra_info_modules := request.extra_info:
       extra_data = enricher.prepare_extra_info(
         performance=media_data,
-        media_type=request.media_type,
         modules=extra_info_modules,
         params=extra_parameters,
       )

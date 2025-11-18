@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=C0330, g-bad-import-order, g-multiple-import
+from media_fetching.enrichers import enricher
 
-from media_fetching.enrichers.dbm import BidManagerEnricher
-from media_fetching.enrichers.googleads import GoogleAdsEnricher
-from media_fetching.enrichers.tagging import MediaTaggingEnricher
-from media_fetching.enrichers.youtube import YouTubeEnricher
 
-__all__ = [
-  'MediaTaggingEnricher',
-  'GoogleAdsEnricher',
-  'YouTubeEnricher',
-  'BidManagerEnricher',
-]
+def test_flatten_dict():
+  params = {'googleads': {}, 'youtube': {'channel': '1234'}, 'tagger': 'gemini'}
+  flattened_parameters = enricher._flatten_dict(params)
+  assert flattened_parameters == {'channel': '1234', 'tagger': 'gemini'}

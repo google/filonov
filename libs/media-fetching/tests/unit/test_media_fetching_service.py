@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import garf_core
 import pytest
 from media_fetching import MediaFetchingService, exceptions
 from media_fetching.sources import dbm, file, googleads, models, sql, youtube
@@ -51,3 +52,53 @@ class TestMediaFetchingService:
   ):
     service = MediaFetchingService.from_source_alias(alias)
     assert isinstance(service.fetcher, source_class)
+
+  def test_fetch_dbm_correctly_enriches_report_with_brand_lift_data(
+    self, mocker
+  ):
+    fake_report = garf_core.GarfReport(
+      results=[
+        ['2025/01/01', 1, '1234567890', 'test_video', 1],
+      ],
+      column_names=['date', 'ad_group_id', 'media_url', 'media_name', 'clicks'],
+    )
+    mocker.patch(
+      'media_fetching.sources.dbm.Fetcher.fetch_media_data',
+      return_value=fake_report,
+    )
+    fake_report = garf_core.GarfReport(
+      results=[
+        [1, 'CONSIDERATION', 100],
+        [2, 'AWARENESS', 1000],
+      ],
+      column_names=[
+        'ad_group_id',
+        'brand_lift_type',
+        'brand_lift_absolute_brand_lift',
+      ],
+    )
+    mocker.patch(
+      'garf_bid_manager.report_fetcher.BidManagerApiReportFetcher.fetch',
+      return_value=fake_report,
+    )
+    service = MediaFetchingService.from_source_alias('dbm')
+
+    request = dbm.BidManagerFetchingParameters(
+      advertiser='1234567890', metrics='clicks', extra_info=['dbm.brand_lift']
+    )
+    result = service.fetch(request, extra_parameters=request.model_dump())
+    expected_report = garf_core.GarfReport(
+      results=[
+        ['2025/01/01', 1, '1234567890', 'test_video', 1, 'CONSIDERATION', 100],
+      ],
+      column_names=[
+        'date',
+        'ad_group_id',
+        'media_url',
+        'media_name',
+        'clicks',
+        'brand_lift_type',
+        'brand_lift_absolute_brand_lift',
+      ],
+    )
+    assert result == expected_report

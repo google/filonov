@@ -37,6 +37,7 @@ class YouTubeFetchingParameters(models.FetchingParameters):
   type: Literal['videos', 'descriptions', 'commentaries', 'thumbnails'] = (
     'videos'
   )
+  media_type: Literal['YOUTUBE_VIDEO', 'TEXT', 'IMAGE'] = 'YOUTUBE_VIDEO'
   segments: Sequence[str] | None = None
   extra_info: Sequence[str] | None = pydantic.Field(default_factory=list)
 

@@ -126,3 +126,33 @@ request = googleads.GoogleAdsFetchingParameters(
 report = fetcher.fetch(request)
 ```
 ///
+
+### dbm
+
+* brand_lift - adds brand lift data on ad_group_id level.
+
+/// tab | cli
+```bash
+media-fetcher \
+  --source googleads \
+  --googleads.account=ACCOUNT_ID \
+  --media-type YOUTUBE_VIDEO \
+  --extra_info dbm.brand_lift
+```
+///
+
+/// tab | python
+
+```python
+import media_fetching
+from media_fetching.sources import dbm
+
+fetcher = media_fetching.MediaFetchingService(source='dbm')
+request = dbm.BidManagerFetchingParameters(
+  advertiser='ADVERTISER_ID',
+  extra_info=['dbm.brand_lift'],
+)
+
+report = fetcher.fetch(request)
+```
+///
