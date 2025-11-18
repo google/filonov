@@ -29,7 +29,10 @@ from typing_extensions import Annotated
 
 import filonov
 from filonov.entrypoints import utils
+from filonov.entrypoints.tracer import initialize_tracer
+from filonov.telemetry import tracer
 
+initialize_tracer()
 typer_app = typer.Typer()
 
 
@@ -42,6 +45,7 @@ def _version_callback(show_version: bool) -> None:
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
+@tracer.start_as_current_span('filonov.cli.main')
 @tagging_utils.log_shutdown
 def main(
   ctx: typer.Context,

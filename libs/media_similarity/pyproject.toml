@@ -8,6 +8,9 @@ dependencies = [
   "media-tagging>=2.2.1",
   "igraph",
   "typer",
+  "opentelemetry-api",
+  "opentelemetry-sdk",
+  "opentelemetry-exporter-otlp",
 ]
 authors = [
   {name = "Andrei Markin", email = "amarkin@google.com"},

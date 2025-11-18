@@ -31,8 +31,10 @@ import smart_open
 from garf_core import report
 from media_similarity import media_similarity_service
 from media_tagging import media, tagging_result
+from opentelemetry import trace
 
 from filonov import previews
+from filonov.telemetry import tracer
 
 MetricInfo: TypeAlias = dict[str, int | float]
 Info: TypeAlias = dict[str, int | float | str | list[str] | None]
@@ -111,6 +113,7 @@ class CreativeMap:
     self.clusters: dict[int, ClusterInfo] = clusters or {}
 
   @classmethod
+  @tracer.start_as_current_span('create_map')
   def from_clustering(
     cls,
     clustering_results: media_similarity_service.ClusteringResults,
@@ -198,12 +201,16 @@ class CreativeMap:
       'edges': self.edges,
     }
 
+  @tracer.start_as_current_span('save')
   def save(self, path: str | os.PathLike[str]) -> None:
     """Saves map to a json file."""
+    span = trace.get_current_span()
+    span.set_attribute('filonov.creative_map.path', str(path))
     with smart_open.open(path, 'w', encoding='utf-8') as f:
       json.dump(self.to_json(), f)
 
 
+@tracer.start_as_current_span('convert_report_to_media_info')
 def convert_report_to_media_info(
   performance: report.GarfReport,
   media_type: media.MediaTypeEnum,

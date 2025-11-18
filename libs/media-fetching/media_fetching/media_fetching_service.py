@@ -24,10 +24,12 @@ import warnings
 from typing import Any, get_args
 
 from garf_core import report
+from opentelemetry import trace
 
 from media_fetching import exceptions
 from media_fetching.enrichers import enricher
 from media_fetching.sources import fetcher, models
+from media_fetching.telemetry import tracer
 
 logger = logging.getLogger('media-fetching')
 
@@ -85,17 +87,25 @@ class MediaFetchingService:
     source_fetcher = _get_source_fetcher(source)
     return cls(source_fetcher=source_fetcher)
 
+  @tracer.start_as_current_span('fetch')
   def fetch(
     self,
     request: models.FetchingParameters,
     extra_parameters: dict[str, dict[str, Any]] | None = None,
   ) -> report.GarfReport:
     """Extracts data from specified source."""
+    span = trace.get_current_span()
     logger.info(
       "Fetching data from source '%s' with parameters: %s",
       self.source,
       request,
     )
+    span.set_attribute('media_fetching.source', self.source)
+    if source_parameters := extra_parameters.get(self.source):
+      for k, v in source_parameters.items():
+        if v:
+          span.set_attribute(f'media_fetching.source.{self.source}.{k}', v)
+
     media_data = self.fetcher.fetch_media_data(request)
     if extra_info_modules := request.extra_info:
       extra_data = enricher.prepare_extra_info(
@@ -108,6 +118,7 @@ class MediaFetchingService:
     return media_data
 
 
+@tracer.start_as_current_span('get_source_fetcher')
 def _get_source_fetcher(
   source: str | models.InputSource,
 ) -> models.BaseMediaInfoFetcher:

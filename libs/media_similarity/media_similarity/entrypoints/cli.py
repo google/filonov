@@ -28,7 +28,10 @@ from media_tagging.entrypoints import utils as tagging_utils
 from typing_extensions import Annotated
 
 import media_similarity
+from media_similarity.entrypoints.tracer import initialize_tracer
+from media_similarity.telemetry import tracer
 
+initialize_tracer()
 typer_app = typer.Typer()
 
 
@@ -116,6 +119,7 @@ def _build_similarity_service(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
 @tagging_utils.log_shutdown
+@tracer.start_as_current_span('media_similarity.cli.cluster')
 def cluster(
   media_paths: MediaPaths = None,
   input: Input = None,
@@ -184,6 +188,7 @@ def cluster(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
 @tagging_utils.log_shutdown
+@tracer.start_as_current_span('media_similarity.cli.compare')
 def compare(
   media_type: MediaType,
   db_uri: Annotated[
@@ -227,6 +232,7 @@ def compare(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
 @tagging_utils.log_shutdown
+@tracer.start_as_current_span('media_similarity.cli.search')
 def search(
   media_type: MediaType,
   db_uri: Annotated[

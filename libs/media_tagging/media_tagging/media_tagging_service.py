@@ -15,25 +15,28 @@
 """Responsible for performing media tagging."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
+import asyncio
 import inspect
 import itertools
 import logging
 import os
 from collections.abc import Sequence
-from concurrent import futures
 from importlib.metadata import entry_points
 from typing import Callable, Literal
 
 import pydantic
 from garf_io import writer as garf_writer
+from opentelemetry import trace
 
 from media_tagging import exceptions, media, repositories, tagging_result
 from media_tagging.taggers import TAGGERS
 from media_tagging.taggers import base as base_tagger
+from media_tagging.telemetry import tracer
 
 logger = logging.getLogger('media-tagger')
 
 
+@tracer.start_as_current_span('discover_path_processors')
 def discover_path_processors():
   """Loads all path processors exposed as `media_tagger_path` plugin."""
   processors = {}
@@ -152,6 +155,7 @@ class MediaTaggingResponse(pydantic.BaseModel):
     return bool(self.results)
 
 
+@tracer.start_as_current_span('discover_taggers')
 def discover_taggers(
   existing_taggers: Sequence[str],
 ) -> dict[str, base_tagger.BaseTagger]:
@@ -188,6 +192,7 @@ class MediaTaggingService:
       or repositories.SqlAlchemyTaggingResultsRepository()
     )
 
+  @tracer.start_as_current_span('get_media')
   def get_media(
     self,
     fetching_request: MediaFetchingRequest,
@@ -201,6 +206,7 @@ class MediaTaggingService:
     )
     return MediaTaggingResponse(results=results)
 
+  @tracer.start_as_current_span('tag_media')
   def tag_media(
     self,
     tagging_request: MediaTaggingRequest,
@@ -223,6 +229,7 @@ class MediaTaggingService:
       path_processor=path_processor,
     )
 
+  @tracer.start_as_current_span('describe_media')
   def describe_media(
     self,
     tagging_request: MediaTaggingRequest,
@@ -267,11 +274,21 @@ class MediaTaggingService:
       InvalidMediaTypeError: When incorrect media type is provided.
       TaggerError: When incorrect tagger_type is used.
     """
+
+    def default_path_processor(x):
+      return x
+
+    span = trace.get_current_span()
+    span.set_attribute('media_tagger.tagger', tagging_request.tagger_type)
     if isinstance(path_processor, str):
       path_processor = discover_path_processors().get(path_processor)
-    path_processor = path_processor if path_processor else lambda x: x
+    if not path_processor:
+      path_processor = default_path_processor
+    else:
+      span.set_attribute('media_tagger.path_processor', path_processor)
     concrete_tagger = tagging_request.tagger
     media_type_enum = tagging_request.media_type_enum
+    span.set_attribute('media_tagger.media_type', media_type_enum.name)
     output = 'description' if action == 'describe' else 'tag'
     untagged_media = tagging_request.media_paths
     tagged_media = []
@@ -288,6 +305,7 @@ class MediaTaggingService:
       )
     ):
       logger.info('Reusing %d already tagged media', len(tagged_media))
+      span.set_attribute('media_tagger.num_reused_media', len(tagged_media))
       tagged_media_names = {
         tagged_medium.identifier for tagged_medium in tagged_media
       }
@@ -304,6 +322,7 @@ class MediaTaggingService:
       return MediaTaggingResponse(results=tagged_media)
 
     logger.info('Processing %d media', len(untagged_media))
+    span.set_attribute('media_tagger.num_media_to_process', len(untagged_media))
     logger.info(
       'Using %s tagger and parameters: %s',
       tagging_request.tagger_type,
@@ -326,29 +345,68 @@ class MediaTaggingService:
         + tagged_media
       )
       return MediaTaggingResponse(results=results)
-    with futures.ThreadPoolExecutor(
-      max_workers=tagging_request.parallel_threshold
-    ) as executor:
-      future_to_media_path = {
-        executor.submit(
-          self._process_media_sequentially,
-          action,
-          concrete_tagger,
-          media_type_enum,
-          [media_path],
-          tagging_request.tagging_options,
-          path_processor,
-        ): media_path
-        for media_path in untagged_media
-      }
-      tagging_results = itertools.chain.from_iterable(
-        [
-          future.result()
-          for future in futures.as_completed(future_to_media_path)
-        ]
+    result = asyncio.run(
+      self._run(
+        action,
+        concrete_tagger,
+        media_type_enum,
+        untagged_media,
+        tagging_request.tagging_options,
+        path_processor,
+        tagging_request.parallel_threshold,
       )
-      results = list(tagging_results) + tagged_media
-      return MediaTaggingResponse(results=results)
+    )
+    tagging_results = itertools.chain.from_iterable(result)
+    results = list(tagging_results) + tagged_media
+    return MediaTaggingResponse(results=results)
+
+  async def _run(
+    self,
+    action: Literal['tag', 'describe'],
+    concrete_tagger: base_tagger.BaseTagger,
+    media_type: media.MediaTypeEnum,
+    media_paths: Sequence[str | os.PathLike[str]],
+    tagging_options: base_tagger.TaggingOptions,
+    path_processor: Callable[[str], str],
+    parallel_threshold: int,
+  ):
+    semaphore = asyncio.Semaphore(value=parallel_threshold)
+
+    async def run_with_semaphore(fn):
+      async with semaphore:
+        return await fn
+
+    tasks = [
+      self._aprocess_media_sequentially(
+        action,
+        concrete_tagger,
+        media_type,
+        [media_path],
+        tagging_options,
+        path_processor,
+      )
+      for media_path in media_paths
+    ]
+    return await asyncio.gather(*(run_with_semaphore(task) for task in tasks))
+
+  async def _aprocess_media_sequentially(
+    self,
+    action: Literal['tag', 'describe'],
+    concrete_tagger: base_tagger.BaseTagger,
+    media_type: media.MediaTypeEnum,
+    media_paths: Sequence[str | os.PathLike[str]],
+    tagging_options: base_tagger.TaggingOptions,
+    path_processor: Callable[[str], str],
+  ) -> list[tagging_result.TaggingResult]:
+    return await asyncio.to_thread(
+      self._process_media_sequentially,
+      action,
+      concrete_tagger,
+      media_type,
+      media_paths,
+      tagging_options,
+      path_processor,
+    )
 
   def _process_media_sequentially(
     self,
