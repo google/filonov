@@ -17,6 +17,7 @@
 """Enricher injects extra data into performance reports."""
 
 from collections.abc import Sequence
+from typing import Any
 
 from garf_core import report
 
@@ -27,12 +28,24 @@ AVAILABLE_MODULES = {
   'tagging': enrichers.MediaTaggingEnricher,
   'googleads': enrichers.GoogleAdsEnricher,
   'youtube': enrichers.YouTubeEnricher,
+  'dbm': enrichers.BidManagerEnricher,
 }
+
+
+def _flatten_dict(params: dict[str, dict[str, Any]]) -> dict[str, Any]:
+  flatten_parameters = {}
+  for k, v in params.items():
+    if not v:
+      continue
+    if isinstance(v, dict):
+      flatten_parameters.update(_flatten_dict(v))
+    else:
+      flatten_parameters[k] = v
+  return flatten_parameters
 
 
 def prepare_extra_info(
   performance: report.GarfReport,
-  media_type: str,
   modules: Sequence[str],
   params: dict[str, dict[str, str]],
 ) -> list[extra_info.ExtraInfo]:
@@ -40,7 +53,6 @@ def prepare_extra_info(
 
   Args:
     performance: Report with performance data.
-    media_type:  Type of media in the report.
     modules: Modules used to perform enriching.
     params: Parameters to perform enriching.
 
@@ -50,12 +62,13 @@ def prepare_extra_info(
   data = []
   if isinstance(modules, str):
     modules = modules.split(',')
+  flattened_parameters = _flatten_dict(params)
   for module in modules:
     enricher_module, method = module.split('.', maxsplit=2)
     if available_module := AVAILABLE_MODULES.get(enricher_module):
       initialized_module = available_module(**params.get(enricher_module, {}))
       info = getattr(initialized_module, method)(
-        performance, media_type=media_type
+        performance, **flattened_parameters
       )
       data.append(info)
   return data

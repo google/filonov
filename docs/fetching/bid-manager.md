@@ -49,6 +49,8 @@ report = fetcher.fetch(request)
 * `country` - One or many countries.
 * `start-date` - First date of the period in `YYYY-MM-DD` format (i.e. `2025-01-01`). Defaults to 30 days ago.
 * `end-date` - Last date of the period in `YYYY-MM-DD` format. Defaults to yesterday.
+* `campaigns` - specific campaign names to get data from.
+* `metrics` - metrics compatible with `YOUTUBE` resource (by default `metrics`, `clicks` and `total_media_cost`).
 
 
 /// tab | cli
