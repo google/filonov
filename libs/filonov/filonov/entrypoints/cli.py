@@ -25,6 +25,7 @@ from garf_executors.entrypoints import utils as garf_utils
 from media_fetching.sources import models
 from media_tagging import media
 from media_tagging.entrypoints import utils as tagging_utils
+from opentelemetry import trace
 from typing_extensions import Annotated
 
 import filonov
@@ -134,6 +135,7 @@ def main(
     ),
   ] = False,
 ):  # noqa: D103
+  span = trace.get_current_span()
   garf_utils.init_logging(
     loglevel=loglevel.upper(), logger_type=logger, name=log_name
   )
@@ -191,6 +193,9 @@ def main(
     embed_previews=embed_previews,
     omit_series=omit_series,
     context=extra_parameters,
+  )
+  span.set_attribute(
+    'filonov.cli.command', utils.build_cli_command(request, db_uri)
   )
   filonov_service = filonov.FilonovService(
     fetching_service, tagging_service, similarity_service

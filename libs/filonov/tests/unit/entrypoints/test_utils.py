@@ -14,6 +14,7 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
+import filonov
 import pytest
 from filonov.entrypoints import utils
 
@@ -34,3 +35,21 @@ def test_build_creative_map_destination_returns_correct_file_name(
 ):
   result = utils.build_creative_map_destination(path)
   assert result == expected
+
+
+def test_build_cli_command():
+  request = filonov.CreativeMapGenerateRequest(
+    source='fake',
+    media_type='IMAGE',
+    tagger='gemini',
+  )
+
+  command = utils.build_cli_command(request=request, db='sqlite:///test.db')
+  expected_command = (
+    'filonov --source fake --media-type IMAGE --tagger gemini '
+    '--fake.media_identifier=media_url --fake.media_name=media_name '
+    '--fake.metrics=clicks,impressions '
+    '--output-name creative_map '
+    '--db-uri sqlite:///test.db'
+  )
+  assert command.replace('\\\n\t', '') == expected_command
