@@ -149,7 +149,7 @@ def tag(
   )
 
   media_paths = media_paths or media.get_media_paths_from_file(
-    utils.InputConfig(path=input, **extra_parameters.get('input'))
+    media.InputConfig(path=input, **extra_parameters.get('input'))
   )
   request = media_tagging_service.MediaTaggingRequest(
     tagger_type=tagger,
@@ -204,7 +204,7 @@ def describe(
   )
 
   media_paths = media_paths or media.get_media_paths_from_file(
-    utils.InputConfig(path=input, **extra_parameters.get('input'))
+    media.InputConfig(path=input, **extra_parameters.get('input'))
   )
   request = media_tagging_service.MediaTaggingRequest(
     tagger_type=tagger,
