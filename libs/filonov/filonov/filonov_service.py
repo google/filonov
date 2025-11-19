@@ -79,8 +79,8 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   tagger: Literal['gemini', 'google-cloud', 'loader', None] = None
   tagger_parameters: dict[str, str | int] | None = None
   similarity_parameters: SimilarityParameters = SimilarityParameters()
-  source_parameters: dict[str, str | Sequence[str]] = pydantic.Field(
-    default_factory=dict
+  source_parameters: dict[str, bool | int | str | Sequence[str]] = (
+    pydantic.Field(default_factory=dict)
   )
   output_parameters: OutputParameters = OutputParameters()
   parallel_threshold: int = 10
@@ -148,7 +148,9 @@ class FilonovService:
         'Failed to get tagging results from DB. MediaTaggingService missing.'
       )
     if not (fetching_service := self.fetching_service):
-      fetching_service = media_fetching.MediaFetchingService(request.source)
+      fetching_service = media_fetching.MediaFetchingService.from_source_alias(
+        source=request.source
+      )
     media_data = fetching_service.fetch(
       request.source_parameters, request.context
     )
