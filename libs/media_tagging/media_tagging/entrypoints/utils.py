@@ -18,13 +18,6 @@
 
 import functools
 import logging
-import os
-
-import pandas as pd
-import pydantic
-import smart_open
-
-from media_tagging import exceptions
 
 
 def parse_typer_arguments(
