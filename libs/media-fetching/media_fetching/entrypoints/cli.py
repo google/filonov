@@ -96,6 +96,12 @@ def main(
       help='Name of logger',
     ),
   ] = 'media-fetcher',
+  enable_cache: Annotated[
+    bool,
+    typer.Option(
+      help='Whether to use cached version of reports if possible',
+    ),
+  ] = False,
   version: Annotated[
     bool,
     typer.Option(
@@ -116,7 +122,7 @@ def main(
   parsed_param_keys = set([source, writer] + list(supported_enrichers))
   extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(ctx.args)
   fetching_service = media_fetching.MediaFetchingService.from_source_alias(
-    source
+    source=source, enable_cache=enable_cache
   )
   request_class, _ = fetcher.FETCHERS.get(source)
   request = request_class(
