@@ -36,64 +36,71 @@ class WriterOptions(pydantic.BaseModel):
 async def fetch_file(
   request: media_fetching.sources.file.FileFetchingParameters,
   writer_options: WriterOptions,
+  enable_cache: bool = False,
 ) -> fastapi.responses.JSONResponse:
   """Fetches media data from a file."""
-  return fetch('file', request, writer_options)
+  return fetch('file', request, writer_options, enable_cache)
 
 
 @router.post('/fetch:googleads')
 async def fetch_googleads(
   request: media_fetching.sources.googleads.GoogleAdsFetchingParameters,
   writer_options: WriterOptions,
+  enable_cache: bool = False,
 ) -> fastapi.responses.JSONResponse:
   """Fetches media data from Google Ads."""
-  return fetch('googleads', request, writer_options)
+  return fetch('googleads', request, writer_options, enable_cache)
 
 
 @router.post('/fetch:youtube')
 async def fetch_youtube(
   request: media_fetching.sources.youtube.YouTubeFetchingParameters,
   writer_options: WriterOptions,
+  enable_cache: bool = False,
 ) -> fastapi.responses.JSONResponse:
   """Fetches media data from YouTube."""
-  return fetch('youtube', request, writer_options)
+  return fetch('youtube', request, writer_options, enable_cache)
 
 
 @router.post('/fetch:bq')
 async def fetch_bq(
   request: media_fetching.sources.sql.BigQueryFetchingParameters,
   writer_options: WriterOptions,
+  enable_cache: bool = False,
 ) -> fastapi.responses.JSONResponse:
   """Fetches media data from BigQuery."""
-  return fetch('bq', request, writer_options)
+  return fetch('bq', request, writer_options, enable_cache)
 
 
 @router.post('/fetch:sqldb')
 async def fetch_sqldb(
   request: media_fetching.sources.sql.SqlAlchemyQueryFetchingParameters,
   writer_options: WriterOptions,
+  enable_cache: bool = False,
 ) -> fastapi.responses.JSONResponse:
   """Fetches media data from SqlAlchemy DB."""
-  return fetch('sqldb', request, writer_options)
+  return fetch('sqldb', request, writer_options, enable_cache)
 
 
 @router.post('/fetch:dbm')
 async def fetch_dbm(
   request: media_fetching.sources.dbm.BidManagerFetchingParameters,
   writer_options: WriterOptions,
+  enable_cache: bool = False,
 ) -> fastapi.responses.JSONResponse:
   """Fetches media data from Bid Manager API."""
-  return fetch('dbm', request, writer_options)
+  return fetch('dbm', request, writer_options, enable_cache)
 
 
 def fetch(
   source: str | models.InputSource,
   request: models.FetchingParameters,
   writer_options: WriterOptions,
+  enable_cache: bool = False,
 ):
   """Fetches media data from a provided source."""
   fetching_service = media_fetching.MediaFetchingService.from_source_alias(
-    source
+    source=source, enable_cache=enable_cache
   )
   report = fetching_service.fetch(request)
   return writer.create_writer(

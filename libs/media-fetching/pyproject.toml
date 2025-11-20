@@ -10,6 +10,7 @@ dependencies = [
   "garf-bid-manager>=0.0.6",
   "google-ads-api-report-fetcher",
   "garf-executors[bq,sql]>=0.1.2",
+  "garf_core>=0.5.0",
   "typer",
   "opentelemetry-api",
   "opentelemetry-sdk",

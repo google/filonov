@@ -44,6 +44,9 @@ class FetchingParameters(pydantic.BaseModel):
 class BaseMediaInfoFetcher(abc.ABC):
   """Interface for getting data from a source."""
 
+  def __init__(self, **kwargs: str):
+    self.kwargs = kwargs
+
   @abc.abstractmethod
   def fetch_media_data(
     self,
