@@ -145,7 +145,8 @@ def main(
   )
   extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(ctx.args)
   fetching_service = media_fetching.MediaFetchingService.from_source_alias(
-    source
+    source=source,
+    enable_cache=bool(extra_parameters.get(source, {}).get('enable_cache')),
   )
 
   if extra_parameters.get('tagger', {}).get('db_uri'):
