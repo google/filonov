@@ -247,8 +247,12 @@ def convert_report_to_media_info(
     with_size_base = None
 
   if modules:
-    modules = {module.split('.')[1] for module in modules}
-    modules = modules.intersection(performance.column_names)
+    module_elements = {module.split('.')[1] for module in modules}
+    modules = set()
+    for column in performance.column_names:
+      for element in module_elements:
+        if column.startswith(element):
+          modules.add(column)
   else:
     modules = set()
 
