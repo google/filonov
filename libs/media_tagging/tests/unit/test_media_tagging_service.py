@@ -15,7 +15,6 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import, missing-module-docstring, missing-class-docstring, missing-function-docstring
 
 import hashlib
-import json
 
 import pydantic
 import pytest
@@ -29,30 +28,28 @@ class FakeLLMResponse(pydantic.BaseModel):
   text: str
 
 
+FAKE_TAGS = [tagging_result.Tag(name=f'fake_{i}', score=1.0) for i in range(10)]
+
+
 class TestMediaTaggingService:
   @pytest.fixture
   def service(self):
     return media_tagging_service.MediaTaggingService()
 
-  def test_describe_media_returns_correct_tagging_result(self, service, mocker):
-    fake_response = {'text': 'Test description.'}
+  def test_describe_media_returns_correct_tagging_result(self, service):
     n_runs = 5
     expected_result = tagging_result.TaggingResult(
       identifier='test',
-      tagger='gemini',
+      tagger='fake',
       output='description',
       type='text',
-      content=tagging_result.Description(text='Test description.'),
+      content=tagging_result.Description(text='fake'),
       tagging_details={'n_runs': n_runs},
       hash=hashlib.md5(b'test').hexdigest(),
     )
-    mocker.patch(
-      'media_tagging.taggers.llm.gemini.tagging_strategies.GeminiTaggingStrategy.get_llm_response',
-      return_value=fake_response,
-    )
     test_tagging_result = service.describe_media(
       media_tagging_service.MediaTaggingRequest(
-        tagger_type='gemini',
+        tagger_type='fake',
         media_type='TEXT',
         media_paths=['test'],
         parallel_threshold=0,
@@ -66,24 +63,18 @@ class TestMediaTaggingService:
 
     assert test_tagging_result == expected_response
 
-  def test_tag_media_returns_correct_tagging_result(self, service, mocker):
-    fake_response = [{'name': 'test', 'score': 0.5}]
+  def test_tag_media_returns_correct_tagging_result(self, service):
     expected_result = tagging_result.TaggingResult(
       identifier='test',
-      tagger='gemini',
+      tagger='fake',
       output='tag',
       type='text',
-      content=[tagging_result.Tag(name='test', score=0.5)],
-      tagging_details={'n_tags': 10},
+      content=FAKE_TAGS,
       hash=hashlib.md5(b'test').hexdigest(),
-    )
-    mocker.patch(
-      'media_tagging.taggers.llm.gemini.tagging_strategies.GeminiTaggingStrategy.get_llm_response',
-      return_value=fake_response,
     )
     test_tagging_result = service.tag_media(
       media_tagging_service.MediaTaggingRequest(
-        tagger_type='gemini',
+        tagger_type='fake',
         media_type='TEXT',
         media_paths=['test'],
         parallel_threshold=0,
@@ -95,16 +86,11 @@ class TestMediaTaggingService:
     )
 
   def test_tag_media_returns_correct_tagging_result_for_different_tagging_details(
-    self, service, mocker
+    self, service
   ):
-    fake_response = [{'name': 'test', 'score': 0.5}]
-    mocker.patch(
-      'media_tagging.taggers.llm.gemini.tagging_strategies.GeminiTaggingStrategy.get_llm_response',
-      return_value=fake_response,
-    )
     service.tag_media(
       media_tagging_service.MediaTaggingRequest(
-        tagger_type='gemini',
+        tagger_type='fake',
         media_type='TEXT',
         media_paths=['test'],
         parallel_threshold=0,
@@ -113,7 +99,7 @@ class TestMediaTaggingService:
     )
     test_tagging_result = service.tag_media(
       media_tagging_service.MediaTaggingRequest(
-        tagger_type='gemini',
+        tagger_type='fake',
         media_type='TEXT',
         media_paths=['test'],
         parallel_threshold=0,
@@ -122,10 +108,10 @@ class TestMediaTaggingService:
     )
     expected_result = tagging_result.TaggingResult(
       identifier='test',
-      tagger='gemini',
+      tagger='fake',
       output='tag',
       type='text',
-      content=[tagging_result.Tag(name='test', score=0.5)],
+      content=FAKE_TAGS,
       tagging_details={'n_tags': 10},
       hash=hashlib.md5(b'test').hexdigest(),
     )
