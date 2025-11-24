@@ -20,3 +20,7 @@ class MediaTaggingError(Exception):
 
 class FailedTaggingError(MediaTaggingError):
   """Handles cases when tagging wasn't performed."""
+
+
+class TaggingQuotaError(MediaTaggingError):
+  """Handles quota related errors during tagging."""

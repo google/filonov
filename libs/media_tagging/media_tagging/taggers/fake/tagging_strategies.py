@@ -18,7 +18,7 @@
 
 from typing_extensions import override
 
-from media_tagging import exceptions, media, tagging_result
+from media_tagging import media, tagging_result
 from media_tagging.taggers import base
 
 

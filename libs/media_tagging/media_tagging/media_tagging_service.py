@@ -20,12 +20,14 @@ import inspect
 import itertools
 import logging
 import os
+import time
 from collections.abc import Sequence
 from importlib.metadata import entry_points
 from typing import Callable, Literal
 
 import pydantic
 from garf_io import writer as garf_writer
+from google.api_core import exceptions as google_api_exceptions
 from opentelemetry import trace
 
 from media_tagging import exceptions, media, repositories, tagging_result
@@ -453,6 +455,14 @@ class MediaTaggingService:
         logger.error('Failed to parse tagging results: %s', str(e))
       except exceptions.FailedTaggingError as e:
         logger.error('Failed to perform tagging: %s', str(e))
+      except exceptions.FailedTaggingError as e:
+        logger.error('Failed to perform tagging: %s', str(e))
+      except (
+        exceptions.TaggingQuotaError,
+        google_api_exceptions.ResourceExhausted,
+      ) as e:
+        logger.error('Resource exhausted: %s', str(e))
+        time.sleep(60)
       except Exception as e:
         logger.error('Unknown error occurred: %s', str(e))
 
