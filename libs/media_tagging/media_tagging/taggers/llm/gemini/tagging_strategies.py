@@ -16,7 +16,6 @@
 
 """Defined tagging strategies specific to Gemini."""
 
-import functools
 import json
 import logging
 import os
@@ -43,6 +42,10 @@ logging.getLogger('google_genai._api_client').setLevel(logging.ERROR)
 
 class GeminiTaggingError(exceptions.MediaTaggingError):
   """Handles gemini specific errors during tagging."""
+
+
+class GeminiModelQuotaError(exceptions.TaggingQuotaError):
+  """Handles gemini quota errors during tagging."""
 
 
 class GeminiModelParameters(pydantic.BaseModel):
@@ -149,14 +152,20 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       prompt_config.response_schema = (
         tagging_options.custom_schema or self.get_response_schema(output)
       )
-    response = self.client.models.generate_content(
-      model=self.model_name,
-      contents=[
-        prompt,
-        media_content,
-      ],
-      config=prompt_config,
-    )
+    try:
+      response = self.client.models.generate_content(
+        model=self.model_name,
+        contents=[
+          prompt,
+          media_content,
+        ],
+        config=prompt_config,
+      )
+    except genai.errors.APIError as e:
+      if e.code == 429:
+        raise GeminiModelQuotaError
+      raise
+
     if hasattr(response, 'usage_metadata'):
       logging.debug(
         'usage_metadata for media %s: %s',

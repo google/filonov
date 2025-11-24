@@ -15,9 +15,12 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import, missing-module-docstring, missing-class-docstring, missing-function-docstring
 
 import hashlib
+import logging
+import os
 
 import pydantic
 import pytest
+from google import genai
 from media_tagging import (
   media_tagging_service,
   tagging_result,
@@ -118,3 +121,24 @@ class TestMediaTaggingService:
     assert test_tagging_result == media_tagging_service.MediaTaggingResponse(
       results=[expected_result]
     )
+
+  @pytest.mark.skipif(
+    not os.getenv('GEMINI_API_KEY'), reason='No GEMINI_API_KEY env variable'
+  )
+  def test_tag_media_waits_on_429_error(self, service, mocker, caplog):
+    mocker.patch(
+      'google.genai.models.Models.generate_content',
+      side_effect=genai.errors.ClientError(code=429, response_json={}),
+    )
+    mocker.patch('time.sleep', return_value=None)
+    caplog.at_level(logging.ERROR)
+    service.tag_media(
+      media_tagging_service.MediaTaggingRequest(
+        tagger_type='gemini',
+        media_type='TEXT',
+        media_paths=['test'],
+        parallel_threshold=0,
+        tagging_options={'n_tags': 5},
+      )
+    )
+    assert 'Resource exhausted' in caplog.text
