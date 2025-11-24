@@ -12,25 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=C0330, g-bad-import-order, g-multiple-import
-
-"""Built-in taggers."""
-
-import contextlib
-
+from media_tagging import media
 from media_tagging.taggers.fake.tagger import FakeTagger
-from media_tagging.taggers.llm.gemini.tagger import GeminiTagger
 
-__all__ = [
-  'GeminiTagger',
-]
-TAGGERS = {
-  'gemini': GeminiTagger,
-  'fake': FakeTagger,
-}
 
-with contextlib.suppress(ImportError):
-  from media_tagging.taggers.google_cloud.tagger import GoogleCloudTagger
+class TestFakeTagger:
+  def test_tag(self):
+    tagger = FakeTagger()
+    result = tagger.tag(media.Medium(media_path='test', media_type='TEXT'))
+    assert len(result.content) == tagger.n_tags
 
-  __all__.append('GoogleCloudTagger')
-  TAGGERS['google-cloud'] = GoogleCloudTagger
+  def test_describe(self):
+    tagger = FakeTagger()
+    result = tagger.describe(media.Medium(media_path='test', media_type='TEXT'))
+    assert result.content.text == 'fake'
