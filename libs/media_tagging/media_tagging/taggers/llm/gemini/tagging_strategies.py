@@ -85,24 +85,19 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     self.vertexai = vertexai or os.getenv('GOOGLE_GENAI_USE_VERTEXAI')
     self.project = project or os.getenv('GOOGLE_CLOUD_PROJECT')
     self.location = location or os.getenv('GOOGLE_CLOUD_LOCATION')
-    self._client = None
+    self.client = self.init_client()
     self._prompt = ''
     self._response_schema = None
 
-  @functools.cached_property
-  def client(self) -> genai.Client:
+  def init_client(self) -> genai.Client:
     """Initializes genai Client."""
-    if not self._client:
-      if self.vertexai and self.project:
-        client = genai.Client(
-          vertexai=True, project=self.project, location=self.location
-        )
-      elif self.api_key:
-        client = genai.Client(api_key=self.api_key)
-      else:
-        client = genai.Client()
-      self._client = client
-    return self._client
+    if self.vertexai and self.project:
+      return genai.Client(
+        vertexai=True, project=self.project, location=self.location
+      )
+    if self.api_key:
+      return genai.Client(api_key=self.api_key)
+    return genai.Client()
 
   def get_response_schema(self, output):
     """Generates correct response schema based on type of output."""

@@ -187,7 +187,7 @@ class BaseTagger(abc.ABC):
     retry=tenacity.retry_if_exception_type(pydantic.ValidationError),
     reraise=True,
   )
-  @tracer.start_as_current_span('tag')
+  @tracer.start_as_current_span('describe')
   def describe(
     self,
     medium: media.Medium,
@@ -195,6 +195,10 @@ class BaseTagger(abc.ABC):
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
     """Describes media based on specified parameters."""
+    span = trace.get_current_span()
+    span.set_attribute('tag.media.name', medium.name)
+    span.set_attribute('tag.media.type', medium.type)
+    span.set_attribute('tag.media.path', medium.media_path)
     result = self.get_tagging_strategy(medium.type).describe(
       medium, tagging_options, **kwargs
     )
