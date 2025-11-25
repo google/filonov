@@ -29,7 +29,7 @@ pip install filonov
 
 /// tab | uv
 ```python
-uv add filonov
+uv pip install filonov
 ```
 ///
 
@@ -45,7 +45,7 @@ pip install filonov[ui]
 
 /// tab | uv
 ```python
-uv add filonov[ui]
+uv pip install filonov[ui]
 ```
 ///
 
@@ -61,6 +61,6 @@ pip install filonov[server]
 
 /// tab | uv
 ```python
-uv add filonov[server]
+uv pip install filonov[server]
 ```
 ///

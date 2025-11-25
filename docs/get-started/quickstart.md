@@ -417,13 +417,11 @@ curl -X 'POST' \
 ```
 ///
 
-///
-
 ### Preview embedding
 
-If media-type support previews (i.e. YOUTUBE_VIDEO) generated
+If media type support previews (i.e. YOUTUBE_VIDEO) generated
 `creative_map.json` file will contain links to previews to be downloaded
-during map rendering.
+while map is rendering.
 
 You can include previews directly into the map with `emded-previews` option so
 they will be rendered instantly.

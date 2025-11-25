@@ -22,7 +22,7 @@ pip install filonov
 
 /// tab | uv
 ```python
-uv add filonov
+uv pip install filonov
 ```
 ///
 
