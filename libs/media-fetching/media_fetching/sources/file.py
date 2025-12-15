@@ -26,6 +26,7 @@ import smart_open
 from garf_core import report
 from media_tagging import media
 
+from media_fetching import exceptions
 from media_fetching.sources import models
 
 
@@ -37,12 +38,14 @@ class FileFetchingParameters(models.FetchingParameters):
   media_identifier: str = 'media_url'
   media_name: str = 'media_name'
   metrics: Sequence[str] | str = ('clicks', 'impressions')
-  segments: Sequence[str] | None = None
+  segments: Sequence[str] | str | None = None
   extra_info: Sequence[str] | None = pydantic.Field(default_factory=list)
 
   def model_post_init(self, __context__):
     if isinstance(self.metrics, str):
       self.metrics = self.metrics.split(',')
+    if isinstance(self.segments, str):
+      self.segments = self.segments.split(',')
 
 
 class Fetcher(models.BaseMediaInfoFetcher):
@@ -52,6 +55,22 @@ class Fetcher(models.BaseMediaInfoFetcher):
     self,
     fetching_request: FileFetchingParameters,
   ) -> report.GarfReport:
-    return report.GarfReport.from_pandas(
+    raw_report = report.GarfReport.from_pandas(
       pd.read_csv(smart_open.open(fetching_request.path))
     )
+    if (
+      media_url := fetching_request.media_identifier
+    ) not in raw_report.column_names:
+      raise exceptions.MediaFetchingError(
+        f'media_url {media_url} not found in the file'
+      )
+    if (
+      media_name := fetching_request.media_identifier
+    ) not in raw_report.column_names:
+      raise exceptions.MediaFetchingError(
+        f'media_name {media_name} not found in the file'
+      )
+    for row in raw_report:
+      row['media_url'] = row[media_url]
+      row['media_name'] = row[media_name]
+    return raw_report
