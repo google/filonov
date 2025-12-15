@@ -34,7 +34,6 @@ class BidManagerFetchingParameters(models.FetchingParameters):
   metrics: Sequence[str] | str = [
     'clicks',
     'impressions',
-    'cost',
   ]
   media_type: Literal['YOUTUBE_VIDEO'] = 'YOUTUBE_VIDEO'
   start_date: str = (
@@ -43,12 +42,14 @@ class BidManagerFetchingParameters(models.FetchingParameters):
   end_date: str = (
     datetime.datetime.today() - datetime.timedelta(days=1)
   ).strftime('%Y-%m-%d')
-  segments: list[str] | None = pydantic.Field(default_factory=list)
+  segments: list[str] | str | None = pydantic.Field(default_factory=list)
   extra_info: str | list[str] | None = pydantic.Field(default_factory=list)
 
   def model_post_init(self, __context__) -> None:
     if isinstance(self.metrics, str):
       self.metrics = self.metrics.split(',')
+    if isinstance(self.segments, str):
+      self.segments = self.segments.split(',')
     if isinstance(self.campaigns, str):
       self.campaigns = self.campaigns.split(',')
     if isinstance(self.extra_info, str):
@@ -63,12 +64,9 @@ class BidManagerFetchingParameters(models.FetchingParameters):
       campaigns = ''
     metrics = []
     for metric in self.metrics:
-      if metric == 'cost':
-        metrics.append('metric_media_cost_usd AS cost')
-      elif metric.startswith('brand_lift'):
+      if metric.startswith('brand_lift'):
         continue
-      else:
-        metrics.append(f'metric_{metric} AS {metric}')
+      metrics.append(f'metric_{metric} AS {metric}')
     if self.line_item_type:
       line_item_types = ', '.join(
         line_item.strip() for line_item in self.line_item_type.split(',')

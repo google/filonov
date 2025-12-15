@@ -25,10 +25,8 @@ class TestBidManagerFetchingParameters:
         'AND campaign IN (Campaign1, Campaign2)',
       ),
       (
-        {
-          'metrics': 'clicks,cost,impressions,total_conversions,brand_lift_users'
-        },
-        'metric_clicks AS clicks, metric_media_cost_usd AS cost, '
+        {'metrics': 'clicks,impressions,total_conversions,brand_lift_users'},
+        'metric_clicks AS clicks, '
         'metric_impressions AS impressions, '
         'metric_total_conversions AS total_conversions',
       ),
