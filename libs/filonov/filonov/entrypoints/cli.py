@@ -71,6 +71,18 @@ def main(
       case_sensitive=False,
     ),
   ] = None,
+  output: Annotated[
+    str,
+    typer.Option(
+      help='Type of output',
+    ),
+  ] = 'map',
+  writer: Annotated[
+    str,
+    typer.Option(
+      help='Type of writer',
+    ),
+  ] = 'csv',
   output_name: Annotated[
     str,
     typer.Option(
@@ -143,7 +155,7 @@ def main(
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
   )
   parsed_param_keys = set(
-    [source, 'tagger', 'similarity'] + list(supported_enrichers)
+    [source, 'tagger', 'similarity', writer] + list(supported_enrichers)
   )
   extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(ctx.args)
   fetching_service = media_fetching.MediaFetchingService.from_source_alias(
@@ -201,11 +213,16 @@ def main(
   filonov_service = filonov.FilonovService(
     fetching_service, tagging_service, similarity_service
   )
-  generated_map = filonov_service.generate_creative_map(request)
-  destination = utils.build_creative_map_destination(
-    request.output_parameters.output_name
-  )
-  generated_map.save(destination)
+  if output == 'dashboard':
+    filonov_service.generate_dashboard(
+      request, writer, extra_parameters.get(writer, {})
+    )
+  else:
+    generated_map = filonov_service.generate_creative_map(request)
+    destination = utils.build_creative_map_destination(
+      request.output_parameters.output_name
+    )
+    generated_map.save(destination)
 
 
 if __name__ == '__main__':

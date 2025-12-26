@@ -17,6 +17,7 @@
 """Handles creative map generation."""
 
 import logging
+import operator
 from collections.abc import Sequence
 from typing import Any, ClassVar, Literal
 
@@ -24,6 +25,8 @@ import media_fetching
 import media_similarity
 import media_tagging
 import pydantic
+from garf_core import GarfReport
+from garf_io import writer as garf_writer
 from media_tagging import media
 from media_tagging.media_tagging_service import (
   MediaFetchingRequest,
@@ -120,6 +123,141 @@ class FilonovService:
     self.fetching_service = fetching_service
     self.tagging_service = tagging_service
     self.similarity_service = similarity_service
+
+  @tracer.start_as_current_span('generate_dashboard')
+  def generate_dashboard(
+    self,
+    request: CreativeMapGenerateRequest,
+    writer: str,
+    writer_parameters: dict[str, str] | None = None,
+  ) -> creative_map.CreativeMap:
+    """Generates dashboard data.
+
+    Performs the following steps:
+
+    * Input data fetching.
+    * Media tagging.
+    * Media similarity matching.
+
+    Args:
+      request: Request for creative maps generation.
+
+    Returns:
+      Generated creative map.
+
+    Raises:
+      FilonovError: When performance or tagging data not found.
+    """
+    if writer_parameters is None:
+      writer_parameters = {}
+    if not request.tagger and not self.tagging_service:
+      raise exceptions.FilonovError(
+        'Failed to get tagging results from DB. MediaTaggingService missing.'
+      )
+    if not (fetching_service := self.fetching_service):
+      fetching_service = media_fetching.MediaFetchingService.from_source_alias(
+        source=request.source
+      )
+    media_data = fetching_service.fetch(
+      request.source_parameters, request.context
+    )
+    if not media_data:
+      raise exceptions.FilonovError(
+        'No performance data found for the context.'
+      )
+    media_urls = media_data['media_url'].to_list(
+      row_type='scalar', distinct=True
+    )
+    if not (tagging_service := self.tagging_service):
+      tagging_service = media_tagging.MediaTaggingService()
+    if not request.tagger:
+      logger.info('Tagger not specified, getting data from DB')
+      tagging_response = tagging_service.get_media(
+        MediaFetchingRequest(
+          media_type=request.media_type,
+          media_paths=list(media_urls),
+          output='tag',
+          deduplicate=True,
+        )
+      )
+      if not tagging_response:
+        raise exceptions.FilonovError('No tagging data found in DB.')
+    else:
+      tagging_response = tagging_service.tag_media(
+        MediaTaggingRequest(
+          tagger_type=request.tagger,
+          media_type=request.media_type,
+          tagging_options=request.tagger_parameters,
+          media_paths=media_urls,
+          parallel_threshold=request.parallel_threshold,
+          deduplicate=True,
+        ),
+        path_processor=request.tagger_parameters.get('path_processor'),
+      )
+    if not tagging_response:
+      raise exceptions.FilonovError(
+        'Failed to perform media tagging for the context: '
+        f'{request.source_parameters}'
+      )
+    if not (similarity_service := self.similarity_service):
+      similarity_service = (
+        media_similarity.MediaSimilarityService.from_connection_string(
+          tagging_service.repo.db_url
+        )
+      )
+    clustering_request = media_similarity.MediaClusteringRequest(
+      media_type=request.media_type,
+      tagger_type=request.tagger,
+      tagging_options=CreativeMapGenerateRequest.default_tagger_parameters,
+      normalize=request.similarity_parameters.normalize,
+      custom_threshold=request.similarity_parameters.custom_threshold,
+      algorithm=request.similarity_parameters.algorithm,
+      parallel_threshold=request.parallel_threshold,
+      tagging_response=tagging_response,
+    )
+    clustering_results = similarity_service.cluster_media(clustering_request)
+    if request.tagger and request.tagger_parameters:
+      logger.info('Generating custom tags...')
+      tagging_response = tagging_service.tag_media(
+        MediaTaggingRequest(
+          tagger_type=request.tagger,
+          media_type=request.media_type,
+          tagging_options=request.tagger_parameters,
+          media_paths=media_urls,
+          parallel_threshold=request.parallel_threshold,
+          deduplicate=True,
+        ),
+        path_processor=request.tagger_parameters.get('path_processor'),
+      )
+    if trim_threshold := request.trim_tags_threshold:
+      tagging_response.trim(trim_threshold)
+    clusters = clustering_results.clusters
+    media_to_tags = {}
+    for m in tagging_response.results:
+      media_to_tags[m.identifier] = m.content
+    media_info = creative_map.convert_report_to_media_info(
+      performance=media_data,
+      media_type=request.media_type,
+      metric_columns=request.source_parameters.metrics,
+      segment_columns=request.source_parameters.segments,
+      modules=request.source_parameters.extra_info,
+      omit_time_series=request.omit_series,
+    )
+    media_url_to_id = {p.media_path: k for k, p in media_info.items()}
+    ttags = []
+    getter = operator.attrgetter(*media_data.column_names, 'cluster')
+    for row in media_data:
+      media_id = media_url_to_id.get(row.media_url)
+      row['cluster'] = clusters.get(media_id)
+      if tags := media_to_tags.get(media_id):
+        for tag in tags:
+          ttags.append([tag.name, tag.score, *getter(row)])
+    tags_report = GarfReport(
+      results=ttags, column_names=['tag', 'score', *media_data.column_names]
+    )
+    dashboard_writer = garf_writer.create_writer(writer, **writer_parameters)
+    dashboard_writer.write(media_data, 'media_performance')
+    dashboard_writer.write(tags_report, 'tag_performance')
 
   @tracer.start_as_current_span('generate_creative_map')
   def generate_creative_map(

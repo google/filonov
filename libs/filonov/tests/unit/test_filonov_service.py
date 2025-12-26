@@ -129,3 +129,34 @@ class TestFilonovService:
       ),
     )
     assert generated_map
+
+  def test_generate_dashboard(self, db_uri, tmp_path):
+    writer.create_writer('csv', destination_folder=tmp_path).write(
+      TAGS, 'test_tags'
+    )
+    tags_location = tmp_path / 'test_tags.csv'
+    loader_service = media_loader_service.MediaLoaderService(
+      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(db_uri)
+    )
+    loader_service.load_media_tags(
+      loader_type='file', media_type='WEBPAGE', location=tags_location
+    )
+    fake_fetcher = media_fetching.sources.fake.FakeFetcher(DATA)
+    fake_fetching_service = media_fetching.MediaFetchingService(
+      source_fetcher=fake_fetcher
+    )
+    service = filonov_service.FilonovService(
+      fetching_service=fake_fetching_service,
+      tagging_service=media_tagging.MediaTaggingService(
+        media_tagging.repositories.SqlAlchemyTaggingResultsRepository(db_uri)
+      ),
+      similarity_service=(
+        media_similarity.MediaSimilarityService.from_connection_string(db_uri)
+      ),
+    )
+    service.generate_dashboard(
+      request=filonov_service.CreativeMapGenerateRequest(
+        source='fake', media_type='WEBPAGE'
+      ),
+      writer='console',
+    )
