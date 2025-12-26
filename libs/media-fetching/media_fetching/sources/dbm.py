@@ -14,6 +14,7 @@
 """Defines fetching data from Bid Manager API."""
 
 import datetime
+import functools
 from collections.abc import Sequence
 from typing import Literal
 
@@ -21,6 +22,7 @@ import garf_bid_manager
 import pydantic
 from garf_core import report
 
+from media_fetching import exceptions
 from media_fetching.sources import models
 
 
@@ -28,7 +30,7 @@ class BidManagerFetchingParameters(models.FetchingParameters):
   """YouTube specific parameters for getting media data."""
 
   advertiser: str
-  campaigns: list[str] | str | None = None
+  campaigns: list[str] | str = pydantic.Field(default_factory=list)
   line_item_type: str | None = None
   country: str | None = None
   metrics: Sequence[str] | str = [
@@ -42,7 +44,7 @@ class BidManagerFetchingParameters(models.FetchingParameters):
   end_date: str = (
     datetime.datetime.today() - datetime.timedelta(days=1)
   ).strftime('%Y-%m-%d')
-  segments: list[str] | str | None = pydantic.Field(default_factory=list)
+  segments: str | list[str] | None = pydantic.Field(default_factory=list)
   extra_info: str | list[str] | None = pydantic.Field(default_factory=list)
 
   def model_post_init(self, __context__) -> None:
@@ -57,11 +59,6 @@ class BidManagerFetchingParameters(models.FetchingParameters):
 
   @property
   def query_parameters(self) -> dict[str, str]:
-    if self.campaigns:
-      campaigns = ', '.join(campaign.strip() for campaign in self.campaigns)
-      campaigns = f'AND campaign IN ({campaigns})'
-    else:
-      campaigns = ''
     metrics = []
     for metric in self.metrics:
       if metric.startswith('brand_lift'):
@@ -78,7 +75,6 @@ class BidManagerFetchingParameters(models.FetchingParameters):
       'advertiser': ','.join(
         advertiser.strip() for advertiser in self.advertiser.split(',')
       ),
-      'campaigns': campaigns,
       'line_item_type': line_item_type,
       'start_date': self.start_date,
       'end_date': self.end_date,
@@ -106,14 +102,37 @@ class Fetcher(models.BaseMediaInfoFetcher):
     fetching_request: BidManagerFetchingParameters,
   ) -> report.GarfReport:
     """Fetches performance data from Bid Manager API."""
+    line_items = set()
+    intersected_line_items = []
     if country := fetching_request.country:
-      if line_item_ids := self._get_line_items(fetching_request, country):
-        ids = ', '.join(str(line_item) for line_item in line_item_ids)
-        line_items = f'AND line_item IN ({ids})'
-      else:
-        line_items = ''
-    else:
+      country_line_item_ids = self._get_country_line_items(
+        fetching_request, country
+      )
+      if not country_line_item_ids:
+        raise exceptions.MediaFetchingError(
+          f'No line items found for  country {country}'
+        )
+      line_items = line_items.union(country_line_item_ids)
+      intersected_line_items.append(country_line_item_ids)
+
+    if fetching_request.campaigns:
+      campaign_line_items = self._get_campaign_line_items(fetching_request)
+      if not campaign_line_items:
+        raise exceptions.MediaFetchingError(
+          f'No line items found for campaigns: {fetching_request.campaigns}'
+        )
+      line_items = line_items.union(campaign_line_items)
+      intersected_line_items.append(campaign_line_items)
+
+    if not line_items:
       line_items = ''
+    else:
+      line_items = functools.reduce(set.intersection, intersected_line_items)
+      if not line_items:
+        raise exceptions.MediaFetchingError('No line items found')
+      ids = ', '.join(str(line_item) for line_item in line_items)
+      line_items = f'AND line_item IN ({ids})'
+
     query = """
       SELECT
         date AS date,
@@ -126,28 +145,50 @@ class Fetcher(models.BaseMediaInfoFetcher):
       WHERE advertiser IN ({advertiser})
       {line_item_type}
       {line_items}
-      {campaigns}
       AND dataRange IN ({start_date}, {end_date})
     """
     return self.fetcher.fetch(
       query.format(**fetching_request.query_parameters, line_items=line_items)
     )
 
-  def _get_line_items(
+  def _get_country_line_items(
     self,
     fetching_request: BidManagerFetchingParameters,
     country: str,
-  ) -> list[str]:
+  ) -> set[str]:
     """Fetches line items for a specific set of countries."""
     query = """
         SELECT
           line_item,
-          metric_impressions
+          metric_impressions AS _
         FROM standard
         WHERE advertiser IN ({advertiser})
         AND country IN ({country})
         AND dataRange IN ({start_date}, {end_date})
       """
-    return self.fetcher.fetch(
+    line_items = self.fetcher.fetch(
       query.format(**fetching_request.query_parameters, country=country)
     ).to_list(row_type='scalar', distinct=True)
+    return set(line_items)
+
+  def _get_campaign_line_items(
+    self,
+    fetching_request: BidManagerFetchingParameters,
+  ) -> set[str]:
+    """Fetches line items for a specific set of campaigns."""
+    campaigns = ', '.join(
+      campaign.strip() for campaign in fetching_request.campaigns
+    )
+    query = """
+        SELECT
+          line_item,
+          metric_impressions AS _
+        FROM standard
+        WHERE advertiser IN ({advertiser})
+        AND media_plan_name IN ({campaigns})
+        AND dataRange IN ({start_date}, {end_date})
+      """
+    line_items = self.fetcher.fetch(
+      query.format(**fetching_request.query_parameters, campaigns=campaigns)
+    ).to_list(row_type='scalar', distinct=True)
+    return set(line_items)
