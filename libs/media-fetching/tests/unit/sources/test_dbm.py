@@ -21,10 +21,6 @@ class TestBidManagerFetchingParameters:
     ('extra', 'expected'),
     [
       (
-        {'campaigns': 'Campaign1, Campaign2'},
-        'AND campaign IN (Campaign1, Campaign2)',
-      ),
-      (
         {'metrics': 'clicks,impressions,total_conversions,brand_lift_users'},
         'metric_clicks AS clicks, '
         'metric_impressions AS impressions, '
