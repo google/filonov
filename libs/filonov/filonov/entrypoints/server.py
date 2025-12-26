@@ -20,6 +20,7 @@ import fastapi
 import media_fetching
 import media_similarity
 import media_tagging
+import typer
 import uvicorn
 from media_similarity.entrypoints.server import (
   router as media_similarity_router,
@@ -41,10 +42,12 @@ class FilonovSettings(BaseSettings):
   Attributes:
     media_tagging_db_url: Connection string to DB with tagging results.
     similarity_db_uri: Connection string to DB with similarity results.
+    filonov_enable_cache: Whether to get media data from a cache.
   """
 
   media_tagging_db_url: str | None = None
   similarity_db_url: str | None = None
+  filonov_enable_cache: bool = False
 
 
 class Dependencies:
@@ -71,12 +74,23 @@ class Dependencies:
         )
       ),
     )
+    self.enable_cache = settings.filonov_enable_cache
 
 
-router = fastapi.APIRouter(prefix='/creative_maps')
+creative_map_router = fastapi.APIRouter(prefix='/filonov/creative_map')
+dashboard_router = fastapi.APIRouter(prefix='/filonov/dashboard')
 
 
-class CreativeMapGoogleAdsGenerateRequest(filonov.CreativeMapGenerateRequest):
+class GenerateTablesGoogleAdsRequest(filonov.GenerateTablesRequest):
+  """Specifies Google Ads specific request for dashboard generation."""
+
+  source_parameters: (
+    media_fetching.sources.googleads.GoogleAdsFetchingParameters
+  )
+  source: Literal['googleads'] = 'googleads'
+
+
+class GenerateCreativeMapGoogleAdsRequest(filonov.GenerateCreativeMapRequest):
   """Specifies Google Ads specific request for returning creative map."""
 
   source_parameters: (
@@ -85,14 +99,30 @@ class CreativeMapGoogleAdsGenerateRequest(filonov.CreativeMapGenerateRequest):
   source: Literal['googleads'] = 'googleads'
 
 
-class CreativeMapFileGenerateRequest(filonov.CreativeMapGenerateRequest):
+class GenerateTablesFileRequest(filonov.GenerateTablesRequest):
+  """Specifies file specific request for dashboard generation."""
+
+  source_parameters: media_fetching.sources.file.FileFetchingParameters
+  source: Literal['file'] = 'file'
+
+
+class GenerateCreativeMapFileRequest(filonov.GenerateCreativeMapRequest):
   """Specifies Google Ads specific request for returning creative map."""
 
   source_parameters: media_fetching.sources.file.FileFetchingParameters
   source: Literal['file'] = 'file'
 
 
-class CreativeMapYouTubeGenerateRequest(filonov.CreativeMapGenerateRequest):
+class GenerateTablesYouTubeRequest(filonov.GenerateTablesRequest):
+  """Specifies YouTube specific request for dashboard generation."""
+
+  source_parameters: media_fetching.sources.youtube.YouTubeFetchingParameters
+  source: Literal['youtube'] = 'youtube'
+  media_type: Literal['YOUTUBE_VIDEO'] = 'YOUTUBE_VIDEO'
+  tagger: Literal['gemini'] = 'gemini'
+
+
+class GenerateCreativeMapYouTubeRequest(filonov.GenerateCreativeMapRequest):
   """Specifies YouTube specific request for returning creative map."""
 
   source_parameters: media_fetching.sources.youtube.YouTubeFetchingParameters
@@ -101,12 +131,39 @@ class CreativeMapYouTubeGenerateRequest(filonov.CreativeMapGenerateRequest):
   tagger: Literal['gemini'] = 'gemini'
 
 
-@router.post('/generate:file')
-async def generate_creative_map_file(
-  request: CreativeMapFileGenerateRequest,
+class GenerateTablesBidManagerRequest(filonov.GenerateTablesRequest):
+  """Specifies file specific request for dashboard generation."""
+
+  source_parameters: media_fetching.sources.dbm.BidManagerFetchingParameters
+  source: Literal['dbm'] = 'dbm'
+
+
+class GenerateCreativeMapBidManagerRequest(filonov.GenerateCreativeMapRequest):
+  """Specifies Google Ads specific request for returning creative map."""
+
+  source_parameters: media_fetching.sources.dbm.BidManagerFetchingParameters
+  source: Literal['dbm'] = 'dbm'
+
+
+@dashboard_router.post('/file')
+def generate_tables_file(
+  request: GenerateTablesFileRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
-  """Generates Json with creative map data."""
+  """Generates dashboard sources based on a file."""
+  return generate_tables(
+    'file',
+    request,
+    dependencies,
+  )
+
+
+@creative_map_router.post('/file')
+def generate_creative_map_file(
+  request: GenerateCreativeMapFileRequest,
+  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
+) -> fastapi.responses.JSONResponse:
+  """Generates creative map JSON based on a file."""
   return generate_creative_map(
     'file',
     request,
@@ -114,12 +171,25 @@ async def generate_creative_map_file(
   )
 
 
-@router.post('/generate:googleads')
-async def generate_creative_map_googleads(
-  request: CreativeMapGoogleAdsGenerateRequest,
+@dashboard_router.post('/googleads')
+def generate_tables_googleads(
+  request: GenerateTablesGoogleAdsRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
-  """Generates Json with creative map data."""
+  """Generates dashboard sources based on Google Ads."""
+  return generate_tables(
+    'googleads',
+    request,
+    dependencies,
+  )
+
+
+@creative_map_router.post('/googleads')
+def generate_creative_map_googleads(
+  request: GenerateCreativeMapGoogleAdsRequest,
+  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
+) -> fastapi.responses.JSONResponse:
+  """Generates creative map JSON based on Google Ads."""
   return generate_creative_map(
     'googleads',
     request,
@@ -127,12 +197,25 @@ async def generate_creative_map_googleads(
   )
 
 
-@router.post('/generate:youtube')
-async def generate_creative_map_youtube(
-  request: CreativeMapYouTubeGenerateRequest,
+@dashboard_router.post('/youtube')
+def generate_tables_youtube(
+  request: GenerateTablesYouTubeRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
-  """Generates Json with creative map data."""
+  """Generates dashboard sources JSON based on YouTube channel."""
+  return generate_tables(
+    'youtube',
+    request,
+    dependencies,
+  )
+
+
+@creative_map_router.post('/youtube')
+def generate_creative_map_youtube(
+  request: GenerateCreativeMapYouTubeRequest,
+  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
+) -> fastapi.responses.JSONResponse:
+  """Generates creative map JSON based on YouTube channel."""
   return generate_creative_map(
     'youtube',
     request,
@@ -140,26 +223,49 @@ async def generate_creative_map_youtube(
   )
 
 
-def generate_creative_map(
-  source: Literal['youtube', 'googleads', 'file'],
-  request: filonov.CreativeMapGenerateRequest,
+@dashboard_router.post('/dbm')
+def generate_tables_dbm(
+  request: GenerateTablesBidManagerRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
-) -> filonov.creative_map.CreativeMapJson:
-  """Generates Json with creative map data."""
-  generated_map = (
-    filonov.FilonovService(
-      fetching_service=media_fetching.MediaFetchingService.from_source_alias(
-        source=source,
-        enable_cache=bool(request.source_parameters.get('enable_cache')),
-      ),
-      tagging_service=dependencies.tagging_service,
-      similarity_service=dependencies.similarity_service,
-    )
-    .generate_creative_map(request)
-    .to_json()
+) -> fastapi.responses.JSONResponse:
+  """Generates dashboard sources JSON based on BidManager API."""
+  return generate_tables(
+    'dbm',
+    request,
+    dependencies,
   )
 
-  if request.output_parameters.output_type == 'file':
+
+@creative_map_router.post('/dbm')
+def generate_creative_map_dbm(
+  request: GenerateCreativeMapBidManagerRequest,
+  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
+) -> fastapi.responses.JSONResponse:
+  """Generates creative map JSON based on BidManager API."""
+  return generate_creative_map(
+    'dbm',
+    request,
+    dependencies,
+  )
+
+
+def generate_creative_map(
+  source: Literal['youtube', 'googleads', 'file'],
+  request: filonov.GenerateCreativeMapRequest,
+  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
+) -> filonov.creative_map.CreativeMapJson:
+  """Generates creative map JSON based on provided source."""
+  generated_map = filonov.FilonovService(
+    fetching_service=media_fetching.MediaFetchingService.from_source_alias(
+      source=source,
+      enable_cache=dependencies.enable_cache
+      or bool(request.source_parameters.get('enable_cache')),
+    ),
+    tagging_service=dependencies.tagging_service,
+    similarity_service=dependencies.similarity_service,
+  ).generate_creative_map(request)
+
+  if request.output_type == 'file':
     destination = utils.build_creative_map_destination(
       request.output_parameters.output_name
     )
@@ -169,19 +275,45 @@ def generate_creative_map(
     )
 
   return fastapi.responses.JSONResponse(
-    content=fastapi.encoders.jsonable_encoder(generated_map)
+    content=fastapi.encoders.jsonable_encoder(generated_map.to_json())
   )
 
 
+def generate_tables(
+  source: Literal['youtube', 'googleads', 'file', 'dbm'],
+  request: filonov.GenerateTablesRequest,
+  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
+) -> filonov.creative_map.CreativeMapJson:
+  """Writes filonov data."""
+  (
+    filonov.FilonovService(
+      fetching_service=media_fetching.MediaFetchingService.from_source_alias(
+        source=source,
+        enable_cache=dependencies.enable_cache
+        or bool(request.source_parameters.get('enable_cache')),
+      ),
+      tagging_service=dependencies.tagging_service,
+      similarity_service=dependencies.similarity_service,
+    ).generate_tables(request)
+  )
+  return fastapi.responses.JSONResponse(content='sources have been created.')
+
+
 app = fastapi.FastAPI()
-app.include_router(router)
+app.include_router(creative_map_router)
+app.include_router(dashboard_router)
 app.include_router(media_tagging_router)
 app.include_router(media_similarity_router)
 
+typer_app = typer.Typer()
 
-def main():
-  uvicorn.run(app)
+
+@typer_app.command()
+def main(
+  port: Annotated[int, typer.Option(help='Port to start the server')] = 8000,
+):
+  uvicorn.run(app, port=port)
 
 
 if __name__ == '__main__':
-  main()
+  typer_app()

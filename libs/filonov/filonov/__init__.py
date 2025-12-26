@@ -20,12 +20,17 @@ Generates creative maps to be viewed via `https://filonov-ai.web.app/`.
 """
 
 from filonov.creative_map import CreativeMap
-from filonov.filonov_service import CreativeMapGenerateRequest, FilonovService
+from filonov.filonov_service import (
+  FilonovService,
+  GenerateCreativeMapRequest,
+  GenerateTablesRequest,
+)
 
 __all__ = [
   'FilonovService',
-  'CreativeMapGenerateRequest',
+  'GenerateCreativeMapRequest',
+  'GenerateTablesRequest',
   'CreativeMap',
 ]
 
-__version__ = '0.9.0'
+__version__ = '0.10.0'

@@ -185,7 +185,7 @@ def streamlit_app():
       cli_command_submitted = st.form_submit_button('Generate CLI command')
 
     if cli_command_submitted:
-      request = filonov.CreativeMapGenerateRequest(
+      request = filonov.GenerateCreativeMapRequest(
         source=source,
         media_type=media_type,
         tagger=tagger_type,
@@ -200,7 +200,7 @@ def streamlit_app():
       st.code(cli_command, language='bash', wrap_lines=True)
 
     if submitted:
-      request = filonov.CreativeMapGenerateRequest(
+      request = filonov.GenerateCreativeMapRequest(
         source=source,
         media_type=media_type,
         tagger=tagger_type,

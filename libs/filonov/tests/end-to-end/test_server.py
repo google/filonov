@@ -25,16 +25,17 @@ from fastapi import testclient
 from filonov.entrypoints import server
 
 app = fastapi.FastAPI()
-app.include_router(server.router)
+app.include_router(server.creative_map_router)
+app.include_router(server.dashboard_router)
 client = testclient.TestClient(app)
 
 dotenv.load_dotenv()
 _SCRIPT_PATH = pathlib.Path(__file__).parent
 
 
-class TestFilonov:
+class TestFilonovCreativeMap:
   def test_source_file(self):
-    request = filonov.CreativeMapGenerateRequest(
+    request = filonov.GenerateCreativeMapRequest(
       source='file',
       media_type='IMAGE',
       tagger='gemini',
@@ -43,34 +44,79 @@ class TestFilonov:
       },
     )
     response = client.post(
-      '/creative_maps/generate:file', json=request.model_dump()
+      '/filonov/creative_map/file', json=request.model_dump()
     )
     assert response.status_code == fastapi.status.HTTP_200_OK
 
   def test_source_googleads(self):
-    request = filonov.CreativeMapGenerateRequest(
+    request = filonov.GenerateCreativeMapRequest(
       source='googleads',
       media_type='IMAGE',
       tagger='gemini',
       source_parameters={
         'account': os.getenv('FILONOV_GOOGLEADS_ACCOUNT'),
-        'campaign_types': ('pmax',),
+        'campaign_types': ('demandgen',),
         'extra_info': ['googleads.main_geo'],
       },
     )
     response = client.post(
-      '/creative_maps/generate:googleads', json=request.model_dump()
+      '/filonov/creative_map/googleads', json=request.model_dump()
     )
     assert response.status_code == fastapi.status.HTTP_200_OK
 
   def test_source_youtube(self):
-    request = filonov.CreativeMapGenerateRequest(
+    request = filonov.GenerateCreativeMapRequest(
       source='youtube',
       source_parameters={
         'channel': os.getenv('FILONOV_YOUTUBE_CHANNEL_ID'),
       },
     )
     response = client.post(
-      '/creative_maps/generate:youtube', json=request.model_dump()
+      '/filonov/creative_map/youtube', json=request.model_dump()
+    )
+    assert response.status_code == fastapi.status.HTTP_200_OK
+
+
+class TestFilonovDashboard:
+  def test_source_file(self):
+    request = filonov.GenerateTablesRequest(
+      source='file',
+      media_type='IMAGE',
+      tagger='gemini',
+      writer='console',
+      source_parameters={
+        'path': str(_SCRIPT_PATH / os.getenv('FILONOV_PERFORMANCE_RESULTS')),
+      },
+    )
+    response = client.post('/filonov/dashboard/file', json=request.model_dump())
+    assert response.status_code == fastapi.status.HTTP_200_OK
+
+  def test_source_googleads(self):
+    request = filonov.GenerateTablesRequest(
+      source='googleads',
+      media_type='IMAGE',
+      tagger='gemini',
+      writer='console',
+      source_parameters={
+        'account': os.getenv('FILONOV_GOOGLEADS_ACCOUNT'),
+        'campaign_types': ('demandgen',),
+        'extra_info': ['googleads.main_geo'],
+      },
+    )
+    response = client.post(
+      '/filonov/dashboard/googleads', json=request.model_dump()
+    )
+    assert response.status_code == fastapi.status.HTTP_200_OK
+
+  def test_source_youtube(self):
+    request = filonov.GenerateTablesRequest(
+      source='youtube',
+      writer='console',
+      source_parameters={
+        'channel': os.getenv('FILONOV_YOUTUBE_CHANNEL_ID'),
+      },
+    )
+    response = client.post(
+      '/filonov/dashboard/youtube', json=request.model_dump()
     )
     assert response.status_code == fastapi.status.HTTP_200_OK

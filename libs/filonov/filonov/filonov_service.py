@@ -17,6 +17,7 @@
 """Handles creative map generation."""
 
 import logging
+import operator
 from collections.abc import Sequence
 from typing import Any, ClassVar, Literal
 
@@ -24,6 +25,8 @@ import media_fetching
 import media_similarity
 import media_tagging
 import pydantic
+from garf_core import GarfReport
+from garf_io import writer as garf_writer
 from media_tagging import media
 from media_tagging.media_tagging_service import (
   MediaFetchingRequest,
@@ -47,29 +50,25 @@ class OutputParameters(pydantic.BaseModel):
 
   Attributes:
     output_name: Fully qualified name to store the results.
-    output_type: Type of output.
-
+    output: Type of output.
   """
 
   output_name: str = 'creative_map'
-  output_type: Literal['console', 'file'] = 'file'
+  output: Literal['map', 'dashboard'] = 'map'
 
 
-class CreativeMapGenerateRequest(pydantic.BaseModel):
-  """Specifies structure of request for returning creative map.
+class BaseRequest(pydantic.BaseModel):
+  """Specifies structure of request for working with Filonov.
 
   Attributes:
-    source: Source of getting data for creative map.
-    media_type: Type of media to get.
+    source: Source for getting data.
+    media_type: Type of media to get from source.
     tagger: Type of tagger to use.
     tagger_parameters: Parameters to finetune tagging.
     similarity_parameters: Parameters to similarity matching.
-    source_parameters: Parameters to get data from the source of creative map.
-    output_parameters: Parameters for saving creative maps data.
+    source_parameters: Parameters to get data from the source.
     parallel_threshold: Tagging and similarity detecting threshold.
     trim_tags_threshold: Keeps tags only with the score higher than threshold.
-    embed_previews: Whether media previews should be embedded into a map.
-    context: Overall context of map generation.
   """
 
   default_tagger_parameters: ClassVar[dict[str, int]] = {'n_tags': 100}
@@ -82,11 +81,8 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
   source_parameters: dict[str, bool | int | str | Sequence[str]] = (
     pydantic.Field(default_factory=dict)
   )
-  output_parameters: OutputParameters = OutputParameters()
   parallel_threshold: int = 10
   trim_tags_threshold: float | None = None
-  embed_previews: bool = False
-  omit_series: bool = False
   context: dict[str, Any] = pydantic.Field(default_factory=dict)
 
   def model_post_init(self, __context):  # noqa: D105
@@ -107,6 +103,38 @@ class CreativeMapGenerateRequest(pydantic.BaseModel):
     self.context.update({self.source: self.source_parameters.model_dump()})
 
 
+class GenerateTablesRequest(BaseRequest):
+  writer: str
+  writer_parameters: dict[str, str | int | float | bool] = pydantic.Field(
+    default_factory=dict
+  )
+  output_parameters: OutputParameters = OutputParameters(
+    output='dashboard', output_name='filonov'
+  )
+
+
+class GenerateCreativeMapRequest(BaseRequest):
+  """Specifies structure of request for returning creative map.
+
+  Attributes:
+    source: Source of getting data for creative map.
+    media_type: Type of media to get.
+    tagger: Type of tagger to use.
+    tagger_parameters: Parameters to finetune tagging.
+    similarity_parameters: Parameters to similarity matching.
+    source_parameters: Parameters to get data from the source of creative map.
+    embed_previews: Whether media previews should be embedded into a map.
+    context: Overall context of map generation.
+  """
+
+  output_parameters: OutputParameters = OutputParameters(
+    output='map', output_name='creative_map'
+  )
+  embed_previews: bool = False
+  omit_series: bool = False
+  output_type: Literal['file', 'console'] = 'file'
+
+
 class FilonovService:
   """Responsible for handling requests for creative map input generation."""
 
@@ -121,28 +149,7 @@ class FilonovService:
     self.tagging_service = tagging_service
     self.similarity_service = similarity_service
 
-  @tracer.start_as_current_span('generate_creative_map')
-  def generate_creative_map(
-    self,
-    request: CreativeMapGenerateRequest,
-  ) -> creative_map.CreativeMap:
-    """Generates creative map data.
-
-    Performs the following steps:
-
-    * Input data fetching.
-    * Media tagging.
-    * Media similarity matching.
-
-    Args:
-      request: Request for creative maps generation.
-
-    Returns:
-      Generated creative map.
-
-    Raises:
-      FilonovError: When performance or tagging data not found.
-    """
+  def _prepare_data_sources(self, request) -> tuple[str]:
     if not request.tagger and not self.tagging_service:
       raise exceptions.FilonovError(
         'Failed to get tagging results from DB. MediaTaggingService missing.'
@@ -158,15 +165,9 @@ class FilonovService:
       raise exceptions.FilonovError(
         'No performance data found for the context.'
       )
-    media_info = creative_map.convert_report_to_media_info(
-      performance=media_data,
-      media_type=request.media_type,
-      metric_columns=request.source_parameters.metrics,
-      segment_columns=request.source_parameters.segments,
-      modules=request.source_parameters.extra_info,
-      omit_time_series=request.omit_series,
+    media_urls = media_data['media_url'].to_list(
+      row_type='scalar', distinct=True
     )
-    media_urls = {media.media_path for media in media_info.values()}
     if not (tagging_service := self.tagging_service):
       tagging_service = media_tagging.MediaTaggingService()
     if not request.tagger:
@@ -207,7 +208,7 @@ class FilonovService:
     clustering_request = media_similarity.MediaClusteringRequest(
       media_type=request.media_type,
       tagger_type=request.tagger,
-      tagging_options=CreativeMapGenerateRequest.default_tagger_parameters,
+      tagging_options=GenerateCreativeMapRequest.default_tagger_parameters,
       normalize=request.similarity_parameters.normalize,
       custom_threshold=request.similarity_parameters.custom_threshold,
       algorithm=request.similarity_parameters.algorithm,
@@ -228,9 +229,104 @@ class FilonovService:
         ),
         path_processor=request.tagger_parameters.get('path_processor'),
       )
-    logger.info('Generating creative map...')
     if trim_threshold := request.trim_tags_threshold:
       tagging_response.trim(trim_threshold)
+    return media_data, tagging_response, clustering_results
+
+  @tracer.start_as_current_span('generate_tables')
+  def generate_tables(
+    self,
+    request: GenerateTablesRequest,
+  ) -> None:
+    """Generates dashboard data.
+
+    Performs the following steps:
+
+    * Input data fetching.
+    * Media tagging.
+    * Media similarity matching.
+
+    Args:
+      request: Request for creative maps generation.
+
+    Returns:
+      Generated creative map.
+
+    Raises:
+      FilonovError: When performance or tagging data not found.
+    """
+    media_data, tagging_response, clustering_results = (
+      self._prepare_data_sources(request)
+    )
+    clusters = clustering_results.clusters
+    media_to_tags = {}
+    for m in tagging_response.results:
+      media_to_tags[m.identifier] = m.content
+    media_info = creative_map.convert_report_to_media_info(
+      performance=media_data,
+      media_type=request.media_type,
+      metric_columns=request.source_parameters.metrics,
+      segment_columns=request.source_parameters.segments,
+      modules=request.source_parameters.extra_info,
+    )
+    media_url_to_id = {p.media_path: k for k, p in media_info.items()}
+    tag_performance = []
+    getter = operator.attrgetter(
+      *media_data.column_names, 'cluster', 'output_name'
+    )
+    output_name = request.output_parameters.output_name
+    logger.info('Generating dashboard sources...')
+    for row in media_data:
+      media_id = media_url_to_id.get(row.media_url)
+      row['cluster'] = clusters.get(media_id)
+      row['output_name'] = output_name
+      if tags := media_to_tags.get(media_id):
+        for tag in tags:
+          tag_performance.append([tag.name, tag.score, *getter(row)])
+    tags_report = GarfReport(
+      results=tag_performance,
+      column_names=['tag', 'score', *media_data.column_names],
+    )
+    dashboard_writer = garf_writer.create_writer(
+      request.writer, **request.writer_parameters
+    )
+    dashboard_writer.write(media_data, 'media_performance')
+    dashboard_writer.write(tags_report, 'tag_performance')
+
+  @tracer.start_as_current_span('generate_creative_map')
+  def generate_creative_map(
+    self,
+    request: GenerateCreativeMapRequest,
+  ) -> creative_map.CreativeMap:
+    """Generates creative map data.
+
+    Performs the following steps:
+
+    * Input data fetching.
+    * Media tagging.
+    * Media similarity matching.
+
+    Args:
+      request: Request for creative maps generation.
+
+    Returns:
+      Generated creative map.
+
+    Raises:
+      FilonovError: When performance or tagging data not found.
+    """
+    media_data, tagging_response, clustering_results = (
+      self._prepare_data_sources(request)
+    )
+    media_info = creative_map.convert_report_to_media_info(
+      performance=media_data,
+      media_type=request.media_type,
+      metric_columns=request.source_parameters.metrics,
+      segment_columns=request.source_parameters.segments,
+      modules=request.source_parameters.extra_info,
+      omit_time_series=request.omit_series,
+    )
+    logger.info('Generating creative map...')
     return creative_map.CreativeMap.from_clustering(
       clustering_results=clustering_results,
       tagging_results=tagging_response.results,
