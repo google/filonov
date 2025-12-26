@@ -29,7 +29,7 @@ def build_creative_map_destination(path: str):
 
 
 def build_cli_command(
-  request: filonov.CreativeMapGenerateRequest, db: str | None
+  request: filonov.GenerateCreativeMapRequest, db: str | None
 ) -> str:
   command_template = (
     'filonov --source {source} \\\n'

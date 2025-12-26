@@ -15,6 +15,7 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
+import enum
 from typing import Optional
 
 import media_fetching
@@ -22,6 +23,7 @@ import media_similarity
 import media_tagging
 import typer
 from garf_executors.entrypoints import utils as garf_utils
+from garf_io import writer as garf_writer
 from media_fetching.sources import models
 from media_tagging import media
 from media_tagging.entrypoints import utils as tagging_utils
@@ -35,6 +37,24 @@ from filonov.telemetry import tracer
 
 initialize_tracer()
 typer_app = typer.Typer()
+
+Tagger = Annotated[
+  Optional[str],
+  typer.Option(
+    help='Type of tagger',
+  ),
+]
+Writer = Annotated[
+  garf_writer.WriterOption,
+  typer.Option(
+    help='Type of writer used to write results',
+  ),
+]
+
+
+class Output(str, enum.Enum):
+  map = 'map'
+  tables = 'tables'
 
 
 def _version_callback(show_version: bool) -> None:
@@ -64,13 +84,14 @@ def main(
       case_sensitive=False,
     ),
   ] = 'IMAGE',
-  tagger: Annotated[
-    Optional[str],
+  tagger: Tagger = None,
+  output: Annotated[
+    Output,
     typer.Option(
-      help='Type of tagger',
-      case_sensitive=False,
+      help='Type of output',
     ),
-  ] = None,
+  ] = Output.map,
+  writer: Writer = 'csv',
   output_name: Annotated[
     str,
     typer.Option(
@@ -143,7 +164,7 @@ def main(
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
   )
   parsed_param_keys = set(
-    [source, 'tagger', 'similarity'] + list(supported_enrichers)
+    [source, 'tagger', 'similarity', writer] + list(supported_enrichers)
   )
   extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(ctx.args)
   fetching_service = media_fetching.MediaFetchingService.from_source_alias(
@@ -179,33 +200,44 @@ def main(
   if source == 'youtube':
     media_type = 'YOUTUBE_VIDEO'
     tagger = 'gemini'
-  request = filonov.CreativeMapGenerateRequest(
-    source=source,
-    media_type=media_type,
-    tagger=tagger,
-    tagger_parameters=extra_parameters.get('tagger'),
-    similarity_parameters=extra_parameters.get('similarity'),
-    source_parameters=extra_parameters.get(source),
-    output_parameters=filonov.filonov_service.OutputParameters(
-      output_name=output_name
-    ),
-    parallel_threshold=parallel_threshold,
-    trim_tags_threshold=trim_tags_threshold,
-    embed_previews=embed_previews,
-    omit_series=omit_series,
-    context=extra_parameters,
-  )
-  span.set_attribute(
-    'filonov.cli.command', utils.build_cli_command(request, db_uri)
-  )
+  params = {
+    'source': source,
+    'media_type': media_type,
+    'tagger': tagger,
+    'tagger_parameters': extra_parameters.get('tagger'),
+    'similarity_parameters': extra_parameters.get('similarity'),
+    'source_parameters': extra_parameters.get(source),
+    'parallel_threshold': parallel_threshold,
+    'trim_tags_threshold': trim_tags_threshold,
+    'context': extra_parameters,
+  }
   filonov_service = filonov.FilonovService(
     fetching_service, tagging_service, similarity_service
   )
-  generated_map = filonov_service.generate_creative_map(request)
-  destination = utils.build_creative_map_destination(
-    request.output_parameters.output_name
+  if output == 'tables':
+    request = filonov.GenerateTablesRequest(
+      **params,
+      writer=writer,
+      writer_parameters=extra_parameters.get(writer, {}),
+    )
+    filonov_service.generate_tables(request)
+  else:
+    request = filonov.GenerateCreativeMapRequest(
+      **params,
+      output_parameters=filonov.filonov_service.OutputParameters(
+        output_name=output_name
+      ),
+      embed_previews=embed_previews,
+      omit_series=omit_series,
+    )
+    generated_map = filonov_service.generate_creative_map(request)
+    destination = utils.build_creative_map_destination(
+      request.output_parameters.output_name
+    )
+    generated_map.save(destination)
+  span.set_attribute(
+    'filonov.cli.command', utils.build_cli_command(request, db_uri)
   )
-  generated_map.save(destination)
 
 
 if __name__ == '__main__':

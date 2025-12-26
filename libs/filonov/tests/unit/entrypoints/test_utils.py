@@ -38,7 +38,7 @@ def test_build_creative_map_destination_returns_correct_file_name(
 
 
 def test_build_cli_command():
-  request = filonov.CreativeMapGenerateRequest(
+  request = filonov.GenerateCreativeMapRequest(
     source='fake',
     media_type='IMAGE',
     tagger='gemini',

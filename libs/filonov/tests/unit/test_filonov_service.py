@@ -39,7 +39,7 @@ TAGS = garf_core.GarfReport(
 )
 
 
-class TestCreativeMapGenerateRequest:
+class TestGenerateCreativeMapRequest:
   @pytest.mark.parametrize(
     'tagger_parameters',
     [{'custom_prompt': 'test prompt'}, {}],
@@ -48,7 +48,7 @@ class TestCreativeMapGenerateRequest:
     self, tagger_parameters
   ):
     expected_parameters = dict(tagger_parameters)
-    request = filonov_service.CreativeMapGenerateRequest(
+    request = filonov_service.GenerateCreativeMapRequest(
       source='fake', tagger_parameters=tagger_parameters
     )
     expected_parameters.update({'n_tags': 100})
@@ -70,7 +70,7 @@ class TestFilonovService:
       match='Failed to get tagging results from DB. MediaTaggingService missing',
     ):
       service.generate_creative_map(
-        request=filonov_service.CreativeMapGenerateRequest(
+        request=filonov_service.GenerateCreativeMapRequest(
           source='fake', media_type='WEBPAGE'
         ),
       )
@@ -94,7 +94,7 @@ class TestFilonovService:
       exceptions.FilonovError, match='No performance data found for the context'
     ):
       service.generate_creative_map(
-        request=filonov_service.CreativeMapGenerateRequest(
+        request=filonov_service.GenerateCreativeMapRequest(
           source='fake', media_type='WEBPAGE'
         ),
       )
@@ -124,8 +124,40 @@ class TestFilonovService:
       ),
     )
     generated_map = service.generate_creative_map(
-      request=filonov_service.CreativeMapGenerateRequest(
+      request=filonov_service.GenerateCreativeMapRequest(
         source='fake', media_type='WEBPAGE'
       ),
     )
     assert generated_map
+
+  def test_generate_tables(self, db_uri, tmp_path):
+    writer.create_writer('csv', destination_folder=tmp_path).write(
+      TAGS, 'test_tags'
+    )
+    tags_location = tmp_path / 'test_tags.csv'
+    loader_service = media_loader_service.MediaLoaderService(
+      media_tagging.repositories.SqlAlchemyTaggingResultsRepository(db_uri)
+    )
+    loader_service.load_media_tags(
+      loader_type='file', media_type='WEBPAGE', location=tags_location
+    )
+    fake_fetcher = media_fetching.sources.fake.FakeFetcher(DATA)
+    fake_fetching_service = media_fetching.MediaFetchingService(
+      source_fetcher=fake_fetcher
+    )
+    service = filonov_service.FilonovService(
+      fetching_service=fake_fetching_service,
+      tagging_service=media_tagging.MediaTaggingService(
+        media_tagging.repositories.SqlAlchemyTaggingResultsRepository(db_uri)
+      ),
+      similarity_service=(
+        media_similarity.MediaSimilarityService.from_connection_string(db_uri)
+      ),
+    )
+    service.generate_tables(
+      request=filonov_service.GenerateTablesRequest(
+        source='fake',
+        media_type='WEBPAGE',
+        writer='console',
+      ),
+    )
