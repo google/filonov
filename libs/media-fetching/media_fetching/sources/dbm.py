@@ -85,7 +85,7 @@ class BidManagerFetchingParameters(models.FetchingParameters):
 class Fetcher(models.BaseMediaInfoFetcher):
   """Extracts media information from Bid Manager API."""
 
-  def __init__(self, enable_cache: bool = False) -> None:
+  def __init__(self, enable_cache: bool = False, **kwargs) -> None:
     self.enable_cache = enable_cache
     self._fetcher = None
 

@@ -83,9 +83,10 @@ class MediaFetchingService:
     cls,
     source: str | models.InputSource = 'googleads',
     enable_cache: bool = False,
+    **kwargs: str,
   ) -> MediaFetchingService:
     """Initialized MediaFetchingService from source alias."""
-    source_fetcher = _get_source_fetcher(source, enable_cache)
+    source_fetcher = _get_source_fetcher(source, enable_cache, **kwargs)
     return cls(source_fetcher=source_fetcher)
 
   @tracer.start_as_current_span('fetch')
@@ -122,7 +123,7 @@ class MediaFetchingService:
 
 @tracer.start_as_current_span('get_source_fetcher')
 def _get_source_fetcher(
-  source: str | models.InputSource, enable_cache: bool
+  source: str | models.InputSource, enable_cache: bool, **kwargs: str
 ) -> models.BaseMediaInfoFetcher:
   if isinstance(source, enum.Enum):
     source = source.value
@@ -131,4 +132,4 @@ def _get_source_fetcher(
       f'Incorrect source: {source}. Only {get_args(models.InputSource)} '
       'are supported.'
     )
-  return fetcher_info[1](enable_cache=enable_cache)
+  return fetcher_info[1](enable_cache=bool(enable_cache), **kwargs)

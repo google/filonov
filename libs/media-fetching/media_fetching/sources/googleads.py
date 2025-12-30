@@ -24,7 +24,7 @@ import pathlib
 from collections.abc import Mapping, Sequence
 from typing import Literal, get_args
 
-import gaarf
+import garf_google_ads
 import garf_youtube_data_api
 import pydantic
 from garf_core import report
@@ -48,10 +48,6 @@ class GoogleAdsFetchingParameters(models.FetchingParameters):
   min_cost: int = 0
   campaign_types: Sequence[queries.SupportedCampaignTypes] | str = ('app',)
   countries: list[str] | str = pydantic.Field(default_factory=list)
-  ads_config: str = os.getenv(
-    'GOOGLE_ADS_CONFIGURATION_FILE_PATH',
-    str(pathlib.Path.home() / 'google-ads.yaml'),
-  )
   metrics: Sequence[str] | str = [
     'clicks',
     'impressions',
@@ -91,6 +87,30 @@ class GoogleAdsFetchingParameters(models.FetchingParameters):
 class Fetcher(models.BaseMediaInfoFetcher):
   """Extracts media information from Google Ads."""
 
+  def __init__(
+    self,
+    ads_config: str = os.getenv(
+      'GOOGLE_ADS_CONFIGURATION_FILE_PATH',
+      str(pathlib.Path.home() / 'google-ads.yaml'),
+    ),
+    enable_cache: bool = False,
+    **kwargs: str,
+  ) -> None:
+    self.ads_config = ads_config
+    self.enable_cache = enable_cache
+    self._fetcher = None
+
+  @property
+  def fetcher(self) -> garf_google_ads.GoogleAdsApiReportFetcher:
+    if not self._fetcher:
+      self._fetcher = garf_google_ads.GoogleAdsApiReportFetcher(
+        api_client=garf_google_ads.api_clients.GoogleAdsApiClient(
+          path_to_config=self.ads_config
+        ),
+        enable_cache=self.enable_cache,
+      )
+    return self._fetcher
+
   def fetch_media_data(
     self,
     fetching_request: GoogleAdsFetchingParameters,
@@ -109,11 +129,6 @@ class Fetcher(models.BaseMediaInfoFetcher):
     """
     if isinstance(fetching_request, Mapping):
       fetching_request = GoogleAdsFetchingParameters(**fetching_request)
-    self.fetcher = gaarf.AdsReportFetcher(
-      api_client=gaarf.GoogleAdsApiClient(
-        path_to_config=fetching_request.ads_config
-      )
-    )
 
     performance_queries = self._define_performance_queries(fetching_request)
     self.accounts = self._define_customer_ids(fetching_request)
@@ -209,8 +224,10 @@ class Fetcher(models.BaseMediaInfoFetcher):
       fetching_parameters = fetching_request.query_params
       fetching_parameters['campaign_type'] = campaign_type
       performance = self.fetcher.fetch(
-        query(**fetching_parameters, campaign_ids=campaign_ids),
-        self.accounts,
+        query_specification=query(
+          **fetching_parameters, campaign_ids=campaign_ids
+        ),
+        account=self.accounts,
       )
       if len(performance_queries) == 1:
         return performance
