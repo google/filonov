@@ -20,7 +20,7 @@ import functools
 import os
 import pathlib
 
-import gaarf
+import garf_google_ads
 from garf_core import report
 
 from media_fetching import exceptions
@@ -35,10 +35,15 @@ class GoogleAdsEnricher:
   """Injects Google Ads specific information into existing reports."""
 
   def __init__(
-    self, account: str, ads_config: str | None = None, **kwargs: str
+    self,
+    account: str,
+    ads_config: str | None = None,
+    enable_cache: bool = False,
+    **kwargs: str,
   ) -> None:
     """Initializes MediaTaggingEnricher."""
     self.account = account
+    self.enable_cache = enable_cache
     self.ads_config = ads_config or os.getenv(
       'GOOGLE_ADS_CONFIGURATION_FILE_PATH',
       str(pathlib.Path.home() / 'google-ads.yaml'),
@@ -46,10 +51,15 @@ class GoogleAdsEnricher:
     self.kwargs = kwargs
 
   @functools.cached_property
-  def fetcher(self) -> gaarf.AdsReportFetcher:
-    return gaarf.AdsReportFetcher(
-      api_client=gaarf.GoogleAdsApiClient(path_to_config=self.ads_config)
-    )
+  def fetcher(self) -> garf_google_ads.GoogleAdsApiReportFetcher:
+    if not self._fetcher:
+      self._fetcher = garf_google_ads.GoogleAdsApiReportFetcher(
+        api_client=garf_google_ads.api_clients.GoogleAdsApiClient(
+          path_to_config=self.ads_config
+        ),
+        enable_cache=self.enable_cache,
+      )
+    return self._fetcher
 
   @functools.cached_property
   def accounts(self) -> list[str]:

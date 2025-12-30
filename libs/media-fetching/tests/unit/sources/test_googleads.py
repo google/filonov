@@ -19,14 +19,15 @@ class TestGoogleAdsFetchingParameters:
   def test_query_params_returns_extra_arguments(self):
     test_app_id = 'com.example'
     params = googleads.GoogleAdsFetchingParameters(
-      account='1234567890', app_id=test_app_id
+      account='1234567890', app_id=test_app_id, media_type='TEXT'
     )
     assert params.query_params.get('app_id') == test_app_id
 
     query = queries.AppAssetPerformance(
-      **params.query_params, campaign_type='app'
+      **params.query_params,
+      campaign_type='app',
+      unknown_parameter='unknown_value',
     )
-
     assert f'AND campaign.app_campaign_setting.app_id = "{test_app_id}"' in str(
       query
     )

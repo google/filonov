@@ -18,18 +18,20 @@
 
 from __future__ import annotations
 
-import dataclasses
-from typing import Literal
+import warnings
+from typing import ClassVar, Literal
 
-from gaarf import base_query
+import pydantic
+from garf_core import base_query
 
+warnings.filterwarnings('ignore', category=UserWarning)
 SupportedMediaTypes = Literal['IMAGE', 'YOUTUBE_VIDEO', 'TEXT']
 SupportedCampaignTypes = Literal[
   'pmax', 'app', 'demandgen', 'video', 'display', 'search'
 ]
 
 
-class PerformanceQuery(base_query.BaseQuery):
+class PerformanceQuery(base_query.BaseQuery, pydantic.BaseModel):
   """Enforces presence of certain fields in the query.
 
   Attributes:
@@ -42,8 +44,9 @@ class PerformanceQuery(base_query.BaseQuery):
       If subclass query_text does not contain all required fields.
   """
 
-  query_text = ''
-  required_fields = (
+  model_config = pydantic.ConfigDict(extra='allow')
+  query_text: str = ''
+  required_fields: ClassVar[tuple[str, ...]] = (
     'date',
     'campaign_type',
     'channel_type',
@@ -70,11 +73,10 @@ class PerformanceQuery(base_query.BaseQuery):
       )
 
 
-@dataclasses.dataclass
 class DisplayAssetPerformance(PerformanceQuery):
   """Fetches image ads performance for Display campaigns."""
 
-  query_text = """
+  query_text: str = """
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
@@ -110,16 +112,16 @@ class DisplayAssetPerformance(PerformanceQuery):
   min_cost: int = 0
   campaign_ids: list[int] | None = None
 
-  def __post_init__(self) -> None:  # noqa: D105
+  def model_post_init(self, __context__) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
     self.campaign_ids = _format_campaign_ids(self.campaign_ids)
+    self.query_text = self.query_text.format(**self.model_dump())
 
 
-@dataclasses.dataclass
 class VideoPerformance(PerformanceQuery):
   """Fetches video ad performance for Video campaigns."""
 
-  query_text = """
+  query_text: str = """
   SELECT
     '{campaign_type}' AS campaign_type,
     campaign.id AS campaign_id,
@@ -153,16 +155,16 @@ class VideoPerformance(PerformanceQuery):
   min_cost: int = 0
   campaign_ids: list[int] | None = None
 
-  def __post_init__(self) -> None:  # noqa: D105
+  def model_post_init(self, __context__) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
     self.campaign_ids = _format_campaign_ids(self.campaign_ids)
+    self.query_text = self.query_text.format(**self.model_dump())
 
 
-@dataclasses.dataclass
 class PmaxAssetPerformance(PerformanceQuery):
   """Fetches asset info for Performance Max campaigns."""
 
-  query_text = """
+  query_text: str = """
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
@@ -196,7 +198,7 @@ class PmaxAssetPerformance(PerformanceQuery):
   min_cost: int = 0
   campaign_ids: list[int] | None = None
 
-  def __post_init__(self) -> None:  # noqa: D105
+  def model_post_init(self, __context__) -> None:  # noqa: D105
     self.campaign_ids = _format_campaign_ids(self.campaign_ids)
     if self.media_type == 'IMAGE':
       self.media_url = 'asset.image_asset.full_size.url'
@@ -219,13 +221,13 @@ class PmaxAssetPerformance(PerformanceQuery):
       self.size = 0.0
       self.size_column = 'video_duration'
       self.media_name = 'asset.youtube_video_asset.youtube_video_title'
+    self.query_text = self.query_text.format(**self.model_dump())
 
 
-@dataclasses.dataclass
 class SearchAssetPerformance(PerformanceQuery):
   """Fetches text asset performance for Search campaigns."""
 
-  query_text = """
+  query_text: str = """
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
@@ -261,16 +263,16 @@ class SearchAssetPerformance(PerformanceQuery):
   min_cost: int = 0
   campaign_ids: list[int] | None = None
 
-  def __post_init__(self) -> None:  # noqa: D105
+  def model_post_init(self, __context__) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
     self.campaign_ids = _format_campaign_ids(self.campaign_ids)
+    self.query_text = self.query_text.format(**self.model_dump())
 
 
-@dataclasses.dataclass
 class DemandGenTextAssetPerformance(PerformanceQuery):
   """Fetches image asset performance for Demand Gen campaigns."""
 
-  query_text = """
+  query_text: str = """
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
@@ -306,16 +308,16 @@ class DemandGenTextAssetPerformance(PerformanceQuery):
   min_cost: int = 0
   campaign_ids: list[int] | None = None
 
-  def __post_init__(self) -> None:  # noqa: D105
+  def model_post_init(self, __context__) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
     self.campaign_ids = _format_campaign_ids(self.campaign_ids)
+    self.query_text = self.query_text.format(**self.model_dump())
 
 
-@dataclasses.dataclass
 class DemandGenImageAssetPerformance(PerformanceQuery):
   """Fetches image asset performance for Demand Gen campaigns."""
 
-  query_text = """
+  query_text: str = """
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
@@ -355,16 +357,16 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
   min_cost: int = 0
   campaign_ids: list[int] | None = None
 
-  def __post_init__(self) -> None:  # noqa: D105
+  def model_post_init(self, __context__) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
     self.campaign_ids = _format_campaign_ids(self.campaign_ids)
+    self.query_text = self.query_text.format(**self.model_dump())
 
 
-@dataclasses.dataclass
 class DemandGenVideoAssetPerformance(PerformanceQuery):
   """Fetches video asset performance for Demand Gen campaigns."""
 
-  query_text = """
+  query_text: str = """
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
@@ -397,16 +399,16 @@ class DemandGenVideoAssetPerformance(PerformanceQuery):
   min_cost: int = 0
   campaign_ids: list[int] | None = None
 
-  def __post_init__(self) -> None:  # noqa: D105
+  def model_post_init(self, __context__) -> None:  # noqa: D105
     self.min_cost = int(self.min_cost * 1e6)
     self.campaign_ids = _format_campaign_ids(self.campaign_ids)
+    self.query_text = self.query_text.format(**self.model_dump())
 
 
-@dataclasses.dataclass
 class AppAssetPerformance(PerformanceQuery):
   """Fetches asset performance for App campaigns."""
 
-  query_text = """
+  query_text: str = """
   SELECT
     '{campaign_type}' AS campaign_type,
     segments.date AS date,
@@ -444,7 +446,7 @@ class AppAssetPerformance(PerformanceQuery):
   app_id: str | None = None
   campaign_ids: list[int] | None = None
 
-  def __post_init__(self) -> None:  # noqa: D105
+  def model_post_init(self, __context__) -> None:  # noqa: D105
     self.app_id = (
       f'AND campaign.app_campaign_setting.app_id = "{self.app_id}"'
       if self.app_id
@@ -473,6 +475,7 @@ class AppAssetPerformance(PerformanceQuery):
       self.size = 0.0
       self.size_column = 'video_duration'
       self.media_name = 'asset.youtube_video_asset.youtube_video_title'
+    self.query_text = self.query_text.format(**self.model_dump())
 
 
 QUERIES_MAPPING: dict[
