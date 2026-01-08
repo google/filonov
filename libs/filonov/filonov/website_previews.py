@@ -14,7 +14,10 @@
 from __future__ import annotations
 
 import base64
+import io
 import logging
+
+from PIL import Image
 
 from filonov import exceptions
 
@@ -31,8 +34,8 @@ except ImportError as e:
 def create_webpage_image_bytes(
   node_info,
   *,
-  width: int = 800,
-  height: int = 600,
+  width: int = 1280,
+  height: int = 800,
 ) -> str:
   logging.info('Embedding preview for url %s', node_info.media_path)
   with sync_playwright() as p:
@@ -42,5 +45,15 @@ def create_webpage_image_bytes(
     page.goto(node_info.media_path)
     screenshot = page.screenshot()
     browser.close()
-    encoded_image = base64.b64encode(screenshot).decode('utf-8')
+    resized_screenshot = _resize_image_bytes(screenshot, width=480, height=300)
+    encoded_image = base64.b64encode(resized_screenshot).decode('utf-8')
     return f'data:image/png;base64,{encoded_image}'
+
+
+def _resize_image_bytes(image: bytes, width: int, height: int) -> bytes:
+  input_data = io.BytesIO(image)
+  with Image.open(input_data) as img:
+    resized_image = img.resize((width, height), Image.Resampling.LANCZOS)
+    output_data = io.BytesIO()
+    resized_image.save(output_data, format=img.format or 'PNG')
+    return output_data.getvalue()
