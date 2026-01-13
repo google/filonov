@@ -197,7 +197,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
       dominant_country_row = group[group['share'] > threshold]
       if dominant_country_row.empty:
         return 'Unknown'
-      return dominant_country_row['country'].iloc[0]
+      return dominant_country_row['target_country'].iloc[0]
 
     query = """
         SELECT
@@ -216,7 +216,11 @@ class Fetcher(models.BaseMediaInfoFetcher):
         country=country,
         line_item_ids=line_item_ids,
       )
-    ).to_pandas()
+    )
+    countries = country.split(',')
+    for row in line_items:
+      row['target_country'] = row.country in countries
+    line_items = line_items.to_pandas()
 
     line_items['country'] = line_items['country'].fillna('Unknown')
     line_items['total_campaign_cost'] = line_items.groupby('line_item')[
@@ -226,11 +230,10 @@ class Fetcher(models.BaseMediaInfoFetcher):
     geo_info = (
       line_items.groupby('line_item').apply(get_dominant_country).to_dict()
     )
-    countries = country.split(',')
     return {
       line_item
       for line_item, country in geo_info.items()
-      if country in countries
+      if country != 'Unknown'
     }
 
   def _get_campaign_line_items(
