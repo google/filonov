@@ -69,7 +69,7 @@ class Description(TaggingOutput):
     text: Textual description of the media.
   """
 
-  text: str | list[Any]
+  text: str | bool | int | float | list[Any]
 
   def __hash__(self) -> int:  # noqa: D105
     return hash(self.text)
