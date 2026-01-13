@@ -332,7 +332,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
       dominant_country_row = group[group['share'] > threshold]
       if dominant_country_row.empty:
         return 'Unknown'
-      return dominant_country_row['country'].iloc[0]
+      return dominant_country_row['target_country'].iloc[0]
 
     campaign_geos = """
     SELECT
@@ -357,9 +357,11 @@ class Fetcher(models.BaseMediaInfoFetcher):
       value_column='country_name',
       value_column_output='scalar',
     )
-    geo_extra_info = self.fetcher.fetch(
-      campaign_geos, self.accounts
-    ).to_pandas()
+    geo_extra_info = self.fetcher.fetch(campaign_geos, self.accounts)
+
+    for row in geo_extra_info:
+      row['target_country'] = row.country in countries
+    geo_extra_info = geo_extra_info.to_pandas()
     geo_extra_info['country'] = geo_extra_info['country_id'].map(
       country_mapping
     )
@@ -375,8 +377,8 @@ class Fetcher(models.BaseMediaInfoFetcher):
       .apply(get_dominant_country)
       .to_dict()
     )
-    return [
+    return {
       campaign_id
       for campaign_id, country in geo_info.items()
-      if country in countries
-    ]
+      if country != 'Unknown'
+    }
