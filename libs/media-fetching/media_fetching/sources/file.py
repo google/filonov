@@ -65,12 +65,13 @@ class Fetcher(models.BaseMediaInfoFetcher):
         f'media_url {media_url} not found in the file'
       )
     if (
-      media_name := fetching_request.media_identifier
+      media_name := fetching_request.media_name
     ) not in raw_report.column_names:
       raise exceptions.MediaFetchingError(
         f'media_name {media_name} not found in the file'
       )
-    for row in raw_report:
-      row['media_url'] = row[media_url]
-      row['media_name'] = row[media_name]
+    if media_name != 'media_name' or media_url != 'media_url':
+      for row in raw_report:
+        row['media_url'] = row[media_url]
+        row['media_name'] = row[media_name]
     return raw_report
