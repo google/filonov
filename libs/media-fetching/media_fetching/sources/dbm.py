@@ -19,6 +19,7 @@ from collections.abc import Sequence
 from typing import Literal
 
 import garf_bid_manager
+import garf_youtube_data_api
 import pydantic
 from garf_core import report
 
@@ -36,6 +37,7 @@ class BidManagerFetchingParameters(models.FetchingParameters):
   metrics: Sequence[str] | str = [
     'clicks',
     'impressions',
+    'cost',
   ]
   media_type: Literal['YOUTUBE_VIDEO'] = 'YOUTUBE_VIDEO'
   start_date: str = (
@@ -63,7 +65,10 @@ class BidManagerFetchingParameters(models.FetchingParameters):
     for metric in self.metrics:
       if metric.startswith('brand_lift'):
         continue
-      metrics.append(f'metric_{metric} AS {metric}')
+      if metric == 'cost':
+        metrics.append('metric_client_cost_advertiser_currency AS cost')
+      else:
+        metrics.append(f'metric_{metric} AS {metric}')
     if self.line_item_type:
       line_item_types = ', '.join(
         line_item.strip() for line_item in self.line_item_type.split(',')
@@ -139,7 +144,8 @@ class Fetcher(models.BaseMediaInfoFetcher):
         trueview_ad_group_id AS ad_group_id,
         youtube_ad_video_id AS media_url,
         youtube_ad_video AS media_name,
-        video_duration AS video_duration,
+        video_duration AS duration,
+        advertiser_currency AS _,
         {metrics}
       FROM youtube
       WHERE advertiser IN ({advertiser})
@@ -147,16 +153,19 @@ class Fetcher(models.BaseMediaInfoFetcher):
       {line_items}
       AND dataRange IN ({start_date}, {end_date})
     """
-    return self.fetcher.fetch(
+    performance = self.fetcher.fetch(
       query.format(**fetching_request.query_parameters, line_items=line_items)
     )
+    if fetching_request.media_type == 'YOUTUBE_VIDEO':
+      self._add_video_info(performance)
+    return performance
 
-  def _get_country_line_items(
+  def _get_line_items_with_country(
     self,
     fetching_request: BidManagerFetchingParameters,
     country: str,
   ) -> set[str]:
-    """Fetches line items for a specific set of countries."""
+    """Fetches line items targeting specific countries."""
     query = """
         SELECT
           line_item,
@@ -170,6 +179,59 @@ class Fetcher(models.BaseMediaInfoFetcher):
       query.format(**fetching_request.query_parameters, country=country)
     ).to_list(row_type='scalar', distinct=True)
     return set(line_items)
+
+  def _get_country_line_items(
+    self,
+    fetching_request: BidManagerFetchingParameters,
+    country: str,
+  ) -> set[str]:
+    """Fetches line items for a specific set of countries."""
+    threshold = 0.5
+
+    line_items_ids = self._get_line_items_with_country(
+      fetching_request, country
+    )
+    line_item_ids = ', '.join(str(line_item) for line_item in line_items_ids)
+
+    def get_dominant_country(group):
+      dominant_country_row = group[group['share'] > threshold]
+      if dominant_country_row.empty:
+        return 'Unknown'
+      return dominant_country_row['country'].iloc[0]
+
+    query = """
+        SELECT
+          line_item,
+          country,
+          advertiser_currency AS _,
+          metric_client_cost_advertiser_currency AS cost
+        FROM standard
+        WHERE advertiser IN ({advertiser})
+        AND line_item IN ({line_item_ids})
+        AND dataRange IN ({start_date}, {end_date})
+      """
+    line_items = self.fetcher.fetch(
+      query.format(
+        **fetching_request.query_parameters,
+        country=country,
+        line_item_ids=line_item_ids,
+      )
+    ).to_pandas()
+
+    line_items['country'] = line_items['country'].fillna('Unknown')
+    line_items['total_campaign_cost'] = line_items.groupby('line_item')[
+      'cost'
+    ].transform('sum')
+    line_items['share'] = line_items['cost'] / line_items['total_campaign_cost']
+    geo_info = (
+      line_items.groupby('line_item').apply(get_dominant_country).to_dict()
+    )
+    countries = country.split(',')
+    return {
+      line_item
+      for line_item, country in geo_info.items()
+      if country in countries
+    }
 
   def _get_campaign_line_items(
     self,
@@ -192,3 +254,54 @@ class Fetcher(models.BaseMediaInfoFetcher):
       query.format(**fetching_request.query_parameters, campaigns=campaigns)
     ).to_list(row_type='scalar', distinct=True)
     return set(line_items)
+
+  def _add_video_info(
+    self,
+    performance: report.GarfReport,
+  ) -> None:
+    """Injects YouTube specific information on media.
+
+    Args:
+      performance: Report to add video data into.
+
+    Returns:
+      Mapping between video id and its information.
+    """
+    video_orientations_query = """
+    SELECT
+      id,
+      player.embedWidth AS width,
+      player.embedHeight AS height
+    FROM videos
+    """
+
+    video_ids = performance['media_url'].to_list(
+      row_type='scalar', distinct=True
+    )
+    youtube_api_fetcher = garf_youtube_data_api.YouTubeDataApiReportFetcher()
+    video_orientations = youtube_api_fetcher.fetch(
+      video_orientations_query,
+      id=video_ids,
+      maxWidth=500,
+    )
+
+    for row in video_orientations:
+      aspect_ratio = round(int(row.width) / int(row.height), 2)
+      if aspect_ratio > 1:
+        row['orientation'] = 'Landscape'
+      elif aspect_ratio < 1:
+        row['orientation'] = 'Portrait'
+      else:
+        row['orientation'] = 'Square'
+
+    video_orientations = video_orientations.to_dict(
+      key_column='id',
+      value_column='orientation',
+      value_column_output='scalar',
+    )
+    for row in performance:
+      video_id = row.media_url
+      duration = round(int(row.duration) / 1e3)
+      row.duration = duration
+      row.duration = duration
+      row['orientation'] = video_orientations.get(video_id, 0.0)
