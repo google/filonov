@@ -14,12 +14,20 @@
 from __future__ import annotations
 
 import base64
+import contextlib
+import datetime
+import hashlib
 import io
 import logging
+import os
+import pathlib
+from typing import Final
 
 from PIL import Image
 
 from filonov import exceptions
+
+logger = logging.getLogger(__name__)
 
 try:
   from playwright.sync_api import sync_playwright
@@ -30,6 +38,84 @@ except ImportError as e:
     'and configure with `playwright install`'
   ) from e
 
+logger = logging.getLogger(__name__)
+
+
+class CacheFileNotFoundError(exceptions.FilonovError):
+  """Exception for not found cached preview."""
+
+
+DEFAULT_CACHE_LOCATION: Final[str] = os.getenv(
+  'FILONOV_PREVIEW_CACHE_LOCATION', str(pathlib.Path.home() / '.filonov/cache/')
+)
+
+
+class Cache:
+  """Stores and loads website preview from a cache.
+
+  Attribute:
+    location: Folder where cached results are stored.
+  """
+
+  def __init__(
+    self,
+    location: str | None = None,
+    ttl_seconds: int = os.getenv('FILONOV_PREVIEW_CACHE_TTL_SECONDS', 3600),
+  ) -> None:
+    """Stores and loads website preview from a cache.
+
+    Args:
+      location: Folder where cached results are stored.
+      ttl_seconds: Maximum lifespan of cached objects.
+    """
+    self.location = pathlib.Path(location or DEFAULT_CACHE_LOCATION)
+    self.ttl_seconds = int(ttl_seconds)
+    self.media_paths = {}
+    self.location.mkdir(parents=True, exist_ok=True)
+
+  @property
+  def max_cache_timestamp(self) -> float:
+    return (
+      datetime.datetime.now() - datetime.timedelta(seconds=self.ttl_seconds)
+    ).timestamp()
+
+  def load(
+    self,
+    media_path: str,
+  ) -> str:
+    """Loads preview from cache based on media_path.
+
+    Raises:
+      CacheFileNotFoundError: If cached report not found.
+    """
+    path_hash = hashlib.md5(media_path.encode('utf-8')).hexdigest()
+    cached_path = self.location / f'{path_hash}.txt'
+    if (
+      cached_path.exists()
+      and cached_path.stat().st_ctime > self.max_cache_timestamp
+    ):
+      with open(cached_path, 'r', encoding='utf-8') as f:
+        data = f.read()
+      logger.info('Preview is loaded from cache: %s', str(cached_path))
+      return data.strip()
+    raise CacheFileNotFoundError
+
+  def save(
+    self,
+    media_path: str,
+    preview: str,
+  ) -> None:
+    """Saves preview to cache based on media_path."""
+    self.location.mkdir(parents=True, exist_ok=True)
+    path_hash = hashlib.md5(media_path.encode('utf-8')).hexdigest()
+    cached_path = self.location / f'{path_hash}.txt'
+    logger.debug('Preview is saved to cache: %s', str(cached_path))
+    with open(cached_path, 'w', encoding='utf-8') as f:
+      f.write(preview)
+
+
+cache = Cache()
+
 
 def create_webpage_image_bytes(
   node_info,
@@ -37,6 +123,9 @@ def create_webpage_image_bytes(
   width: int = 1280,
   height: int = 800,
 ) -> str:
+  with contextlib.suppress(CacheFileNotFoundError):
+    if encoded_image := cache.load(node_info.media_path):
+      return f'data:image/png;base64,{encoded_image}'
   logging.info('Embedding preview for url %s', node_info.media_path)
   with sync_playwright() as p:
     browser = p.chromium.launch()
@@ -47,6 +136,7 @@ def create_webpage_image_bytes(
     browser.close()
     resized_screenshot = _resize_image_bytes(screenshot, width=480, height=300)
     encoded_image = base64.b64encode(resized_screenshot).decode('utf-8')
+    cache.save(node_info.media_path, encoded_image)
     return f'data:image/png;base64,{encoded_image}'
 
 
