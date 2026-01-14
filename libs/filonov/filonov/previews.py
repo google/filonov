@@ -22,7 +22,7 @@ import smart_open
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 
-def _create_text_image_bytes(
+async def _create_text_image_bytes(
   node_info,
   *,
   format: str = 'PNG',
@@ -61,7 +61,7 @@ def _create_text_image_bytes(
   return f'data:image/png;base64,{encoded_image}'
 
 
-def _embed_preview(node_info) -> str:
+async def _embed_preview(node_info) -> str:
   logging.info('Embedding preview for url %s', node_info.media_preview)
   with smart_open.open(node_info.media_preview, 'rb') as f:
     image_preview = f.read()

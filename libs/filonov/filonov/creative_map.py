@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import operator
@@ -133,28 +134,19 @@ class CreativeMap:
     preview_strategy = previews.get_media_preview_strategy(
       media_type=media_type, embed_previews=embed_previews
     )
-    for node in clustering_results.graph.nodes:
-      node_hash = node.get('name', '')
-      node_name = tagging_hash_to_identifier_mapping.get(node_hash)
-      if node_extra_info := extra_info.get(node_name):
-        node['id'] = node_hash
-        if size := node_extra_info.size:
-          node['size'] = size
-        node['type'] = media_type
-        if preview_strategy:
-          node['image'] = preview_strategy(node_extra_info)
-        else:
-          node['image'] = node_extra_info.media_preview
-        node['media_path'] = node_extra_info.media_path
-        node['label'] = node_extra_info.media_name or 'Unknown'
-        node['cluster'] = clustering_results.clusters.get(node_name)
-        node['info'] = node_extra_info.info
-        node['series'] = node_extra_info.series
-        node['tags'] = [
-          {'tag': tag.name.replace("'", ''), 'score': tag.score}
-          for tag in tagging_mapping.get(node_name, [])
-        ]
-        node['segments'] = node_extra_info.segments
+    processed_nodes = asyncio.run(
+      _process_nodes(
+        nodes=clustering_results.graph.nodes,
+        media_type=media_type,
+        preview_strategy=preview_strategy,
+        extra_info=extra_info,
+        clustering_results=clustering_results,
+        tagging_hash_to_identifier_mapping=tagging_hash_to_identifier_mapping,
+        tagging_mapping=tagging_mapping,
+        parallel_threshold=10,
+      )
+    )
+    clustering_results.graph.nodes = processed_nodes
     clusters = {
       cluster_id: f'Cluster: {cluster_id}'
       for cluster_id in set(clustering_results.clusters.values())
@@ -400,3 +392,69 @@ def _to_youtube_preview_link(video_id: str) -> str:
 
 def _to_youtube_video_link(video_id: str) -> str:
   return f'https://www.youtube.com/watch?v={video_id}'
+
+
+async def _process_node(
+  node,
+  media_type,
+  preview_strategy,
+  extra_info,
+  clustering_results,
+  tagging_hash_to_identifier_mapping,
+  tagging_mapping,
+):
+  """Injects necessary information into a single node."""
+  node_hash = node.get('name', '')
+  node_name = tagging_hash_to_identifier_mapping.get(node_hash)
+  if node_extra_info := extra_info.get(node_name):
+    node['id'] = node_hash
+    if size := node_extra_info.size:
+      node['size'] = size
+    node['type'] = media_type
+    if preview_strategy:
+      node['image'] = await preview_strategy(node_extra_info)
+    else:
+      node['image'] = node_extra_info.media_preview
+    node['media_path'] = node_extra_info.media_path
+    node['label'] = node_extra_info.media_name or 'Unknown'
+    node['cluster'] = clustering_results.clusters.get(node_name)
+    node['info'] = node_extra_info.info
+    node['series'] = node_extra_info.series
+    node['tags'] = [
+      {'tag': tag.name.replace("'", ''), 'score': tag.score}
+      for tag in tagging_mapping.get(node_name, [])
+    ]
+    node['segments'] = node_extra_info.segments
+  return node
+
+
+async def _process_nodes(
+  nodes,
+  media_type: str,
+  preview_strategy,
+  extra_info,
+  clustering_results,
+  tagging_hash_to_identifier_mapping,
+  tagging_mapping,
+  parallel_threshold=10,
+):
+  """Injects necessary information into multiple nodes."""
+  semaphore = asyncio.Semaphore(value=parallel_threshold)
+
+  async def run_with_semaphore(fn):
+    async with semaphore:
+      return await fn
+
+  tasks = [
+    _process_node(
+      node,
+      media_type,
+      preview_strategy,
+      extra_info,
+      clustering_results,
+      tagging_hash_to_identifier_mapping,
+      tagging_mapping,
+    )
+    for node in nodes
+  ]
+  return await asyncio.gather(*(run_with_semaphore(task) for task in tasks))
