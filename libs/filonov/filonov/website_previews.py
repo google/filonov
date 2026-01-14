@@ -30,7 +30,7 @@ from filonov import exceptions
 logger = logging.getLogger(__name__)
 
 try:
-  from playwright.sync_api import sync_playwright
+  from playwright.async_api import async_playwright
 except ImportError as e:
   raise exceptions.FilonovError(
     'Missing playwright dependency. '
@@ -117,7 +117,7 @@ class Cache:
 cache = Cache()
 
 
-def create_webpage_image_bytes(
+async def create_webpage_image_bytes(
   node_info,
   *,
   width: int = 1280,
@@ -127,13 +127,13 @@ def create_webpage_image_bytes(
     if encoded_image := cache.load(node_info.media_path):
       return f'data:image/png;base64,{encoded_image}'
   logging.info('Embedding preview for url %s', node_info.media_path)
-  with sync_playwright() as p:
-    browser = p.chromium.launch()
-    page = browser.new_page()
-    page.set_viewport_size({'width': width, 'height': height})
-    page.goto(node_info.media_path)
-    screenshot = page.screenshot()
-    browser.close()
+  async with async_playwright() as p:
+    browser = await p.chromium.launch()
+    page = await browser.new_page()
+    await page.set_viewport_size({'width': width, 'height': height})
+    await page.goto(node_info.media_path)
+    screenshot = await page.screenshot()
+    await browser.close()
     resized_screenshot = _resize_image_bytes(screenshot, width=480, height=300)
     encoded_image = base64.b64encode(resized_screenshot).decode('utf-8')
     cache.save(node_info.media_path, encoded_image)
