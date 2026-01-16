@@ -5,10 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "filonov"
 dependencies = [
-  "media-fetching>=0.3.6",
-  "media-similarity>=0.7.2",
-  "garf-youtube>=1.0.0",
-  "garf-google-ads>=1.0.0",
+  "media-fetching>=0.6.0",
+  "media-similarity>=0.9.0",
   "typer",
   "opentelemetry-api",
   "opentelemetry-sdk",
