@@ -20,8 +20,8 @@ import functools
 import os
 import pathlib
 
-import garf_google_ads
-from garf_core import report
+from garf.community.google.ads import GoogleAdsApiReportFetcher, api_clients
+from garf.core import report
 
 from media_fetching import exceptions
 from media_fetching.enrichers import extra_info
@@ -51,10 +51,10 @@ class GoogleAdsEnricher:
     self.kwargs = kwargs
 
   @functools.cached_property
-  def fetcher(self) -> garf_google_ads.GoogleAdsApiReportFetcher:
+  def fetcher(self) -> GoogleAdsApiReportFetcher:
     if not self._fetcher:
-      self._fetcher = garf_google_ads.GoogleAdsApiReportFetcher(
-        api_client=garf_google_ads.api_clients.GoogleAdsApiClient(
+      self._fetcher = GoogleAdsApiReportFetcher(
+        api_client=api_clients.GoogleAdsApiClient(
           path_to_config=self.ads_config
         ),
         enable_cache=self.enable_cache,

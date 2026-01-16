@@ -6,11 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "media-fetching"
 dependencies = [
   "media-tagging>=2.2",
-  "garf-youtube-data-api",
-  "garf-bid-manager>=0.0.6",
-  "garf-google-ads",
-  "garf-executors[bq,sql]>=0.1.2",
-  "garf_core>=0.5.0",
+  "garf-youtube>=1.0.0",
+  "garf-bid-manager>=1.0.0",
+  "garf-google-ads>=1.0.0",
+  "garf-executors[bq,sql]>=1.0.0",
+  "garf_core>=1.0.0",
   "typer",
   "opentelemetry-api",
   "opentelemetry-sdk",

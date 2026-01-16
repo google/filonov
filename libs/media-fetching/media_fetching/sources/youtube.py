@@ -19,9 +19,9 @@
 from collections.abc import Sequence
 from typing import Literal
 
-import garf_youtube_data_api
 import pydantic
-from garf_core import report
+from garf.community.google.youtube import YouTubeDataApiReportFetcher
+from garf.core import report
 
 from media_fetching.sources import models
 
@@ -50,7 +50,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
     fetching_request: YouTubeFetchingParameters,
   ) -> report.GarfReport:
     """Get all public videos from YouTube channel."""
-    youtube_api_fetcher = garf_youtube_data_api.YouTubeDataApiReportFetcher()
+    youtube_api_fetcher = YouTubeDataApiReportFetcher()
     channel_uploads_playlist_query = """
     SELECT
       contentDetails.relatedPlaylists.uploads AS uploads_playlist

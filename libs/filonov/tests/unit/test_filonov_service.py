@@ -14,23 +14,23 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-import garf_core
 import media_fetching
 import media_similarity
 import media_tagging
 import pytest
 from filonov import exceptions, filonov_service
-from garf_io import writer
+from garf.core import report
+from garf.io import writer
 from media_tagging.loaders import media_loader_service
 
-DATA = garf_core.GarfReport(
+DATA = report.GarfReport(
   results=[
     ['example.com', 'example', 1],
   ],
   column_names=['media_url', 'media_name', 'clicks'],
 )
 
-TAGS = garf_core.GarfReport(
+TAGS = report.GarfReport(
   results=[
     ['example.com', 'test_tag_1', 1],
     ['example.com', 'test_tag_2', 1],
@@ -79,7 +79,7 @@ class TestFilonovService:
     self,
   ):
     fake_fetcher = media_fetching.sources.fake.FakeFetcher(
-      garf_core.GarfReport(results=[], column_names=['media_url'])
+      report.GarfReport(results=[], column_names=['media_url'])
     )
     fake_fetching_service = media_fetching.MediaFetchingService(
       source_fetcher=fake_fetcher

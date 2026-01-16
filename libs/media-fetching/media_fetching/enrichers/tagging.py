@@ -19,7 +19,7 @@
 from typing import Literal
 
 import media_tagging
-from garf_core import report
+from garf.core import report
 
 from media_fetching.enrichers import extra_info
 

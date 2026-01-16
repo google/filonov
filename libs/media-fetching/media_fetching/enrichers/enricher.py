@@ -19,7 +19,7 @@
 from collections.abc import Sequence
 from typing import Any
 
-from garf_core import report
+from garf.core import report
 
 from media_fetching import enrichers
 from media_fetching.enrichers import extra_info

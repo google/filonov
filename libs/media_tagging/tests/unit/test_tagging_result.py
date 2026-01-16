@@ -15,7 +15,7 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 
-from garf_core import report
+from garf.core import report
 from media_tagging import tagging_result
 
 

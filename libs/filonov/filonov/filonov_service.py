@@ -25,8 +25,8 @@ import media_fetching
 import media_similarity
 import media_tagging
 import pydantic
-from garf_core import GarfReport
-from garf_io import writer as garf_writer
+from garf.core import GarfReport
+from garf.io import writer as garf_writer
 from media_tagging import media
 from media_tagging.media_tagging_service import (
   MediaFetchingRequest,

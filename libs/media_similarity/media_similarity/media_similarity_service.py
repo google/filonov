@@ -29,7 +29,7 @@ import igraph
 import media_tagging
 import pandas as pd
 import pydantic
-from garf_core import report
+from garf.core import report
 from media_tagging.taggers import base as base_tagger
 
 from media_similarity import (

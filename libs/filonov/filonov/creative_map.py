@@ -29,7 +29,7 @@ from typing import Any, TypeAlias, TypedDict
 import numpy as np
 import pydantic
 import smart_open
-from garf_core import report
+from garf.core import report
 from media_similarity import media_similarity_service
 from media_tagging import media, tagging_result
 from opentelemetry import trace
