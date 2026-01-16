@@ -18,10 +18,10 @@ import functools
 from collections.abc import Sequence
 from typing import Literal
 
-import garf_bid_manager
-import garf_youtube_data_api
 import pydantic
-from garf_core import report
+from garf.community.google.bid_manager import BidManagerApiReportFetcher
+from garf.community.google.youtube import YouTubeDataApiReportFetcher
+from garf.core import report
 
 from media_fetching import exceptions
 from media_fetching.sources import models
@@ -95,11 +95,9 @@ class Fetcher(models.BaseMediaInfoFetcher):
     self._fetcher = None
 
   @property
-  def fetcher(self) -> garf_bid_manager.BidManagerApiReportFetcher:
+  def fetcher(self) -> BidManagerApiReportFetcher:
     if not self._fetcher:
-      self._fetcher = garf_bid_manager.BidManagerApiReportFetcher(
-        enable_cache=self.enable_cache
-      )
+      self._fetcher = BidManagerApiReportFetcher(enable_cache=self.enable_cache)
     return self._fetcher
 
   def fetch_media_data(
@@ -281,7 +279,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
     video_ids = performance['media_url'].to_list(
       row_type='scalar', distinct=True
     )
-    youtube_api_fetcher = garf_youtube_data_api.YouTubeDataApiReportFetcher()
+    youtube_api_fetcher = YouTubeDataApiReportFetcher()
     video_orientations = youtube_api_fetcher.fetch(
       video_orientations_query,
       id=video_ids,

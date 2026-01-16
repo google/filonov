@@ -22,8 +22,8 @@ import media_fetching
 import media_similarity
 import media_tagging
 import typer
-from garf_executors.entrypoints import utils as garf_utils
-from garf_io import writer as garf_writer
+from garf.executors.entrypoints import utils as garf_utils
+from garf.io import writer as garf_writer
 from media_fetching.sources import models
 from media_tagging import media
 from media_tagging.entrypoints import utils as tagging_utils

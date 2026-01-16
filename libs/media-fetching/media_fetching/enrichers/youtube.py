@@ -16,8 +16,8 @@
 
 """YouTube specific enrichers."""
 
-import garf_youtube_data_api
-from garf_core import report
+from garf.community.google.youtube import YouTubeDataApiReportFetcher
+from garf.core import report
 
 from media_fetching import exceptions
 from media_fetching.enrichers import extra_info
@@ -33,7 +33,7 @@ class YouTubeEnricher:
   @property
   def fetcher(self):
     """Initialized Report fetcher from YouTube Data API."""
-    return garf_youtube_data_api.YouTubeDataApiReportFetcher()
+    return YouTubeDataApiReportFetcher()
 
   def language(
     self, performance: report.GarfReport, **kwargs: str

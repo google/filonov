@@ -18,8 +18,8 @@
 
 import functools
 
-import garf_bid_manager
-from garf_core import report
+from garf.community.google.bid_manager import BidManagerApiReportFetcher
+from garf.core import report
 
 from media_fetching import exceptions
 from media_fetching.enrichers import extra_info
@@ -37,8 +37,8 @@ class BidManagerEnricher:
     self.kwargs = kwargs
 
   @functools.cached_property
-  def fetcher(self) -> garf_bid_manager.BidManagerApiReportFetcher:
-    return garf_bid_manager.BidManagerApiReportFetcher(**self.kwargs)
+  def fetcher(self) -> BidManagerApiReportFetcher:
+    return BidManagerApiReportFetcher(**self.kwargs)
 
   def brand_lift(
     self,

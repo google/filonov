@@ -23,7 +23,7 @@ from typing import Literal
 import pandas as pd
 import pydantic
 import smart_open
-from garf_core import report
+from garf.core import report
 from media_tagging import media
 
 from media_fetching import exceptions

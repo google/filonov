@@ -19,8 +19,8 @@
 from typing import Optional
 
 import typer
-from garf_executors.entrypoints import utils as garf_utils
-from garf_io import writer as garf_writer
+from garf.executors.entrypoints import utils as garf_utils
+from garf.io import writer as garf_writer
 from media_tagging import media
 from media_tagging.entrypoints import utils as tagging_utils
 from typing_extensions import Annotated

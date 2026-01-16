@@ -23,7 +23,7 @@ import logging
 import warnings
 from typing import Any, get_args
 
-from garf_core import report
+from garf.core import report
 from opentelemetry import trace
 
 from media_fetching import exceptions

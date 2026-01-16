@@ -19,7 +19,7 @@
 from collections.abc import Sequence
 from typing import Literal
 
-import garf_core
+import garf.core
 import pydantic
 from media_tagging import media
 
@@ -44,11 +44,11 @@ class FakeFetchingParameters(models.FetchingParameters):
 class FakeFetcher(models.BaseMediaInfoFetcher):
   """Extracts information from a file to a media report."""
 
-  def __init__(self, data: garf_core.GarfReport) -> None:
+  def __init__(self, data: garf.core.GarfReport) -> None:
     self.data = data
 
   def fetch_media_data(
     self,
     fetching_request: FakeFetchingParameters = FakeFetchingParameters(),
-  ) -> garf_core.GarfReport:
+  ) -> garf.core.GarfReport:
     return self.data

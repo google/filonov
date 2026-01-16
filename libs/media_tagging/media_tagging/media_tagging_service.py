@@ -26,7 +26,7 @@ from importlib.metadata import entry_points
 from typing import Callable, Literal
 
 import pydantic
-from garf_io import writer as garf_writer
+from garf.io import writer as garf_writer
 from google.api_core import exceptions as google_api_exceptions
 from opentelemetry import trace
 

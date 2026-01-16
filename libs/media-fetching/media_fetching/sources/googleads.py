@@ -24,10 +24,10 @@ import pathlib
 from collections.abc import Mapping, Sequence
 from typing import Literal, get_args
 
-import garf_google_ads
-import garf_youtube_data_api
 import pydantic
-from garf_core import report
+from garf.community.google.ads import GoogleAdsApiReportFetcher, api_clients
+from garf.community.google.youtube import YouTubeDataApiReportFetcher
+from garf.core import report
 from media_tagging import media
 
 from media_fetching import exceptions
@@ -101,10 +101,10 @@ class Fetcher(models.BaseMediaInfoFetcher):
     self._fetcher = None
 
   @property
-  def fetcher(self) -> garf_google_ads.GoogleAdsApiReportFetcher:
+  def fetcher(self) -> GoogleAdsApiReportFetcher:
     if not self._fetcher:
-      self._fetcher = garf_google_ads.GoogleAdsApiReportFetcher(
-        api_client=garf_google_ads.api_clients.GoogleAdsApiClient(
+      self._fetcher = GoogleAdsApiReportFetcher(
+        api_client=api_clients.GoogleAdsApiClient(
           path_to_config=self.ads_config
         ),
         enable_cache=self.enable_cache,
@@ -299,7 +299,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
     video_ids = performance['media_url'].to_list(
       row_type='scalar', distinct=True
     )
-    youtube_api_fetcher = garf_youtube_data_api.YouTubeDataApiReportFetcher()
+    youtube_api_fetcher = YouTubeDataApiReportFetcher()
     video_orientations = youtube_api_fetcher.fetch(
       video_orientations_query,
       id=video_ids,

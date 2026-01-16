@@ -18,7 +18,7 @@
 import fastapi
 import pydantic
 import uvicorn
-from garf_io import writer
+from garf.io import writer
 
 import media_fetching
 from media_fetching.sources import models

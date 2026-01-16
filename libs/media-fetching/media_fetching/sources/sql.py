@@ -20,8 +20,8 @@ from collections.abc import Sequence
 from typing import Literal
 
 import pydantic
-from garf_core import report
-from garf_executors import bq_executor, sql_executor
+from garf.core import report
+from garf.executors import bq_executor, sql_executor
 
 from media_fetching.sources import models
 

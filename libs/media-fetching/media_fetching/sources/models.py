@@ -20,7 +20,7 @@ import abc
 import enum
 
 import pydantic
-from garf_core import report
+from garf.core import report
 
 
 class InputSource(str, enum.Enum):

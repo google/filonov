@@ -22,7 +22,7 @@ import warnings
 from typing import ClassVar, Literal
 
 import pydantic
-from garf_core import base_query
+from garf.core import base_query
 
 warnings.filterwarnings('ignore', category=UserWarning)
 SupportedMediaTypes = Literal['IMAGE', 'YOUTUBE_VIDEO', 'TEXT']

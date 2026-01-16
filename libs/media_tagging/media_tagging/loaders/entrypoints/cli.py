@@ -19,7 +19,7 @@
 import enum
 
 import typer
-from garf_executors.entrypoints import utils as garf_utils
+from garf.executors.entrypoints import utils as garf_utils
 from typing_extensions import Annotated
 
 import media_tagging
