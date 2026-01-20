@@ -163,6 +163,8 @@ def main(
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
   )
+  source = source.name
+  writer = writer.name
   parsed_param_keys = set(
     [source, 'tagger', 'similarity', writer] + list(supported_enrichers)
   )
