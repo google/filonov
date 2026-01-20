@@ -152,7 +152,10 @@ class Fetcher(models.BaseMediaInfoFetcher):
       AND dataRange IN ({start_date}, {end_date})
     """
     performance = self.fetcher.fetch(
-      query.format(**fetching_request.query_parameters, line_items=line_items)
+      query_specification=query.format(
+        **fetching_request.query_parameters, line_items=line_items
+      ),
+      title='youtube_performance',
     )
     if fetching_request.media_type == 'YOUTUBE_VIDEO':
       self._add_video_info(performance)
@@ -171,12 +174,16 @@ class Fetcher(models.BaseMediaInfoFetcher):
         FROM standard
         WHERE advertiser IN ({advertiser})
         AND country IN ({country})
+        {line_item_type}
         AND dataRange IN ({start_date}, {end_date})
       """
     line_items = self.fetcher.fetch(
-      query.format(**fetching_request.query_parameters, country=country)
-    ).to_list(row_type='scalar', distinct=True)
-    return set(line_items)
+      query_specification=query.format(
+        **fetching_request.query_parameters, country=country
+      ),
+      title='garf_line_items_filtered_by_country',
+    )
+    return set(line_items.to_list(row_type='scalar', distinct=True))
 
   def _get_country_line_items(
     self,
@@ -205,15 +212,17 @@ class Fetcher(models.BaseMediaInfoFetcher):
           metric_client_cost_advertiser_currency AS cost
         FROM standard
         WHERE advertiser IN ({advertiser})
+        {line_item_type}
         AND line_item IN ({line_item_ids})
         AND dataRange IN ({start_date}, {end_date})
       """
     line_items = self.fetcher.fetch(
-      query.format(
+      query_specification=query.format(
         **fetching_request.query_parameters,
         country=country,
         line_item_ids=line_item_ids,
-      )
+      ),
+      title='garf_line_items_segmented_by_country',
     )
     countries = country.split(',')
     for row in line_items:
@@ -230,8 +239,8 @@ class Fetcher(models.BaseMediaInfoFetcher):
     )
     return {
       line_item
-      for line_item, country in geo_info.items()
-      if country != 'Unknown'
+      for line_item, target_country in geo_info.items()
+      if target_country is True
     }
 
   def _get_campaign_line_items(
@@ -249,6 +258,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
         FROM standard
         WHERE advertiser IN ({advertiser})
         AND media_plan_name IN ({campaigns})
+        {line_item_type}
         AND dataRange IN ({start_date}, {end_date})
       """
     line_items = self.fetcher.fetch(

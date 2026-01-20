@@ -48,6 +48,7 @@ class GoogleAdsEnricher:
       'GOOGLE_ADS_CONFIGURATION_FILE_PATH',
       str(pathlib.Path.home() / 'google-ads.yaml'),
     )
+    self._fetcher = None
     self.kwargs = kwargs
 
   @functools.cached_property
@@ -134,14 +135,14 @@ class GoogleAdsEnricher:
     """
 
     country_mapping = self.fetcher.fetch(
-      geo_targets_query, self.accounts[0]
+      query_specification=geo_targets_query, account=self.accounts[0]
     ).to_dict(
       key_column='country_id',
       value_column='country_name',
       value_column_output='scalar',
     )
     geo_extra_info = self.fetcher.fetch(
-      campaign_geos, self.accounts
+      query_specification=campaign_geos, account=self.accounts
     ).to_pandas()
     geo_extra_info['country'] = geo_extra_info['country_id'].map(
       country_mapping
