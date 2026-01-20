@@ -249,7 +249,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
   ) -> None:
     """Injects number of campaigns media is presented in into report."""
     info = {
-      media_url: str(len(campaigns))
+      media_url: str(len(set(campaigns)))
       for media_url, campaigns in performance.to_dict(
         'media_url', 'campaign_id'
       ).items()
@@ -287,7 +287,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
     video_durations = {
       video_id: video_lengths[0]
       for video_id, video_lengths in self.fetcher.fetch(
-        video_durations_query, self.accounts
+        query_specification=video_durations_query, account=self.accounts
       )
       .to_dict(
         key_column='video_id',
@@ -351,16 +351,24 @@ class Fetcher(models.BaseMediaInfoFetcher):
     """
 
     country_mapping = self.fetcher.fetch(
-      geo_targets_query, self.accounts[0]
+      query_specification=geo_targets_query, account=self.accounts[0]
     ).to_dict(
       key_column='country_id',
       value_column='country_name',
       value_column_output='scalar',
     )
-    geo_extra_info = self.fetcher.fetch(campaign_geos, self.accounts)
+    country_codes = [
+      country_code
+      for country_code, country_name in country_mapping.items()
+      if country_name in countries
+    ]
+    geo_extra_info = self.fetcher.fetch(
+      query_specification=campaign_geos,
+      account=self.accounts,
+    )
 
     for row in geo_extra_info:
-      row['target_country'] = row.country in countries
+      row['target_country'] = row.country_id in country_codes
     geo_extra_info = geo_extra_info.to_pandas()
     geo_extra_info['country'] = geo_extra_info['country_id'].map(
       country_mapping
@@ -372,13 +380,9 @@ class Fetcher(models.BaseMediaInfoFetcher):
     geo_extra_info['share'] = (
       geo_extra_info['cost'] / geo_extra_info['total_campaign_cost']
     )
-    geo_info = (
-      geo_extra_info.groupby('campaign_id')
-      .apply(get_dominant_country)
-      .to_dict()
-    )
+    geo_info = geo_extra_info.groupby('campaign_id').apply(get_dominant_country)
     return {
       campaign_id
-      for campaign_id, country in geo_info.items()
-      if country != 'Unknown'
+      for campaign_id, country in geo_info.to_dict().items()
+      if country is True
     }
