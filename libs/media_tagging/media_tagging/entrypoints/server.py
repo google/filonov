@@ -16,11 +16,17 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
 import fastapi
+import typer
 import uvicorn
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
-from media_tagging import exceptions, media_tagging_service, repositories
+from media_tagging import (
+  exceptions,
+  media_tagging_service,
+  repositories,
+  taggers,
+)
 
 
 class MediaTaggingSettings(BaseSettings):
@@ -48,10 +54,11 @@ class Dependencies:
 
 
 router = fastapi.APIRouter(prefix='/media_tagging')
+typer_app = typer.Typer()
 
 
 @router.post('/tag')
-async def tag(
+def tag(
   request: media_tagging_service.MediaTaggingRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> dict[str, str]:
@@ -74,7 +81,7 @@ async def tag(
 
 
 @router.post('/describe')
-async def describe(
+def describe(
   request: media_tagging_service.MediaTaggingRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> dict[str, str]:
@@ -96,7 +103,19 @@ async def describe(
     raise fastapi.HTTPException(status_code=404, detail=str(e))
 
 
-if __name__ == '__main__':
+@router.get('/taggers')
+def available_taggers() -> list[str]:
+  return list(taggers.TAGGERS.keys())
+
+
+@typer_app.command()
+def main(
+  port: Annotated[int, typer.Option(help='Port to start the server')] = 8000,
+):
   app = fastapi.FastAPI()
   app.include_router(router)
-  uvicorn.run(app)
+  uvicorn.run(app, port=port)
+
+
+if __name__ == '__main__':
+  typer_app()

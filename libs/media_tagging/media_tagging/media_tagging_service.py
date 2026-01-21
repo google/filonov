@@ -443,6 +443,7 @@ class MediaTaggingService:
           medium,
           tagging_options,
         )
+        tagging_results.media_url = medium.media_path
         if tagging_results is None:
           continue
         results.append(tagging_results)
