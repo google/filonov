@@ -113,6 +113,7 @@ class TaggingResult(pydantic.BaseModel):
     description='Additional details used during tagging', default_factory=dict
   )
   hash: str | None = pydantic.Field(description='media hash', default=None)
+  media_url: str | None = pydantic.Field(description='media_url', default=None)
 
   def trim_tags(self, value: float) -> None:
     """Removes tags from tagging result with low scores."""

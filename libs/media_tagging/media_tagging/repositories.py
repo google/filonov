@@ -217,14 +217,15 @@ class SqlAlchemyTaggingResultsRepository(
       media.Medium(media_path=media_path, media_type=media_type)
       for media_path in media_paths
     ]
-    media_hashes = []
+    media_identifier_to_path = {}
     for m in all_media:
       try:
-        media_hashes.append(m.identifier)
+        media_identifier_to_path[m.identifier] = m.media_path
       except media.InvalidMediaPathError:
         continue
-    if not media_hashes:
+    if not media_identifier_to_path:
       return []
+    media_hashes = list(media_identifier_to_path.keys())
     with self.session() as session:
       query = session.query(TaggingResults).where(
         TaggingResults.hash.in_(media_hashes)
@@ -243,14 +244,24 @@ class SqlAlchemyTaggingResultsRepository(
 
       if not (results := query.all()):
         return []
-      tagging_results = [res.to_pydantic_model() for res in results]
+      tagging_results = []
+      for res in results:
+        tagging_res = res.to_pydantic_model()
+        tagging_res.media_url = media_identifier_to_path.get(
+          tagging_res.identifier
+        )
+        tagging_results.append(tagging_res)
       if not deduplicate:
         return tagging_results
       dedup = collections.defaultdict(list)
       for result in tagging_results:
         dedup[result.hash].append(result.content)
       hash_to_identifier_mapping = {
-        t.hash: t.identifier for t in tagging_results
+        t.hash: {
+          'identifier': t.identifier,
+          'path': media_identifier_to_path.get(t.identifier),
+        }
+        for t in tagging_results
       }
       final_results = []
       for hash, identifier in hash_to_identifier_mapping.items():
@@ -260,12 +271,13 @@ class SqlAlchemyTaggingResultsRepository(
           content = list(set(dedup[hash]))
         final_results.append(
           tagging_result.TaggingResult(
-            identifier=identifier,
+            identifier=identifier.get('identifier'),
             type=media_type.lower(),
             tagger=tagger_type,
             output=output if output == 'tag' else 'description',
             content=content,
             hash=hash,
+            media_url=identifier.get('path'),
           )
         )
       return final_results
