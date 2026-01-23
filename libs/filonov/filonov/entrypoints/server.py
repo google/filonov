@@ -266,9 +266,7 @@ def generate_creative_map(
   ).generate_creative_map(request)
 
   if request.output_type == 'file':
-    destination = utils.build_creative_map_destination(
-      request.output_parameters.output_name
-    )
+    destination = utils.build_creative_map_destination(request.output_name)
     generated_map.save(destination)
     return fastapi.responses.JSONResponse(
       content=f'Creative map was saved to {destination}.'

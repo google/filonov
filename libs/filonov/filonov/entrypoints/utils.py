@@ -29,14 +29,16 @@ def build_creative_map_destination(path: str):
 
 
 def build_cli_command(
-  request: filonov.GenerateCreativeMapRequest, db: str | None
+  request: filonov.GenerateCreativeMapRequest | filonov.GenerateTablesRequest,
+  output: str,
+  db: str | None,
 ) -> str:
   command_template = (
     'filonov --source {source} \\\n'
     '\t--media-type {media_type} \\\n'
     '\t--tagger {tagger} \\\n'
     '{source_parameters} \\\n'
-    '\t--output-name {output}'
+    '\t--output {output}'
   )
   source = request.source.value
   source_parameters = []
@@ -54,9 +56,14 @@ def build_cli_command(
     'source': source,
     'media_type': request.media_type,
     'tagger': request.tagger,
-    'output': request.output_parameters.output_name,
+    'output': output,
     'source_parameters': source_parameters,
   }
+  if output == 'tables':
+    command_template = command_template + ' \\\n\t--writer {writer}'
+    params['writer'] = request.writer
+  else:
+    params['output_name'] = request.output_name
   non_db_command = command_template.format(**params).strip()
   if db:
     return f'{non_db_command} \\\n\t--db-uri {db}'

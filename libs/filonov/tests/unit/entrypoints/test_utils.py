@@ -37,19 +37,40 @@ def test_build_creative_map_destination_returns_correct_file_name(
   assert result == expected
 
 
-def test_build_cli_command():
+def test_build_cli_command_map():
   request = filonov.GenerateCreativeMapRequest(
     source='fake',
     media_type='IMAGE',
     tagger='gemini',
   )
 
-  command = utils.build_cli_command(request=request, db='sqlite:///test.db')
+  command = utils.build_cli_command(
+    request=request, output='map', db='sqlite:///test.db'
+  )
   expected_command = (
     'filonov --source fake --media-type IMAGE --tagger gemini '
     '--fake.media_identifier=media_url --fake.media_name=media_name '
     '--fake.metrics=clicks,impressions '
-    '--output-name creative_map '
+    '--output map '
+    '--db-uri sqlite:///test.db'
+  )
+  assert command.replace('\\\n\t', '') == expected_command
+
+
+def test_build_cli_command_tables():
+  request = filonov.GenerateTablesRequest(
+    source='fake', media_type='IMAGE', tagger='gemini', writer='csv'
+  )
+
+  command = utils.build_cli_command(
+    request=request, output='tables', db='sqlite:///test.db'
+  )
+  expected_command = (
+    'filonov --source fake --media-type IMAGE --tagger gemini '
+    '--fake.media_identifier=media_url --fake.media_name=media_name '
+    '--fake.metrics=clicks,impressions '
+    '--output tables '
+    '--writer csv '
     '--db-uri sqlite:///test.db'
   )
   assert command.replace('\\\n\t', '') == expected_command
