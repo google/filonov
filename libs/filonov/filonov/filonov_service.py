@@ -45,18 +45,6 @@ class SimilarityParameters(pydantic.BaseModel):
   algorithm: str | None = None
 
 
-class OutputParameters(pydantic.BaseModel):
-  """Parameters for saving creative maps data.
-
-  Attributes:
-    output_name: Fully qualified name to store the results.
-    output: Type of output.
-  """
-
-  output_name: str = 'creative_map'
-  output: Literal['map', 'dashboard'] = 'map'
-
-
 class BaseRequest(pydantic.BaseModel):
   """Specifies structure of request for working with Filonov.
 
@@ -104,32 +92,33 @@ class BaseRequest(pydantic.BaseModel):
 
 
 class GenerateTablesRequest(BaseRequest):
+  """Specifies structure of request for writing results to tables.
+
+  Attributes:
+    writer: Writer to use (https://google.github.io/garf/usage/writers/).
+    writer_parameters: Parameters to setup a writer.
+    table_alias: Optional alias to include in the tables.
+  """
+
   writer: str
   writer_parameters: dict[str, str | int | float | bool] = pydantic.Field(
     default_factory=dict
   )
-  output_parameters: OutputParameters = OutputParameters(
-    output='dashboard', output_name='filonov'
-  )
+  table_alias: str | None = None
+  need_clustering: bool = True
 
 
 class GenerateCreativeMapRequest(BaseRequest):
   """Specifies structure of request for returning creative map.
 
   Attributes:
-    source: Source of getting data for creative map.
-    media_type: Type of media to get.
-    tagger: Type of tagger to use.
-    tagger_parameters: Parameters to finetune tagging.
-    similarity_parameters: Parameters to similarity matching.
-    source_parameters: Parameters to get data from the source of creative map.
+    output_name: Name of creative map.
     embed_previews: Whether media previews should be embedded into a map.
-    context: Overall context of map generation.
+    omit_series: Whether to exclude metric time series in the map.
+    output_type: Type of output, either file or standard output.
   """
 
-  output_parameters: OutputParameters = OutputParameters(
-    output='map', output_name='creative_map'
-  )
+  output_name: str = 'creative_map'
   embed_previews: bool = False
   omit_series: bool = False
   output_type: Literal['file', 'console'] = 'file'
@@ -271,15 +260,19 @@ class FilonovService:
     )
     media_url_to_id = {p.media_path: k for k, p in media_info.items()}
     tag_performance = []
-    getter = operator.attrgetter(
-      *media_data.column_names, 'cluster', 'output_name'
-    )
-    output_name = request.output_parameters.output_name
+    columns = list(media_data.column_names)
+    if project_name := request.table_alias:
+      columns.append('project_name')
+    if need_clustering := request.need_clustering:
+      columns.append('cluster')
+    getter = operator.attrgetter(*columns)
     logger.info('Generating dashboard sources...')
     for row in media_data:
       media_id = media_url_to_id.get(row.media_url)
-      row['cluster'] = clusters.get(media_id)
-      row['output_name'] = output_name
+      if need_clustering:
+        row['cluster'] = clusters.get(media_id)
+      if project_name:
+        row['project_name'] = project_name
       if tags := media_to_tags.get(media_id):
         for tag in tags:
           tag_performance.append([tag.name, tag.score, *getter(row)])

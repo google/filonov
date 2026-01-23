@@ -95,7 +95,7 @@ def main(
   output_name: Annotated[
     str,
     typer.Option(
-      help='Name of output file',
+      help='Name of output file (applicable only to output type `map`)',
     ),
   ] = 'creative_map',
   db_uri: Annotated[
@@ -116,6 +116,12 @@ def main(
       help='Whether media previews should be embedded into a creative map',
     ),
   ] = False,
+  need_clustering: Annotated[
+    bool,
+    typer.Option(
+      help='Whether include clustering information into output tables',
+    ),
+  ] = True,
   omit_series: Annotated[
     bool,
     typer.Option(
@@ -221,24 +227,23 @@ def main(
       **params,
       writer=writer,
       writer_parameters=extra_parameters.get(writer, {}),
+      table_alias=output_name if output_name != 'creative_map' else None,
+      need_clustering=need_clustering,
     )
     filonov_service.generate_tables(request)
   else:
     request = filonov.GenerateCreativeMapRequest(
       **params,
-      output_parameters=filonov.filonov_service.OutputParameters(
-        output_name=output_name
-      ),
+      output_name=output_name,
       embed_previews=embed_previews,
       omit_series=omit_series,
     )
     generated_map = filonov_service.generate_creative_map(request)
-    destination = utils.build_creative_map_destination(
-      request.output_parameters.output_name
-    )
+    destination = utils.build_creative_map_destination(output_name)
     generated_map.save(destination)
   span.set_attribute(
-    'filonov.cli.command', utils.build_cli_command(request, db_uri)
+    'filonov.cli.command',
+    utils.build_cli_command(request=request, output=output, db=db_uri),
   )
 
 
