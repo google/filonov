@@ -11,12 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defines Google Ads API specific query parser."""
+"""Defines Media Tagging API specific query parser."""
 
+import json
 import re
 from collections import defaultdict
 
+import smart_open
 from garf.core import query_editor, query_parser
+
+
+class MediaTaggingApiQueryError(query_parser.GarfQueryError):
+  """Query errors."""
 
 
 class MediaTaggingApiQuery(query_editor.QuerySpecification):
@@ -26,11 +32,39 @@ class MediaTaggingApiQuery(query_editor.QuerySpecification):
     super().extract_filters()
     filters = defaultdict(dict)
     for field in self.query.filters:
+      # key, operator, *value = re.split(
+      #   pattern=r'(=|in)', string=field.lower(), maxsplit=3
+      # )
       key, operator, *value = field.split(' ', maxsplit=3)
       if len(nested_keys := key.split('.')) > 1:
         key, nested_key = nested_keys
       else:
         nested_key = None
+      if nested_key == 'custom_schema':
+        if (schema := _destringify(value[0])) in (
+          'boolean',
+          'integer',
+          'number',
+          'string',
+        ):
+          filters[key].update({'custom_schema': {'type': schema}})
+        elif schema.endswith('.json'):
+          try:
+            with smart_open.open(schema, 'r', encoding='utf-8') as f:
+              schema_data = json.load(f)
+              filters[key].update({'custom_schema': schema_data})
+          except FileNotFoundError as e:
+            raise MediaTaggingApiQueryError(
+              f'Failed to read schema from a file {schema}'
+            ) from e
+        else:
+          try:
+            full_schema = ' '.join(value).replace("'", '')
+            schema_data = json.loads(full_schema)
+            filters[key].update({'custom_schema': schema_data})
+          except json.decoder.JSONDecoder as e:
+            raise MediaTaggingApiQueryError(f'Invalid schema {schema}') from e
+        continue
       if operator.lower() == 'in':
         values = re.findall(r'\((.*?)\)', field)
         if not (values := values[0]):
