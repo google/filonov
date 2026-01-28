@@ -191,7 +191,15 @@ class Fetcher(models.BaseMediaInfoFetcher):
       'SELECT customer.id FROM campaign '
       f'WHERE campaign.advertising_channel_type IN ({campaign_types})'
     )
-    return self.fetcher.expand_mcc(fetching_request.account, customer_ids_query)
+
+    accounts = self.fetcher.expand_mcc(
+      fetching_request.account, customer_ids_query
+    )
+    if not accounts:
+      raise exceptions.MediaFetchingError(
+        f'No accounts found for campaign type(s) {campaign_types} '
+      )
+    return accounts
 
   def _execute_performance_queries(
     self,
@@ -269,13 +277,6 @@ class Fetcher(models.BaseMediaInfoFetcher):
     Returns:
       Mapping between video id and its information.
     """
-    video_durations_query = """
-     SELECT
-       media_file.video.youtube_video_id AS video_id,
-       media_file.video.ad_duration_millis / 1000 AS video_duration
-     FROM media_file
-     WHERE media_file.type = VIDEO
-    """
     video_orientations_query = """
     SELECT
       id,
@@ -283,18 +284,6 @@ class Fetcher(models.BaseMediaInfoFetcher):
       player.embedHeight AS height
     FROM videos
     """
-
-    video_durations = {
-      video_id: video_lengths[0]
-      for video_id, video_lengths in self.fetcher.fetch(
-        query_specification=video_durations_query, account=self.accounts
-      )
-      .to_dict(
-        key_column='video_id',
-        value_column='video_duration',
-      )
-      .items()
-    }
 
     video_ids = performance['media_url'].to_list(
       row_type='scalar', distinct=True
@@ -323,7 +312,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
     for row in performance:
       video_id = row.media_url
       row['orientation'] = video_orientations.get(video_id, 0.0)
-      row['duration'] = video_durations.get(video_id, 0.0)
+      row['duration'] = row.video_duration
 
   def _get_campaign_ids_for_countries(self, countries: list[str]) -> list[int]:
     threshold = 0.5
