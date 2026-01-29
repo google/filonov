@@ -20,6 +20,7 @@ from typing import Optional
 import typer
 from garf.executors.entrypoints import utils as garf_utils
 from garf.io import writer as garf_writer
+from opentelemetry import trace
 from typing_extensions import Annotated
 
 import media_tagging
@@ -136,10 +137,12 @@ def tag(
   log_name: LogName = 'media-tagger',
   parallel_threshold: ParallelTreshold = 10,
 ) -> None:
+  span = trace.get_current_span()
   tagging_service = media_tagging_service.MediaTaggingService(
     repositories.SqlAlchemyTaggingResultsRepository(db_uri)
   )
   media_paths, parameters = utils.parse_typer_arguments(media_paths)
+  span.set_attribute('media_tagger.num_media_to_process', len(media_paths))
   extra_parameters = garf_utils.ParamsParser(['tagger', writer, 'input']).parse(
     parameters
   )
@@ -159,7 +162,6 @@ def tag(
     parallel_threshold=parallel_threshold,
     deduplicate=deduplicate,
   )
-  logger.info(request)
   path_processor = extra_parameters.get('tagger', {}).get('path_processor')
   tagging_results = tagging_service.tag_media(request, path_processor)
   if output is None:
