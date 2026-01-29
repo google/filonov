@@ -18,8 +18,14 @@ import urllib.parse
 import requests
 from garf.community.experimental.media_tagging import query_editor
 from garf.core import api_clients
+from opentelemetry import trace
 
 from media_tagging import MediaTaggingRequest, MediaTaggingService, repositories
+
+tracer = trace.get_tracer(
+  instrumenting_module_name='garf.community.experimental.media_tagging',
+)
+
 
 logging.getLogger('media-tagger').setLevel(logging.WARNING)
 
@@ -54,6 +60,17 @@ class MediaTaggingApiClient(api_clients.RestApiClient):
     self, request: query_editor.MediaTaggingApiQuery, **kwargs: str
   ) -> api_clients.GarfApiResponse:
     tagging_request = MediaTaggingRequest(**request.filters)
+    with tracer.start_as_current_span('request') as span:
+      span.set_attribute(
+        'media_tagger.num_media_to_process', len(tagging_request.media_paths)
+      )
+      span.set_attribute('media_tagger.media_type', tagging_request.media_type)
+      span.set_attribute(
+        'media_tagger.tagger_type', tagging_request.tagger_type
+      )
+      span.set_attribute(
+        'media_tagger.backend', 'remote' if self.endpoint else 'local'
+      )
     if self.endpoint:
       resource = 'describe' if request.resource_name == 'description' else 'tag'
       url = urllib.parse.urljoin(self.endpoint, f'/media_tagging/{resource}')
