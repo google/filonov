@@ -96,4 +96,5 @@ class MediaTaggingApiQuery(query_editor.QuerySpecification):
 
 
 def _destringify(field: str) -> str:
-  return re.sub(r'^[\'"]|[\'"]$', '', field.strip())
+  field = re.sub(r'\[|\]$', '', field.strip())
+  return re.sub(r'^[\'"]|[\'"]$', '', field)
