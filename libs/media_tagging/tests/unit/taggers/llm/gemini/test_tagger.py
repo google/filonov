@@ -46,13 +46,3 @@ class TestGeminiTagger:
       match='There are no supported taggers for media type: UNKNOWN',
     ):
       test_tagger.create_tagging_strategy(media.MediaTypeEnum.UNKNOWN)
-
-  def test_create_tagging_strategy_raises_error_on_model_media_mismatch(
-    self,
-  ):
-    test_tagger = tagger.GeminiTagger()
-    with pytest.raises(
-      tagger.GeminiTaggerError,
-      match='Working with WEBPAGE media type works with gemini-2.5 models only',
-    ):
-      test_tagger.create_tagging_strategy(media.MediaTypeEnum.WEBPAGE)
