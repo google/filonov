@@ -85,13 +85,6 @@ class GeminiTagger(base.BaseTagger):
       raise GeminiTaggerError(
         f'There are no supported taggers for media type: {media_type.name}'
       )
-    if (
-      media_type == media.MediaTypeEnum.WEBPAGE
-      and 'gemini-2.5' not in self.model_name
-    ):
-      raise GeminiTaggerError(
-        'Working with WEBPAGE media type works with gemini-2.5 models only'
-      )
     return tagging_strategy(
       model_name=self.model_name,
       model_parameters=self.model_parameters,
