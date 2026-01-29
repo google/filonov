@@ -283,11 +283,12 @@ class MediaTaggingService:
     span = trace.get_current_span()
     span.set_attribute('media_tagger.tagger', tagging_request.tagger_type)
     if isinstance(path_processor, str):
-      path_processor = discover_path_processors().get(path_processor)
+      path_processor_str = path_processor
+      path_processor = discover_path_processors().get(path_processor_str)
     if not path_processor:
       path_processor = default_path_processor
     else:
-      span.set_attribute('media_tagger.path_processor', path_processor)
+      span.set_attribute('media_tagger.path_processor', path_processor_str)
     concrete_tagger = tagging_request.tagger
     media_type_enum = tagging_request.media_type_enum
     span.set_attribute('media_tagger.media_type', media_type_enum.name)
