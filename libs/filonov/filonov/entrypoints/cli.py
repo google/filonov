@@ -177,7 +177,7 @@ def main(
   extra_parameters = garf_utils.ParamsParser(parsed_param_keys).parse(ctx.args)
   fetching_service = media_fetching.MediaFetchingService.from_source_alias(
     source=source,
-    enable_cache=bool(extra_parameters.get(source, {}).get('enable_cache')),
+    **extra_parameters.get(source),
   )
 
   if extra_parameters.get('tagger', {}).get('db_uri'):
@@ -230,6 +230,10 @@ def main(
       table_alias=output_name if output_name != 'creative_map' else None,
       need_clustering=need_clustering,
     )
+    span.set_attribute(
+      'filonov.cli.command',
+      utils.build_cli_command(request=request, output=output, db=db_uri),
+    )
     filonov_service.generate_tables(request)
   else:
     request = filonov.GenerateCreativeMapRequest(
@@ -238,13 +242,13 @@ def main(
       embed_previews=embed_previews,
       omit_series=omit_series,
     )
+    span.set_attribute(
+      'filonov.cli.command',
+      utils.build_cli_command(request=request, output=output, db=db_uri),
+    )
     generated_map = filonov_service.generate_creative_map(request)
     destination = utils.build_creative_map_destination(output_name)
     generated_map.save(destination)
-  span.set_attribute(
-    'filonov.cli.command',
-    utils.build_cli_command(request=request, output=output, db=db_uri),
-  )
 
 
 if __name__ == '__main__':

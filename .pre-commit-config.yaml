@@ -16,7 +16,7 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 fail_fast: true
-default_stages: [commit]
+default_stages: [pre-commit]
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v3.2.0
@@ -49,18 +49,22 @@ repos:
     entry: pytest -n auto libs/media_tagging/tests/unit
     language: system
     pass_filenames: false
+    files: ^libs/media_tagging/
   - id: fetching-tests
     name: fetching-tests
     entry: pytest -n auto libs/media-fetching/tests/unit
     language: system
     pass_filenames: false
+    files: ^libs/(media_tagging|media-fetching)
   - id: similarity-tests
     name: similarity-tests
     entry: pytest -n auto libs/media_similarity/tests/unit
     language: system
     pass_filenames: false
+    files: ^libs/(media_tagging|media_similarity)
   - id: filonov-tests
     name: filonov-tests
     entry: pytest -n auto libs/filonov/tests/unit
     language: system
     pass_filenames: false
+    files: ^libs/(media_tagging/.*|media_similarity/.*|media-fetching/.*|filonov/.*)\.py$
