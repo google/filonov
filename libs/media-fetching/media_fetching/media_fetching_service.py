@@ -46,6 +46,8 @@ class MediaFetchingService:
     self,
     source: str | models.InputSource | None = None,
     source_fetcher: models.BaseMediaInfoFetcher | None = None,
+    enable_cache: bool = False,
+    **kwargs: str,
   ) -> None:
     """Initializes MediaFetchingService.
 
@@ -62,7 +64,9 @@ class MediaFetchingService:
         FutureWarning,
         stacklevel=2,
       )
-      self.fetcher = _get_source_fetcher(source)
+      self.fetcher = _get_source_fetcher(
+        source=source, enable_cache=enable_cache, **kwargs
+      )
       self.source = source
     else:
       fetcher_alias = None
@@ -86,7 +90,9 @@ class MediaFetchingService:
     **kwargs: str,
   ) -> MediaFetchingService:
     """Initialized MediaFetchingService from source alias."""
-    source_fetcher = _get_source_fetcher(source, enable_cache, **kwargs)
+    source_fetcher = _get_source_fetcher(
+      source=source, enable_cache=enable_cache, **kwargs
+    )
     return cls(source_fetcher=source_fetcher)
 
   @tracer.start_as_current_span('fetch')

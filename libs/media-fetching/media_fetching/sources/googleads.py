@@ -96,7 +96,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
     enable_cache: bool = False,
     **kwargs: str,
   ) -> None:
-    self.ads_config = ads_config
+    self.ads_config = kwargs.get('path_to_config') or ads_config
     self.enable_cache = enable_cache
     self._fetcher = None
 
@@ -236,6 +236,7 @@ class Fetcher(models.BaseMediaInfoFetcher):
           **fetching_parameters, campaign_ids=campaign_ids
         ),
         account=self.accounts,
+        title=f'media-fetching-{campaign_type}',
       )
       if len(performance_queries) == 1:
         return performance

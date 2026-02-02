@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import garf_core
 import pytest
+from garf.core import report
 from media_fetching.enrichers import dbm, extra_info
 
 
@@ -23,10 +23,10 @@ class TestBidManagerEnricher:
     return dbm.BidManagerEnricher()
 
   def test_brand_lift_enricher(self, mocker, enricher):
-    performance_report = garf_core.GarfReport(
+    performance_report = report.GarfReport(
       results=[[1]], column_names=['ad_group_id']
     )
-    fake_report = garf_core.GarfReport(
+    fake_report = report.GarfReport(
       results=[
         [1, 'CONSIDERATION', 100],
         [2, 'AWARENESS', 1000],
@@ -38,7 +38,7 @@ class TestBidManagerEnricher:
       ],
     )
     mocker.patch(
-      'garf_bid_manager.report_fetcher.BidManagerApiReportFetcher.fetch',
+      'garf.community.google.bid_manager.report_fetcher.BidManagerApiReportFetcher.fetch',
       return_value=fake_report,
     )
 
