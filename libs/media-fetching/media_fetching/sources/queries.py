@@ -118,6 +118,55 @@ class DisplayAssetPerformance(PerformanceQuery):
     self.query_text = self.query_text.format(**self.model_dump())
 
 
+class ResponsiveDisplayAssetPerformance(PerformanceQuery):
+  """Fetches image asset performance for Display campaigns."""
+
+  query_text: str = """
+  SELECT
+    '{campaign_type}' AS campaign_type,
+    segments.date AS date,
+    campaign.id AS campaign_id,
+    campaign.advertising_channel_type AS channel_type,
+    asset.name AS media_name,
+    asset.id AS asset_id,
+    asset.image_asset.full_size.url AS media_url,
+    ad_group_ad_asset_view.field_type AS format_type,
+    asset.image_asset.full_size.width_pixels /
+      asset.image_asset.full_size.height_pixels AS aspect_ratio,
+    asset.image_asset.file_size / 1024 AS file_size,
+    ad_group_ad.ad.name AS ad_name,
+    ad_group_ad_asset_view.policy_summary:approval_status AS approval_status,
+    metrics.cost_micros / 1e6 AS cost,
+    metrics.clicks AS clicks,
+    metrics.impressions AS impressions,
+    metrics.conversions AS conversions,
+    metrics.conversions_value AS conversions_value
+  FROM ad_group_ad_asset_view
+  WHERE
+    campaign.advertising_channel_type =  DISPLAY
+    AND asset.type = IMAGE
+    AND ad_group_ad_asset_view.field_type NOT IN (
+      BUSINESS_LOGO, LANDSCAPE_LOGO,  LOGO
+    )
+    AND segments.date BETWEEN '{start_date}' AND '{end_date}'
+    AND asset.image_asset.full_size.url != ''
+    AND metrics.cost_micros > {min_cost}
+    {campaign_ids}
+  """
+
+  start_date: str
+  end_date: str
+  media_type: SupportedMediaTypes
+  campaign_type: SupportedCampaignTypes
+  min_cost: int = 0
+  campaign_ids: list[int] | None = None
+
+  def model_post_init(self, __context__) -> None:  # noqa: D105
+    self.min_cost = int(self.min_cost * 1e6)
+    self.campaign_ids = _format_campaign_ids(self.campaign_ids)
+    self.query_text = self.query_text.format(**self.model_dump())
+
+
 class VideoPerformance(PerformanceQuery):
   """Fetches video ad performance for Video campaigns."""
 
@@ -483,7 +532,7 @@ QUERIES_MAPPING: dict[
 ] = {
   'search': SearchAssetPerformance,
   'app': AppAssetPerformance,
-  'display': DisplayAssetPerformance,
+  'display': [DisplayAssetPerformance, ResponsiveDisplayAssetPerformance],
   'pmax': PmaxAssetPerformance,
   'video': VideoPerformance,
   'demandgen': {
