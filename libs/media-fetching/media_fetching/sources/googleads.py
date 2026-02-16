@@ -231,17 +231,29 @@ class Fetcher(models.BaseMediaInfoFetcher):
     for campaign_type, query in performance_queries.items():
       fetching_parameters = fetching_request.query_params
       fetching_parameters['campaign_type'] = campaign_type
-      performance = self.fetcher.fetch(
-        query_specification=query(
-          **fetching_parameters, campaign_ids=campaign_ids
-        ),
-        account=self.accounts,
-        title=f'media-fetching-{campaign_type}',
-      )
-      if len(performance_queries) == 1:
-        return performance
-      if performance:
-        performance_reports.append(performance)
+      if isinstance(query, list):
+        for i, concrete_query in enumerate(query, start=1):
+          performance = self.fetcher.fetch(
+            query_specification=concrete_query(
+              **fetching_parameters, campaign_ids=campaign_ids
+            ),
+            account=self.accounts,
+            title=f'media-fetching-{campaign_type}-{i}',
+          )
+          if performance:
+            performance_reports.append(performance)
+      else:
+        performance = self.fetcher.fetch(
+          query_specification=query(
+            **fetching_parameters, campaign_ids=campaign_ids
+          ),
+          account=self.accounts,
+          title=f'media-fetching-{campaign_type}',
+        )
+        if len(performance_queries) == 1:
+          return performance
+        if performance:
+          performance_reports.append(performance)
     common_fields = []
     for performance_report in performance_reports:
       common_fields.append(set(performance_report.column_names))
