@@ -36,7 +36,7 @@ from media_tagging.media_tagging_service import (
 from filonov import creative_map, exceptions
 from filonov.telemetry import tracer
 
-logger = logging.getLogger('filonov')
+logger = logging.getLogger(__name__)
 
 
 class SimilarityParameters(pydantic.BaseModel):

@@ -23,11 +23,16 @@ from garf.executors.entrypoints import utils as garf_utils
 from garf.io import writer as garf_writer
 from media_tagging import media
 from media_tagging.entrypoints import utils as tagging_utils
+from media_tagging.entrypoints.tracer import (
+  initialize_logger,
+  initialize_tracer,
+)
 from typing_extensions import Annotated
 
 import media_fetching
 from media_fetching.sources import fetcher, models
 
+initialize_tracer('media-fetching')
 typer_app = typer.Typer()
 
 
@@ -112,9 +117,10 @@ def main(
     ),
   ] = False,
 ):  # noqa: D103
-  garf_utils.init_logging(
-    loglevel=loglevel.upper(), logger_type=logger, name=log_name
+  logger = garf_utils.init_logging(
+    logger_type=logger, loglevel=loglevel.upper(), name=log_name
   )
+  logger.addHandler(initialize_logger('media-fetching'))
 
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()

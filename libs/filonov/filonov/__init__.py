@@ -19,12 +19,16 @@
 Generates creative maps to be viewed via `https://filonov-ai.web.app/`.
 """
 
+import logging
+
 from filonov.creative_map import CreativeMap
 from filonov.filonov_service import (
   FilonovService,
   GenerateCreativeMapRequest,
   GenerateTablesRequest,
 )
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
   'FilonovService',

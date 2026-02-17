@@ -16,6 +16,8 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
+import logging
+
 from media_fetching.media_fetching_service import MediaFetchingService
 from media_fetching.sources.dbm import BidManagerFetchingParameters
 from media_fetching.sources.fake import FakeFetchingParameters
@@ -26,6 +28,8 @@ from media_fetching.sources.sql import (
   SqlAlchemyQueryFetchingParameters,
 )
 from media_fetching.sources.youtube import YouTubeFetchingParameters
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
   'MediaFetchingService',

@@ -40,6 +40,9 @@ logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('google_genai._api_client').setLevel(logging.ERROR)
 
 
+logger = logging.getLogger(__name__)
+
+
 class GeminiTaggingError(exceptions.MediaTaggingError):
   """Handles gemini specific errors during tagging."""
 
@@ -140,7 +143,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     Returns:
       Formatted response from Gemini.
     """
-    logging.debug('Tagging %s "%s"', medium.type, medium.name)
+    logger.debug('Tagging %s "%s"', medium.type, medium.name)
     prompt = self.build_prompt(medium.type, output, tagging_options)
     media_content = self.build_content(medium, **tagging_options.model_dump())
     prompt_config = genai.types.GenerateContentConfig()
@@ -167,7 +170,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       raise
 
     if hasattr(response, 'usage_metadata'):
-      logging.debug(
+      logger.debug(
         'usage_metadata for media %s: %s',
         medium.name,
         response.usage_metadata.dict(),

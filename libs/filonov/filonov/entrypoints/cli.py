@@ -27,15 +27,18 @@ from garf.io import writer as garf_writer
 from media_fetching.sources import models
 from media_tagging import media
 from media_tagging.entrypoints import utils as tagging_utils
+from media_tagging.entrypoints.tracer import (
+  initialize_logger,
+  initialize_tracer,
+)
 from opentelemetry import trace
 from typing_extensions import Annotated
 
 import filonov
 from filonov.entrypoints import utils
-from filonov.entrypoints.tracer import initialize_tracer
 from filonov.telemetry import tracer
 
-initialize_tracer()
+initialize_tracer('filonov')
 typer_app = typer.Typer()
 
 Tagger = Annotated[
@@ -163,9 +166,11 @@ def main(
   ] = False,
 ):  # noqa: D103
   span = trace.get_current_span()
-  garf_utils.init_logging(
+  logger = garf_utils.init_logging(
     loglevel=loglevel.upper(), logger_type=logger, name=log_name
   )
+  logger.addHandler(initialize_logger('filonov'))
+
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
   )

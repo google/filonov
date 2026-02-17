@@ -25,13 +25,16 @@ from garf.executors.entrypoints import utils as garf_utils
 from garf.io import writer as garf_writer
 from media_tagging import media
 from media_tagging.entrypoints import utils as tagging_utils
+from media_tagging.entrypoints.tracer import (
+  initialize_logger,
+  initialize_tracer,
+)
 from typing_extensions import Annotated
 
 import media_similarity
-from media_similarity.entrypoints.tracer import initialize_tracer
 from media_similarity.telemetry import tracer
 
-initialize_tracer()
+initialize_tracer('media-similarity')
 typer_app = typer.Typer()
 
 
@@ -161,7 +164,10 @@ def cluster(
     ),
   ] = 10,
 ):
-  garf_utils.init_logging(logger_type=logger, loglevel=loglevel, name=log_name)
+  logger = garf_utils.init_logging(
+    logger_type=logger, loglevel=loglevel.upper(), name=log_name
+  )
+  logger.addHandler(initialize_logger('media-similarity'))
   media_paths, parameters = tagging_utils.parse_typer_arguments(media_paths)
   extra_parameters = garf_utils.ParamsParser([writer, 'input', 'tagger']).parse(
     parameters
@@ -205,7 +211,10 @@ def compare(
   loglevel: LogLevel = 'INFO',
   log_name: LogName = 'media-similarity',
 ):
-  garf_utils.init_logging(logger_type=logger, loglevel=loglevel, name=log_name)
+  logger = garf_utils.init_logging(
+    logger_type=logger, loglevel=loglevel, name=log_name
+  )
+  logger.addHandler(initialize_logger('media-similarity'))
   media_paths, parameters = tagging_utils.parse_typer_arguments(media_paths)
   extra_parameters = garf_utils.ParamsParser([writer, 'input', 'tagger']).parse(
     parameters
@@ -249,7 +258,10 @@ def search(
   loglevel: LogLevel = 'INFO',
   log_name: LogName = 'media-similarity',
 ):
-  garf_utils.init_logging(logger_type=logger, loglevel=loglevel, name=log_name)
+  logger = garf_utils.init_logging(
+    logger_type=logger, loglevel=loglevel, name=log_name
+  )
+  logger.addHandler(initialize_logger('media-similarity'))
   media_paths, parameters = tagging_utils.parse_typer_arguments(media_paths)
   extra_parameters = garf_utils.ParamsParser([writer, 'input', 'tagger']).parse(
     parameters

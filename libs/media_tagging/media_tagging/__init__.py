@@ -19,10 +19,14 @@
 Media can be images, videos, urls, texts.
 """
 
+import logging
+
 from media_tagging.media_tagging_service import (
   MediaTaggingRequest,
   MediaTaggingService,
 )
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
   'MediaTaggingService',

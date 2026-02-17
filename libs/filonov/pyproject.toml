@@ -40,6 +40,9 @@ ui = [
 playwright = [
   "playwright",
 ]
+gcp= [
+  "media-tagging[gcp]",
+]
 all = [
   "filonov[server,ui,playwright]"
 ]

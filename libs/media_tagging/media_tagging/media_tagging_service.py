@@ -35,7 +35,7 @@ from media_tagging.taggers import TAGGERS
 from media_tagging.taggers import base as base_tagger
 from media_tagging.telemetry import tracer
 
-logger = logging.getLogger('media-tagger')
+logger = logging.getLogger(__name__)
 
 
 @tracer.start_as_current_span('discover_path_processors')
@@ -390,7 +390,9 @@ class MediaTaggingService:
       )
       for media_path in media_paths
     ]
-    return await asyncio.gather(*(run_with_semaphore(task) for task in tasks))
+    return await asyncio.gather(
+      *(run_with_semaphore(task) for task in tasks), return_exceptions=True
+    )
 
   async def _aprocess_media_sequentially(
     self,
