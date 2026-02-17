@@ -17,13 +17,12 @@
 
 from __future__ import annotations
 
-import asyncio
 import itertools
 import logging
 import os
 from collections.abc import Iterable, Sequence
 from concurrent import futures
-from typing import Final
+from typing import Final, Literal
 
 import igraph
 import media_tagging
@@ -70,6 +69,7 @@ class MediaClusteringRequest(pydantic.BaseModel):
     tagging_options: Tagging specific parameters.
     normalize: Whether to apply normalization threshold.
     custom_threshold: Optional threshold to pre-filter similar media.
+    algorithm: Optional algorithm for finding similar media.
     parallel_threshold:
       Number of parallel process for tagging / similarity detection.
     tagging_response: Optional results of tagging.
@@ -84,6 +84,7 @@ class MediaClusteringRequest(pydantic.BaseModel):
   )
   normalize: bool = True
   custom_threshold: float | None = None
+  algorithm: Literal['edges', 'community_walktrap'] | None = None
   parallel_threshold: int = 10
   tagging_response: (
     media_tagging.media_tagging_service.MediaTaggingResponse | None
@@ -281,6 +282,7 @@ class MediaSimilarityService:
       {
         'custom_threshold': request.custom_threshold,
         'normalize': request.normalize,
+        'algorithm': request.algorithm,
       },
     )
     if not request.media_paths and not request.tagging_response:
@@ -345,7 +347,10 @@ class MediaSimilarityService:
       logger.info('threshold is %.2f', threshold.threshold)
       logger.info('assigning clusters...')
       return _calculate_cluster_assignments(
-        calculated_similarity_pairs, threshold, hash_to_identifiers_mapping
+        similarity_pairs=calculated_similarity_pairs,
+        threshold=threshold,
+        hash_to_identifiers_mapping=hash_to_identifiers_mapping,
+        algorithm=request.algorithm,
       )
     if request.parallel_threshold > 1:
       total_batches = len(uncalculated_media_pairs)
@@ -401,7 +406,10 @@ class MediaSimilarityService:
     logger.info('threshold is %.2f', threshold.threshold)
     logger.info('assigning clusters...')
     return _calculate_cluster_assignments(
-      similarity_pairs, threshold, hash_to_identifiers_mapping
+      similarity_pairs=calculated_similarity_pairs,
+      threshold=threshold,
+      hash_to_identifiers_mapping=hash_to_identifiers_mapping,
+      algorithm=request.algorithm,
     )
 
   def find_similar_media(
@@ -488,6 +496,7 @@ def _calculate_cluster_assignments(
   similarity_pairs: Iterable[media_pair.SimilarityPair],
   threshold: adaptive_threshold.AdaptiveThreshold,
   hash_to_identifiers_mapping: dict[str, str],
+  algorithm: str | None = None,
 ) -> ClusteringResults:
   """Assigns cluster number for each media in similarity pairs.
 
@@ -499,6 +508,7 @@ def _calculate_cluster_assignments(
     similarity_pairs: Mapping between media_pair identifier and
       its similarity score.
     threshold: Threshold to identify similar media.
+    algorithm: Optional algorithm for finding similar media.
     hash_to_identifiers_mapping: Mapping between media hash and its identifier.
 
   Returns:
@@ -524,13 +534,39 @@ def _calculate_cluster_assignments(
     vertices=pd.DataFrame(media, columns=['media']),
   )
   final_clusters: dict[str, int] = {}
-  clusters = graph.community_walktrap().as_clustering()
-  for i, cluster_media in enumerate(clusters._formatted_cluster_iterator(), 1):
-    for media_hash in cluster_media.split(', '):
-      if media := hash_to_identifiers_mapping.get(media_hash):
-        final_clusters[media] = i
+  if algorithm is None or algorithm == 'community_walktrap':
+    clusters = graph.community_walktrap().as_clustering()
+    for i, cluster_media in enumerate(
+      clusters._formatted_cluster_iterator(), 1
+    ):
+      for media_hash in cluster_media.split(', '):
+        if media := hash_to_identifiers_mapping.get(media_hash):
+          final_clusters[media] = i
+  if not final_clusters:
+    final_clusters = {
+      m: i for i, m in enumerate(hash_to_identifiers_mapping.values(), 1)
+    }
+  if not similar_media:
+    logger.warning('no edges found in graph')
+    return ClusteringResults(
+      clusters=final_clusters,
+      adaptive_threshold=threshold.threshold,
+      graph=GraphInfo(nodes=nodes, edges=similar_media),
+    )
+
+  trimmed_similar_media = set()
+  if algorithm == 'community_walktrap':
+    for similar_medium in similar_media:
+      media_1, media_2, _ = similar_medium
+      if final_clusters.get(media_1) == final_clusters.get(media_2):
+        trimmed_similar_media.add(similar_medium)
+
+    logger.info(
+      'trimmed graph edges by %.2f',
+      (1 - len(trimmed_similar_media) / len(similar_media)),
+    )
   return ClusteringResults(
     clusters=final_clusters,
     adaptive_threshold=threshold.threshold,
-    graph=GraphInfo(nodes=nodes, edges=similar_media),
+    graph=GraphInfo(nodes=nodes, edges=trimmed_similar_media or similar_media),
   )
