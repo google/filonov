@@ -31,7 +31,7 @@ from media_fetching.enrichers import enricher
 from media_fetching.sources import fetcher, models
 from media_fetching.telemetry import tracer
 
-logger = logging.getLogger('media-fetching')
+logger = logging.getLogger(__name__)
 
 
 class MediaFetchingService:

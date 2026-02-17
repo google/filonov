@@ -26,10 +26,13 @@ from typing_extensions import Annotated
 import media_tagging
 from media_tagging import media, media_tagging_service, repositories
 from media_tagging.entrypoints import utils
-from media_tagging.entrypoints.tracer import initialize_tracer
+from media_tagging.entrypoints.tracer import (
+  initialize_logger,
+  initialize_tracer,
+)
 from media_tagging.telemetry import tracer
 
-initialize_tracer()
+initialize_tracer('media-tagger')
 typer_app = typer.Typer()
 
 MediaPaths = Annotated[
@@ -148,8 +151,9 @@ def tag(
   )
 
   logger = garf_utils.init_logging(
-    loglevel=loglevel, logger_type=logger, name=log_name
+    loglevel=loglevel, logger_type=logger.upper(), name=log_name
   )
+  logger.addHandler(initialize_logger('media-tagger'))
 
   media_paths = media_paths or media.get_media_paths_from_file(
     media.InputConfig(path=input, **extra_parameters.get('input'))
@@ -204,6 +208,7 @@ def describe(
   logger = garf_utils.init_logging(
     loglevel=loglevel, logger_type=logger, name=log_name
   )
+  logger.addHandler(initialize_logger('media-tagger'))
 
   media_paths = media_paths or media.get_media_paths_from_file(
     media.InputConfig(path=input, **extra_parameters.get('input'))

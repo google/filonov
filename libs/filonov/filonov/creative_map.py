@@ -37,6 +37,8 @@ from opentelemetry import trace
 from filonov import previews
 from filonov.telemetry import tracer
 
+logger = logging.getLogger(__name__)
+
 MetricInfo: TypeAlias = dict[str, int | float]
 Info: TypeAlias = dict[str, int | float | str | list[str] | None]
 
@@ -229,13 +231,13 @@ def convert_report_to_media_info(
   if isinstance(media_type, str):
     media_type = media.MediaTypeEnum[media_type.upper()]
   if with_size_base and with_size_base not in performance.column_names:
-    logging.warning('Failed to set MediaInfo size to %s', with_size_base)
+    logger.warning('Failed to set MediaInfo size to %s', with_size_base)
     with_size_base = None
   if with_size_base:
     try:
       float(performance[0][with_size_base])
     except TypeError:
-      logging.warning('MediaInfo size attribute should be numeric')
+      logger.warning('MediaInfo size attribute should be numeric')
     with_size_base = None
 
   if modules:

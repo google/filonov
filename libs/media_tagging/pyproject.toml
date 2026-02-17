@@ -60,6 +60,10 @@ server = [
   "fastapi",
   "pydantic-settings",
 ]
+gcp= [
+  "opentelemetry-exporter-gcp-trace",
+  "opentelemetry-exporter-gcp-monitoring",
+]
 all = [
   "media-tagging[google-cloud,server]"
 ]
