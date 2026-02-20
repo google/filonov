@@ -378,10 +378,18 @@ def create_node_links(
 ) -> dict[str, str]:
   return {
     'media_path': _to_youtube_video_link(url)
-    if media_type == media.MediaTypeEnum.YOUTUBE_VIDEO
+    if media_type
+    in (
+      media.MediaTypeEnum.YOUTUBE_VIDEO,
+      media.MediaTypeEnum.YOUTUBE_THUMBNAIL,
+    )
     else url,
     'media_preview': _to_youtube_preview_link(url)
-    if media_type == media.MediaTypeEnum.YOUTUBE_VIDEO
+    if media_type
+    in (
+      media.MediaTypeEnum.YOUTUBE_VIDEO,
+      media.MediaTypeEnum.YOUTUBE_THUMBNAIL,
+    )
     else url,
   }
 

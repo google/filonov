@@ -71,6 +71,8 @@ class GoogleAdsFetchingParameters(models.FetchingParameters):
       self.metrics = self.metrics.split(',')
     if isinstance(self.extra_info, str):
       self.extra_info = self.extra_info.split(',')
+    if self.media_type == 'YOUTUBE_THUMBNAIL':
+      self.media_type = 'YOUTUBE_VIDEO'
 
   @property
   def query_params(self) -> dict[str, str | int]:

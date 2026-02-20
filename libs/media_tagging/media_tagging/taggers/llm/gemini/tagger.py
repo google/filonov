@@ -80,6 +80,7 @@ class GeminiTagger(base.BaseTagger):
       media.MediaTypeEnum.VIDEO: ts.VideoTaggingStrategy,
       media.MediaTypeEnum.YOUTUBE_VIDEO: ts.YouTubeVideoTaggingStrategy,
       media.MediaTypeEnum.WEBPAGE: ts.TextTaggingStrategy,
+      media.MediaTypeEnum.YOUTUBE_THUMBNAIL: ts.ImageTaggingStrategy,
     }
     if not (tagging_strategy := tagging_strategies.get(media_type)):
       raise GeminiTaggerError(
