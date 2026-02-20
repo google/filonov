@@ -50,6 +50,7 @@ class MediaTypeEnum(str, enum.Enum):
   YOUTUBE_VIDEO = 'YOUTUBE_VIDEO'
   TEXT = 'TEXT'
   WEBPAGE = 'WEBPAGE'
+  YOUTUBE_THUMBNAIL = 'YOUTUBE_THUMBNAIL'
 
   @classmethod
   def options(cls) -> list[str]:
@@ -89,7 +90,10 @@ class Medium:
     unique.
     For the rest media type the md5 hash of medium content is taken.
     """
-    if self.type == MediaTypeEnum.YOUTUBE_VIDEO or (
+    if self.type in (
+      MediaTypeEnum.YOUTUBE_VIDEO,
+      MediaTypeEnum.YOUTUBE_THUMBNAIL,
+    ) or (
       self.type == MediaTypeEnum.IMAGE
       and self._media_path.startswith('https://tpc.googlesyndication.com/')
     ):
@@ -104,6 +108,8 @@ class Medium:
     """
     if self.type == MediaTypeEnum.YOUTUBE_VIDEO:
       return f'https://www.youtube.com/watch?v={self.name}'
+    if self.type == MediaTypeEnum.YOUTUBE_THUMBNAIL:
+      return f'https://img.youtube.com/vi/{self.name}/maxresdefault.jpg'
     return self._media_path
 
   @property
@@ -124,6 +130,9 @@ class Medium:
       and not str(self._media_path).endswith(_SUPPORTED_VIDEO_FILE_EXTENSIONS)
     ):
       return self._content
+    if self.type == MediaTypeEnum.YOUTUBE_THUMBNAIL:
+      with smart_open.open(self.media_path, 'rb') as f:
+        return f.read()
     try:
       with smart_open.open(self._media_path, 'rb') as f:
         content = f.read()
@@ -168,9 +177,10 @@ def convert_path_to_media_name(
     return media_path
   if media_type == MediaTypeEnum.WEBPAGE:
     return _normalize_website_url(media_path)
-  if media_type == MediaTypeEnum.YOUTUBE_VIDEO and not media_path.endswith(
-    _SUPPORTED_VIDEO_FILE_EXTENSIONS
-  ):
+  if media_type in (
+    MediaTypeEnum.YOUTUBE_VIDEO,
+    MediaTypeEnum.YOUTUBE_THUMBNAIL,
+  ) and not media_path.endswith(_SUPPORTED_VIDEO_FILE_EXTENSIONS):
     return _convert_youtube_link_to_id(media_path)
   base_name = str(media_path).split('/')[-1]
   return base_name.split('.')[0]
