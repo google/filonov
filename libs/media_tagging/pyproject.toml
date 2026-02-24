@@ -19,6 +19,7 @@ dependencies = [
   "opentelemetry-api",
   "opentelemetry-sdk",
   "opentelemetry-exporter-otlp",
+  "google-api-python-client",
 ]
 authors = [
   {name = "Andrei Markin", email = "amarkin@google.com"},
@@ -57,8 +58,9 @@ google-cloud=[
   "media-tagging[google-cloud-vision,google-cloud-videointelligence]",
 ]
 server = [
-  "fastapi",
+  "fastapi[standard]",
   "pydantic-settings",
+  "opentelemetry-instrumentation-fastapi",
 ]
 gcp= [
   "opentelemetry-exporter-gcp-trace",

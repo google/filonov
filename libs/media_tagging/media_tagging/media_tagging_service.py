@@ -28,7 +28,7 @@ from typing import Callable, Literal
 import pydantic
 from garf.io import writer as garf_writer
 from google.api_core import exceptions as google_api_exceptions
-from opentelemetry import trace
+from opentelemetry import metrics, trace
 
 from media_tagging import exceptions, media, repositories, tagging_result
 from media_tagging.taggers import TAGGERS
@@ -36,6 +36,18 @@ from media_tagging.taggers import base as base_tagger
 from media_tagging.telemetry import tracer
 
 logger = logging.getLogger(__name__)
+meter = metrics.get_meter('media-tagger')
+
+media_processed_counter = meter.create_counter(
+  'media_tagger_processed_total',
+  unit='1',
+  description='Counts number of processed media',
+)
+media_unprocessed_counter = meter.create_counter(
+  'media_tagger_process_errors_total',
+  unit='1',
+  description='Counts processing errors',
+)
 
 
 @tracer.start_as_current_span('discover_path_processors')
@@ -450,24 +462,38 @@ class MediaTaggingService:
         if tagging_results is None:
           continue
         results.append(tagging_results)
+        media_processed_counter.add(1, {'media_type': media_type.name})
         if self.repo:
           self.repo.add([tagging_results])
       except base_tagger.TaggerError as e:
         logger.error('Tagger error: %s', str(e))
+        media_unprocessed_counter.add(
+          1, {'media_type': str(media_type), 'source': 'tagger'}
+        )
         raise e
       except pydantic.ValidationError as e:
         logger.error('Failed to parse tagging results: %s', str(e))
+        media_unprocessed_counter.add(
+          1, {'media_type': media_type.name, 'source': 'validation'}
+        )
       except exceptions.FailedTaggingError as e:
         logger.error('Failed to perform tagging: %s', str(e))
-      except exceptions.FailedTaggingError as e:
-        logger.error('Failed to perform tagging: %s', str(e))
+        media_unprocessed_counter.add(
+          1, {'media_type': media_type.name, 'source': 'tagging'}
+        )
       except (
         exceptions.TaggingQuotaError,
         google_api_exceptions.ResourceExhausted,
       ) as e:
+        media_unprocessed_counter.add(
+          1, {'media_type': media_type.name, 'source': 'quota'}
+        )
         logger.error('Resource exhausted: %s', str(e))
         time.sleep(60)
       except Exception as e:
+        media_unprocessed_counter.add(
+          1, {'media_type': media_type.name, 'source': 'unknown'}
+        )
         logger.error('Unknown error occurred: %s', str(e))
 
     return results

@@ -18,15 +18,40 @@
 import fastapi
 import typer
 import uvicorn
+from garf.executors.entrypoints import utils as garf_utils
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
+import media_tagging
 from media_tagging import (
   exceptions,
   media_tagging_service,
   repositories,
   taggers,
 )
+from media_tagging.entrypoints.tracer import (
+  initialize_logger,
+  initialize_meter,
+  initialize_tracer,
+)
+
+app = fastapi.FastAPI(
+  title='Media Tagging API',
+  version=media_tagging.__version__,
+  description='Performs tagging of media based on various taggers',
+)
+FastAPIInstrumentor.instrument_app(app)
+typer_app = typer.Typer()
+
+OTEL_SERVICE_NAME = 'media-tagger'
+initialize_tracer(OTEL_SERVICE_NAME)
+meter = initialize_meter(OTEL_SERVICE_NAME)
+
+logger = garf_utils.init_logging(
+  loglevel='INFO', logger_type='local', name=OTEL_SERVICE_NAME
+)
+logger.addHandler(initialize_logger(OTEL_SERVICE_NAME))
 
 
 class MediaTaggingSettings(BaseSettings):
@@ -53,11 +78,7 @@ class Dependencies:
     )
 
 
-router = fastapi.APIRouter(prefix='/media_tagging')
-typer_app = typer.Typer()
-
-
-@router.post('/tag')
+@app.post('/tag')
 def tag(
   request: media_tagging_service.MediaTaggingRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -80,7 +101,7 @@ def tag(
     raise fastapi.HTTPException(status_code=404, detail=str(e))
 
 
-@router.post('/describe')
+@app.post('/describe')
 def describe(
   request: media_tagging_service.MediaTaggingRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -103,7 +124,7 @@ def describe(
     raise fastapi.HTTPException(status_code=404, detail=str(e))
 
 
-@router.get('/taggers')
+@app.get('/taggers')
 def available_taggers() -> list[str]:
   return list(taggers.TAGGERS.keys())
 
@@ -112,9 +133,7 @@ def available_taggers() -> list[str]:
 def main(
   port: Annotated[int, typer.Option(help='Port to start the server')] = 8000,
 ):
-  app = fastapi.FastAPI()
-  app.include_router(router)
-  uvicorn.run(app, port=port)
+  uvicorn.run(app, host='0.0.0.0', port=port, log_config=None)
 
 
 if __name__ == '__main__':
