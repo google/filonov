@@ -1,0 +1,78 @@
+name: Push media-tagging to GitHub Packages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'libs/media_tagging/**'
+      - '!libs/media_tagging/**/*.md'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The semantic version to publish (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/media-tagging
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Get versions and check for change
+        id: version_check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "Manual publishing."
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            PREV_VERSION=$(git show HEAD~1:libs/media_tagging/media_tagging/__init__.py | grep -oE "__version__ = '([0-9]+\.[0-9]+\.[0-9]+)'" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+            CURRENT_VERSION=$(grep -oE "__version__ = '([0-9]+\.[0-9]+\.[0-9]+)'" libs/media_tagging/media_tagging/__init__.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+
+            if [[ "$CURRENT_VERSION" != "$PREV_VERSION" ]]; then
+              echo "Version change detected: $PREV_VERSION -> $CURRENT_VERSION"
+              echo "should_publish=true" >> $GITHUB_OUTPUT
+              echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+              echo "new_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+            else
+              echo "No version change. Skipping publish."
+              echo "should_publish=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Log in to the Container registry
+        if: steps.version_check.outputs.should_publish == 'true'
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef  # v3.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        if: steps.version_check.outputs.should_publish == 'true'
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5.10.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image
+        if: steps.version_check.outputs.should_publish == 'true'
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83  # v6.18.0
+        with:
+          context: libs/media_tagging/.
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version_check.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
