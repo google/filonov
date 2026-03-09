@@ -22,12 +22,14 @@ from typing import Any, Final, Iterable
 
 import sqlalchemy
 from media_tagging.repositories import SqlAlchemyRepository
+from opentelemetry import trace
 from sqlalchemy.orm import declarative_base
 from typing_extensions import override
 
 from media_similarity import media_pair
+from media_similarity.telemetry import tracer
 
-DEFAULT_CHUNK_SIZE: Final[int] = 100
+DEFAULT_CHUNK_SIZE: Final[int] = 10_000
 
 
 def _batched(iterable: Iterable[Any], chunk_size: int):
@@ -39,6 +41,7 @@ def _batched(iterable: Iterable[Any], chunk_size: int):
 class BaseSimilarityPairsRepository(abc.ABC):
   """Interface for defining repositories."""
 
+  @tracer.start_as_current_span('get_pairs')
   def get(
     self, pairs: str | Sequence[str], tagger: str | None = None
   ) -> list[media_pair.SimilarityPair]:
@@ -55,14 +58,17 @@ class BaseSimilarityPairsRepository(abc.ABC):
       return list(itertools.chain.from_iterable(results))
     return self._get(pairs, tagger)
 
+  @tracer.start_as_current_span('add_pairs')
   def add(
     self,
     pairs: media_pair.SimilarityPair | Sequence[media_pair.SimilarityPair],
   ) -> None:
     """Specifies add operations."""
+    span = trace.get_current_span()
     if not isinstance(pairs, MutableSequence):
       pairs = [pairs]
     self._add(pairs)
+    span.set_attribute('pairs_added', len(pairs))
 
   @abc.abstractmethod
   def _get(
