@@ -289,7 +289,10 @@ class Fetcher(models.BaseMediaInfoFetcher):
     video_ids = performance['media_url'].to_list(
       row_type='scalar', distinct=True
     )
-    youtube_api_fetcher = YouTubeDataApiReportFetcher()
+    video_ids.sort()
+    youtube_api_fetcher = YouTubeDataApiReportFetcher(
+      enable_cache=self.enable_cache,
+    )
     video_orientations = youtube_api_fetcher.fetch(
       video_orientations_query,
       id=video_ids,
