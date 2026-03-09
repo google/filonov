@@ -27,8 +27,10 @@ from collections.abc import Sequence
 from typing import Final
 
 import numpy as np
+from opentelemetry import trace
 
 from media_similarity import media_pair
+from media_similarity.telemetry import tracer
 
 MINIMAL_ADAPTIVE_THRESHOLD: Final[float] = 1.85
 
@@ -63,6 +65,7 @@ class AdaptiveThreshold:
     )
 
 
+@tracer.start_as_current_span('compute_adaptive_threshold')
 def compute_adaptive_threshold(
   similarity_scores: Sequence[media_pair.SimilarityPair],
   normalize: bool = False,
@@ -76,12 +79,14 @@ def compute_adaptive_threshold(
   Returns:
     Calculated adaptive threshold.
   """
+  span = trace.get_current_span()
   similarity_scores = [
     s.similarity_score.score
     for s in similarity_scores
     if s.similarity_score.score < sys.float_info.max
   ]
   threshold_value = (2 * np.std(similarity_scores)) + np.mean(similarity_scores)
+  span.set_attribute('threshold', threshold_value)
   return AdaptiveThreshold(
     threshold=threshold_value,
     num_pairs=len(similarity_scores),

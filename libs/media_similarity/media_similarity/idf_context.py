@@ -19,6 +19,8 @@ from collections.abc import Sequence
 import numpy as np
 from media_tagging import tagging_result
 
+from media_similarity.telemetry import tracer
+
 
 class IdfContext(UserDict):
   """Stores Inverse-Document Frequency (IDF) for each key."""
@@ -32,6 +34,7 @@ class IdfContext(UserDict):
     return {'idf': 1.0}
 
 
+@tracer.start_as_current_span('calculate_idf_context')
 def calculate_idf_context(
   tagging_results: Sequence[tagging_result.TaggingResult],
 ) -> IdfContext:

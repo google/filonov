@@ -168,6 +168,21 @@ class SqlAlchemySimilarityPairsRepository(
 
       return [res.to_model() for res in query.all()]
 
+  def get_ids(
+    self,
+    pairs: str | Sequence[str],
+    tagger: str | None = None,
+  ) -> list[media_pair.SimilarityPair]:
+    with self.session() as session:
+      query = session.query(SimilarityPairs.identifier)
+      if tagger:
+        query = query.where(SimilarityPairs.tagger == tagger)
+      query = query.where(
+        SimilarityPairs.identifier.in_(pairs),
+      )
+
+      return [res.to_model() for res in query.all()]
+
   def get_similar_media(
     self, identifier: str, n_results: int = 10, tagger: str | None = None
   ) -> list[media_pair.SimilarityPair]:
