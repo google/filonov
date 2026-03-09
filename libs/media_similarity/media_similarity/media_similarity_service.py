@@ -29,7 +29,10 @@ import media_tagging
 import pandas as pd
 import pydantic
 from garf.core import report
+from garf.executors import sql_executor
+from garf.io.writers import sqldb_writer
 from media_tagging.taggers import base as base_tagger
+from opentelemetry import trace
 
 from media_similarity import (
   adaptive_threshold,
@@ -321,20 +324,25 @@ class MediaSimilarityService:
     idf_tag_context = idf_context.calculate_idf_context(tagging_results)
     similarity_pairs = []
     logger.info('generating media pairs...')
-    media_pairs = list(media_pair.build_media_pairs(tagging_results))
+    media_pairs = media_pair.build_media_pairs(set(tagging_results))
     uncalculated_media_pairs = media_pairs
     calculated_similarity_pairs = []
-    if self.repo and (
-      calculated_similarity_pairs := self.repo.get(media_pairs, tagger)
-    ):
-      calculated_similarity_pairs_keys = {
-        pair.key for pair in calculated_similarity_pairs
-      }
-      uncalculated_media_pairs = [
-        pair
-        for pair in media_pairs
-        if str(pair) not in calculated_similarity_pairs_keys
-      ]
+    if self.repo:
+      with tracer.start_as_current_span('get_media_pairs_from_repo') as span:
+        calculated_similarity_pairs = self.repo.get(media_pairs, tagger)
+        span.set_attribute(
+          'num_fetched_pairs', len(calculated_similarity_pairs)
+        )
+        if calculated_similarity_pairs:
+          calculated_similarity_pairs_keys = {
+            pair.key for pair in calculated_similarity_pairs
+          }
+          uncalculated_media_pairs = [
+            pair
+            for pair in media_pairs
+            if str(pair) not in calculated_similarity_pairs_keys
+          ]
+    span.set_attribute('num_missing_pairs', len(uncalculated_media_pairs))
 
     hash_to_identifiers_mapping = {
       t.hash: t.identifier for t in tagging_results
@@ -492,6 +500,7 @@ def _calculate_threshold(
   return adaptive_threshold.AdaptiveThreshold(custom_threshold, num_pairs=None)
 
 
+@tracer.start_as_current_span('calculate_cluster_assignments')
 def _calculate_cluster_assignments(
   similarity_pairs: Iterable[media_pair.SimilarityPair],
   threshold: adaptive_threshold.AdaptiveThreshold,
@@ -515,7 +524,10 @@ def _calculate_cluster_assignments(
      Results of clustering that contain mapping between media identifier and
      its cluster number as well as graph.
   """
+  span = trace.get_current_span()
   media: set[str] = set()
+  span.set_attribute('num_similarity_pairs', len(similarity_pairs))
+  span.set_attribute('clustering_algorithm', algorithm or 'community_walktrap')
   similar_media: set[tuple[str, str, float]] = set()
   for pair in similarity_pairs:
     media_1, media_2 = pair.media
@@ -523,6 +535,7 @@ def _calculate_cluster_assignments(
     media.add(media_2)
     if pair.similarity_score.score > threshold.threshold:
       similar_media.add(pair.to_tuple())
+  span.set_attribute('num_media_above_threshold', len(similar_media))
 
   nodes = [{'name': node} for node in media]
   graph = igraph.Graph.DataFrame(
@@ -543,9 +556,11 @@ def _calculate_cluster_assignments(
         if media := hash_to_identifiers_mapping.get(media_hash):
           final_clusters[media] = i
   if not final_clusters:
+    span.set_attribute('dummy_final_clusters', True)
     final_clusters = {
       m: i for i, m in enumerate(hash_to_identifiers_mapping.values(), 1)
     }
+  span.set_attribute('num_final_clusters', len(final_clusters))
   if not similar_media:
     logger.warning('no edges found in graph')
     return ClusteringResults(
@@ -561,12 +576,40 @@ def _calculate_cluster_assignments(
       if final_clusters.get(media_1) == final_clusters.get(media_2):
         trimmed_similar_media.add(similar_medium)
 
-    logger.info(
-      'trimmed graph edges by %.2f',
-      (1 - len(trimmed_similar_media) / len(similar_media)),
-    )
+    trim_ratio = ((1 - len(trimmed_similar_media) / len(similar_media)),)
+    logger.info('trimmed graph edges by %.2f', trim_ratio)
+    span.set_attribute('trim_ratio', trim_ratio)
   return ClusteringResults(
     clusters=final_clusters,
     adaptive_threshold=threshold.threshold,
     graph=GraphInfo(nodes=nodes, edges=trimmed_similar_media or similar_media),
   )
+
+
+def _query_pairs(self, media_pairs):
+  logger.info('writing tmp_pairs to db...')
+  report_to_check = report.GarfReport(
+    results=[[str(p)] for p in media_pairs], column_names=['pair']
+  )
+  writer = sqldb_writer.SqlAlchemyWriter(self.repo.db_url)
+  writer.write(report_to_check, 'tmp_pairs')
+  del report_to_check
+
+  logger.info('finding uncalculated keys...')
+  executor = sql_executor.SqlAlchemyQueryExecutor.from_connection_string(
+    self.repo.db_url
+  )
+  query = """
+    SELECT
+     TP.pair
+    FROM tmp_pairs AS TP
+    LEFT JOIN similarity_pairs AS SP
+      ON TP.pair = SP.identifier
+    WHERE SP.identifier IS NULL
+    """
+  delete_query = 'DROP TABLE tmp_pairs'
+  uncalculated_keys = executor.execute(title='check', query=query).to_list(
+    row_type='scalar', distinct=True
+  )
+  executor.execute(title='drop', query=delete_query)
+  return uncalculated_keys

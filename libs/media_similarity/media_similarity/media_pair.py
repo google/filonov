@@ -17,14 +17,16 @@ from __future__ import annotations
 
 import dataclasses
 import itertools
+import math
 import sys
 from collections.abc import Sequence
-from typing import Generator
 
 import pydantic
 from media_tagging import tagging_result
+from opentelemetry import trace
 
 from media_similarity import exceptions, idf_context
+from media_similarity.telemetry import tracer
 
 
 class MediaPairError(exceptions.MediaSimilarityError):
@@ -145,20 +147,26 @@ class MediaPair:
     )
 
 
+@tracer.start_as_current_span('build_media_pairs')
 def build_media_pairs(
   tagging_results: Sequence[tagging_result.TaggingResult],
-) -> Generator[MediaPair, None, None]:
+) -> list[MediaPair]:
   """Generates media pairs from tagging results.
 
   Args:
     tagging_results: Results of tagging to generate media pairs.
 
-  Yields:
-    MediaPair with unique media hashes.
+  Returns:
+    Unique media pairs.
   """
-  for media_1, media_2 in itertools.combinations(set(tagging_results), 2):
+  span = trace.get_current_span()
+  combinations = itertools.combinations(set(tagging_results), 2)
+  span.set_attribute('n_combinations', math.comb(len(tagging_results), 2))
+  pairs = []
+  for media_1, media_2 in combinations:
     if media_1.hash != media_2.hash:
-      yield MediaPair(media_1, media_2)
+      pairs.append(MediaPair(media_1, media_2))
+  return pairs
 
 
 class Weight(pydantic.BaseModel):
