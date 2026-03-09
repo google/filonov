@@ -576,7 +576,7 @@ def _calculate_cluster_assignments(
       if final_clusters.get(media_1) == final_clusters.get(media_2):
         trimmed_similar_media.add(similar_medium)
 
-    trim_ratio = ((1 - len(trimmed_similar_media) / len(similar_media)),)
+    trim_ratio = 1 - len(trimmed_similar_media) / len(similar_media)
     logger.info('trimmed graph edges by %.2f', trim_ratio)
     span.set_attribute('trim_ratio', trim_ratio)
   return ClusteringResults(

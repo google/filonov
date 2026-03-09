@@ -23,7 +23,8 @@ import json
 from collections.abc import Sequence
 
 import sqlalchemy
-from sqlalchemy.orm import declarative_base, relationship
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from sqlalchemy.orm import declarative_base, joinedload, relationship
 from sqlalchemy.pool import StaticPool
 from typing_extensions import override
 
@@ -188,6 +189,7 @@ class SqlAlchemyRepository:
       )
     else:
       self._engine = sqlalchemy.create_engine(self.db_url)
+    SQLAlchemyInstrumentor().instrument(engine=self._engine)
     return self._engine
 
 
@@ -242,7 +244,12 @@ class SqlAlchemyTaggingResultsRepository(
           TaggingResults.tagging_details_id == tagging_details_hash
         )
 
-      if not (results := query.all()):
+      if not (
+        results := query.options(
+          joinedload(TaggingResults.identifier),
+          joinedload(TaggingResults.tagging_details),
+        ).all()
+      ):
         return []
       tagging_results = []
       for res in results:
