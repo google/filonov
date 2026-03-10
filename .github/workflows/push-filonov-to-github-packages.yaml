@@ -1,12 +1,12 @@
-name: Push media-tagging to GitHub Packages
+name: Push filonov to GitHub Packages
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'libs/media_tagging/**'
-      - '!libs/media_tagging/**/*.md'
+      - 'libs/filonov/**'
+      - '!libs/filonov/**/*.md'
   workflow_dispatch:
     inputs:
       version:
@@ -16,7 +16,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/media-tagging
+  IMAGE_NAME: ${{ github.repository_owner }}/filonov
 
 jobs:
   build-and-push-image:
@@ -47,8 +47,8 @@ jobs:
             echo "should_publish=true" >> $GITHUB_OUTPUT
             echo "version=$VERSION" >> $GITHUB_OUTPUT
           else
-            PREV_VERSION=$(git show HEAD~1:libs/media_tagging/media_tagging/__init__.py | grep -oE "__version__ = '([0-9]+\.[0-9]+\.[0-9]+)'" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-            CURRENT_VERSION=$(grep -oE "__version__ = '([0-9]+\.[0-9]+\.[0-9]+)'" libs/media_tagging/media_tagging/__init__.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+            PREV_VERSION=$(git show HEAD~1:libs/filonov/filonov/__init__.py | grep -oE "__version__ = '([0-9]+\.[0-9]+\.[0-9]+)'" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+            CURRENT_VERSION=$(grep -oE "__version__ = '([0-9]+\.[0-9]+\.[0-9]+)'" libs/filonov/filonov/__init__.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
 
             if [[ "$CURRENT_VERSION" != "$PREV_VERSION" ]]; then
               echo "Version change detected: $PREV_VERSION -> $CURRENT_VERSION"
@@ -80,7 +80,7 @@ jobs:
         if: steps.version_check.outputs.should_publish == 'true'
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83  # v6.18.0
         with:
-          context: libs/media_tagging/.
+          context: libs/filonov/.
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |

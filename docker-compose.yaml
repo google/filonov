@@ -14,30 +14,23 @@
 version: '3'
 
 services:
+  similarity:
+    build:
+      context: libs/media_similarity/
+    ports:
+      - 8012:8000
+  tagging:
+    build:
+      context: libs/media_tagging/
+    ports:
+      - 8010:8000
+  fetching:
+    build:
+      context: libs/media-fetching/
+    ports:
+      - 8011:8000
   filonov:
     build:
-      context: .
-      dockerfile: Dockerfile
-    image: filonov
-    command: >
-      --campaign-type ${FILONOV_CAMPAIGN_TYPE}
-      --media-type ${FILONOV_MEDIA_TYPE}
-      --db-uri sqlite:////app/filonov.db
-      --googleads.tagger=${FILONOV_TAGGER}
-      --googleads.ads_config_path=/app/google-ads.yaml
-      --googleads.account=${FILONOV_ACCOUNT_ID}
-      --googleads.start-date=${FILONOV_START_DATE}
-      --googleads.end-date=${FILONOV_END_DATE}
-      --parallel-threshold 10
-    environment:
-      FILONOV_ACCOUNT_ID: ${FILONOV_ACCOUNT_ID}
-      FILONOV_START_DATE: ${FILONOV_START_DATE}
-      FILONOV_END_DATE: ${FILONOV_END_DATE}
-      FILONOV_TAGGER: ${FILONOV_TAGGER}
-      FILONOV_CAMPAIGN_TYPE: ${FILONOV_CAMPAIGN_TYPE}
-      FILONOV_MEDIA_TYPE: ${FILONOV_MEDIA_TYPE}
-    volumes:
-      - ${FILONOV_SERVICE_ACCOUNT}/:/app/service_account.json
-      - ${FILONOV_DB_PATH}/:/app/filonov.db
-      - ${FILONOV_OUTPUT_FOLDER}/:/app/data/
-      - ${FILONOV_ADS_CONFIG}/:/app/google-ads.yaml
+      context: libs/filonov/
+    ports:
+      - 8013:8000
