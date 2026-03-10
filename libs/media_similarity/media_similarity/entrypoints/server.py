@@ -17,13 +17,36 @@
 
 import fastapi
 import media_tagging
+import typer
 import uvicorn
+from garf.executors.entrypoints import utils as garf_utils
+from media_tagging.entrypoints.tracer import (
+  initialize_logger,
+  initialize_meter,
+  initialize_tracer,
+)
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
 import media_similarity
 
-router = fastapi.APIRouter(prefix='/media_similarity')
+app = fastapi.FastAPI(
+  title='Media Similarity API',
+  version=media_similarity.__version__,
+  description='Identifies similarity between media',
+)
+FastAPIInstrumentor.instrument_app(app)
+typer_app = typer.Typer()
+
+OTEL_SERVICE_NAME = 'media-similarity'
+initialize_tracer(OTEL_SERVICE_NAME)
+meter = initialize_meter(OTEL_SERVICE_NAME)
+
+logger = garf_utils.init_logging(
+  loglevel='INFO', logger_type='local', name=OTEL_SERVICE_NAME
+)
+logger.addHandler(initialize_logger(OTEL_SERVICE_NAME))
 
 
 class MediaSimilaritySettings(BaseSettings):
@@ -59,7 +82,7 @@ class Dependencies:
     )
 
 
-@router.post('/cluster')
+@app.post('/cluster')
 async def cluster_media(
   request: media_similarity.MediaClusteringRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -71,7 +94,7 @@ async def cluster_media(
   )
 
 
-@router.get('/search')
+@app.get('/search')
 async def search_media(
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
   seed_media_identifiers: str,
@@ -103,7 +126,7 @@ async def search_media(
   )
 
 
-@router.post('/compare')
+@app.post('/compare')
 async def compare_media(
   request: media_similarity.MediaSimilarityComparisonRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -129,8 +152,12 @@ async def compare_media(
   )
 
 
-app = fastapi.FastAPI()
-app.include_router(router)
+@typer_app.command()
+def main(
+  port: Annotated[int, typer.Option(help='Port to start the server')] = 8000,
+):
+  uvicorn.run(app, host='0.0.0.0', port=port, log_config=None)
+
 
 if __name__ == '__main__':
-  uvicorn.run(app)
+  typer_app()

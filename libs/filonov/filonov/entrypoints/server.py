@@ -22,15 +22,36 @@ import media_similarity
 import media_tagging
 import typer
 import uvicorn
-from media_similarity.entrypoints.server import (
-  router as media_similarity_router,
+from garf.executors.entrypoints import utils as garf_utils
+from media_tagging.entrypoints.tracer import (
+  initialize_logger,
+  initialize_meter,
+  initialize_tracer,
 )
-from media_tagging.entrypoints.server import router as media_tagging_router
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
 import filonov
 from filonov.entrypoints import utils
+
+app = fastapi.FastAPI(
+  title='Filonov API',
+  version=filonov.__version__,
+  description='API for creative analysis',
+)
+FastAPIInstrumentor.instrument_app(app)
+
+typer_app = typer.Typer()
+
+OTEL_SERVICE_NAME = 'filonov'
+initialize_tracer(OTEL_SERVICE_NAME)
+meter = initialize_meter(OTEL_SERVICE_NAME)
+
+logger = garf_utils.init_logging(
+  loglevel='INFO', logger_type='local', name=OTEL_SERVICE_NAME
+)
+logger.addHandler(initialize_logger(OTEL_SERVICE_NAME))
 
 
 class FilonovSettings(BaseSettings):
@@ -75,10 +96,6 @@ class Dependencies:
       ),
     )
     self.enable_cache = settings.filonov_enable_cache
-
-
-creative_map_router = fastapi.APIRouter(prefix='/filonov/creative_map')
-dashboard_router = fastapi.APIRouter(prefix='/filonov/dashboard')
 
 
 class GenerateTablesGoogleAdsRequest(filonov.GenerateTablesRequest):
@@ -145,7 +162,7 @@ class GenerateCreativeMapBidManagerRequest(filonov.GenerateCreativeMapRequest):
   source: Literal['dbm'] = 'dbm'
 
 
-@dashboard_router.post('/file')
+@app.post('/dashboard/file')
 def generate_tables_file(
   request: GenerateTablesFileRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -158,7 +175,7 @@ def generate_tables_file(
   )
 
 
-@creative_map_router.post('/file')
+@app.post('/creative_map/file')
 def generate_creative_map_file(
   request: GenerateCreativeMapFileRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -171,7 +188,7 @@ def generate_creative_map_file(
   )
 
 
-@dashboard_router.post('/googleads')
+@app.post('/dashboard/googleads')
 def generate_tables_googleads(
   request: GenerateTablesGoogleAdsRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -184,7 +201,7 @@ def generate_tables_googleads(
   )
 
 
-@creative_map_router.post('/googleads')
+@app.post('/creative_map/googleads')
 def generate_creative_map_googleads(
   request: GenerateCreativeMapGoogleAdsRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -197,7 +214,7 @@ def generate_creative_map_googleads(
   )
 
 
-@dashboard_router.post('/youtube')
+@app.post('/dashboard/youtube')
 def generate_tables_youtube(
   request: GenerateTablesYouTubeRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -210,7 +227,7 @@ def generate_tables_youtube(
   )
 
 
-@creative_map_router.post('/youtube')
+@app.post('/creative_map/youtube')
 def generate_creative_map_youtube(
   request: GenerateCreativeMapYouTubeRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -223,7 +240,7 @@ def generate_creative_map_youtube(
   )
 
 
-@dashboard_router.post('/dbm')
+@app.post('/dashboard/dbm')
 def generate_tables_dbm(
   request: GenerateTablesBidManagerRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -236,7 +253,7 @@ def generate_tables_dbm(
   )
 
 
-@creative_map_router.post('/dbm')
+@app.post('/creative_map/dbm')
 def generate_creative_map_dbm(
   request: GenerateCreativeMapBidManagerRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -255,12 +272,11 @@ def generate_creative_map(
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> filonov.creative_map.CreativeMapJson:
   """Generates creative map JSON based on provided source."""
+  fetching_service = media_fetching.MediaFetchingService.from_source_alias(
+    source=source, **request.source_parameters.model_dump()
+  )
   generated_map = filonov.FilonovService(
-    fetching_service=media_fetching.MediaFetchingService.from_source_alias(
-      source=source,
-      enable_cache=dependencies.enable_cache
-      or bool(request.source_parameters.get('enable_cache')),
-    ),
+    fetching_service=fetching_service,
     tagging_service=dependencies.tagging_service,
     similarity_service=dependencies.similarity_service,
   ).generate_creative_map(request)
@@ -286,9 +302,7 @@ def generate_tables(
   (
     filonov.FilonovService(
       fetching_service=media_fetching.MediaFetchingService.from_source_alias(
-        source=source,
-        enable_cache=dependencies.enable_cache
-        or bool(request.source_parameters.get('enable_cache')),
+        source=source, **request.source_parameters.model_dump()
       ),
       tagging_service=dependencies.tagging_service,
       similarity_service=dependencies.similarity_service,
@@ -297,20 +311,11 @@ def generate_tables(
   return fastapi.responses.JSONResponse(content='sources have been created.')
 
 
-app = fastapi.FastAPI()
-app.include_router(creative_map_router)
-app.include_router(dashboard_router)
-app.include_router(media_tagging_router)
-app.include_router(media_similarity_router)
-
-typer_app = typer.Typer()
-
-
 @typer_app.command()
 def main(
   port: Annotated[int, typer.Option(help='Port to start the server')] = 8000,
 ):
-  uvicorn.run(app, port=port)
+  uvicorn.run(app, host='0.0.0.0', port=port, log_config=None)
 
 
 if __name__ == '__main__':

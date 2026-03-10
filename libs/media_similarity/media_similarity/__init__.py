@@ -14,7 +14,7 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-"""Simplifies imports from inner modules."""
+"""Identifies similarity between media."""
 
 from media_similarity.media_similarity_service import (
   MediaClusteringRequest,

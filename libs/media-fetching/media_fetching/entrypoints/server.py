@@ -17,13 +17,37 @@
 
 import fastapi
 import pydantic
+import typer
 import uvicorn
+from garf.executors.entrypoints import utils as garf_utils
 from garf.io import writer
+from media_tagging.entrypoints.tracer import (
+  initialize_logger,
+  initialize_meter,
+  initialize_tracer,
+)
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from typing_extensions import Annotated
 
 import media_fetching
 from media_fetching.sources import models
 
-router = fastapi.APIRouter(prefix='/media_fetching')
+app = fastapi.FastAPI(
+  title='Media Fetching API',
+  version=media_fetching.__version__,
+  description='Fetches media from various sources',
+)
+FastAPIInstrumentor.instrument_app(app)
+typer_app = typer.Typer()
+
+OTEL_SERVICE_NAME = 'media-fetching'
+initialize_tracer(OTEL_SERVICE_NAME)
+meter = initialize_meter(OTEL_SERVICE_NAME)
+
+logger = garf_utils.init_logging(
+  loglevel='INFO', logger_type='local', name=OTEL_SERVICE_NAME
+)
+logger.addHandler(initialize_logger(OTEL_SERVICE_NAME))
 
 
 class WriterOptions(pydantic.BaseModel):
@@ -32,7 +56,7 @@ class WriterOptions(pydantic.BaseModel):
   output: str = 'media_results'
 
 
-@router.post('/fetch:file')
+@app.post('/fetch:file')
 async def fetch_file(
   request: media_fetching.sources.file.FileFetchingParameters,
   writer_options: WriterOptions,
@@ -42,7 +66,7 @@ async def fetch_file(
   return fetch('file', request, writer_options, enable_cache)
 
 
-@router.post('/fetch:googleads')
+@app.post('/fetch:googleads')
 async def fetch_googleads(
   request: media_fetching.sources.googleads.GoogleAdsFetchingParameters,
   writer_options: WriterOptions,
@@ -52,7 +76,7 @@ async def fetch_googleads(
   return fetch('googleads', request, writer_options, enable_cache)
 
 
-@router.post('/fetch:youtube')
+@app.post('/fetch:youtube')
 async def fetch_youtube(
   request: media_fetching.sources.youtube.YouTubeFetchingParameters,
   writer_options: WriterOptions,
@@ -62,7 +86,7 @@ async def fetch_youtube(
   return fetch('youtube', request, writer_options, enable_cache)
 
 
-@router.post('/fetch:bq')
+@app.post('/fetch:bq')
 async def fetch_bq(
   request: media_fetching.sources.sql.BigQueryFetchingParameters,
   writer_options: WriterOptions,
@@ -72,7 +96,7 @@ async def fetch_bq(
   return fetch('bq', request, writer_options, enable_cache)
 
 
-@router.post('/fetch:sqldb')
+@app.post('/fetch:sqldb')
 async def fetch_sqldb(
   request: media_fetching.sources.sql.SqlAlchemyQueryFetchingParameters,
   writer_options: WriterOptions,
@@ -82,7 +106,7 @@ async def fetch_sqldb(
   return fetch('sqldb', request, writer_options, enable_cache)
 
 
-@router.post('/fetch:dbm')
+@app.post('/fetch:dbm')
 async def fetch_dbm(
   request: media_fetching.sources.dbm.BidManagerFetchingParameters,
   writer_options: WriterOptions,
@@ -108,13 +132,12 @@ def fetch(
   ).write(report, writer_options.output)
 
 
-app = fastapi.FastAPI()
-app.include_router(router)
-
-
-def main():
-  uvicorn.run(app)
+@typer_app.command()
+def main(
+  port: Annotated[int, typer.Option(help='Port to start the server')] = 8000,
+):
+  uvicorn.run(app, host='0.0.0.0', port=port, log_config=None)
 
 
 if __name__ == '__main__':
-  main()
+  typer_app()

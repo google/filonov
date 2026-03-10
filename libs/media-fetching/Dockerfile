@@ -28,11 +28,11 @@ ENV PATH="/opt/venv/bin:$PATH" \
 	PYTHONUNBUFFERED=1
 COPY --from=builder /opt/venv/ /opt/venv/
 WORKDIR /app/
-COPY filonov/ ./filonov/
+COPY media_fetching/ ./media_fetching/
 COPY pyproject.toml .
 
 RUN chown -R appuser:appuser /app
 EXPOSE 8000
 ENV PYTHONPATH="/app"
 USER appuser
-CMD ["python", "-m",  "filonov.entrypoints.server", "--port", "8000"]
+CMD ["python", "-m",  "media_fetching.entrypoints.server", "--port", "8000"]

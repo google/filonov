@@ -1,4 +1,1 @@
-media-tagging
-garf-youtube-data-api
-google-ads-api-report-fetcher
-garf-executors[bq,sql]>=0.0.7
+media-fetching[server]
