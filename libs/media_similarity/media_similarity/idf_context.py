@@ -13,10 +13,10 @@
 # limitations under the License.
 """Defines Inverse-Document Frequency context."""
 
+import statistics
 from collections import UserDict, defaultdict
 from collections.abc import Sequence
 
-import numpy as np
 from media_tagging import tagging_result
 
 from media_similarity.telemetry import tracer
@@ -53,7 +53,7 @@ def calculate_idf_context(
     for tag in result.content:
       idf_context[tag.name]['total_media'] += 1
   for tag in idf_context:
-    idf_context[tag]['idf'] = np.log(
+    idf_context[tag]['idf'] = statistics.log(
       len(tagging_results) / idf_context[tag]['total_media']
     )
   return IdfContext(idf_context)
