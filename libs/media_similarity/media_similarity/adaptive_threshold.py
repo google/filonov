@@ -22,11 +22,11 @@ are considered similar based on their similarity score.
 from __future__ import annotations
 
 import dataclasses
+import statistics
 import sys
 from collections.abc import Sequence
 from typing import Final
 
-import numpy as np
 from opentelemetry import trace
 
 from media_similarity import media_pair
@@ -85,10 +85,16 @@ def compute_adaptive_threshold(
     for s in similarity_scores
     if s.similarity_score.score < sys.float_info.max
   ]
-  threshold_value = (2 * np.std(similarity_scores)) + np.mean(similarity_scores)
+  if (num_pairs := len(similarity_scores)) < 2:
+    return AdaptiveThreshold(
+      threshold=0, num_pairs=num_pairs, normalized=normalize
+    )
+  threshold_value = (
+    2 * statistics.pstdev(similarity_scores)
+  ) + statistics.mean(similarity_scores)
   span.set_attribute('threshold', threshold_value)
   return AdaptiveThreshold(
     threshold=threshold_value,
-    num_pairs=len(similarity_scores),
+    num_pairs=num_pairs,
     normalized=normalize,
   )
