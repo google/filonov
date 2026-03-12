@@ -321,9 +321,9 @@ fastapi-cli[standard]==0.0.24 \
     --hash=sha256:1afc9c9e21d7ebc8a3ca5e31790cd8d837742be7e4f8b9236e99cb3451f0de00 \
     --hash=sha256:4a1f78ed798f106b4fee85ca93b85d8fe33c0a3570f775964d37edb80b8f0edc
     # via fastapi
-fastapi-cloud-cli==0.14.1 \
-    --hash=sha256:5b086182570008f67d9ae989870102f595e4e216493cabcd270ef6cd0401339f \
-    --hash=sha256:99ab3a2fbd1880121a62fb9c4f584e15c42ef0fe762cb5f7380a548081e60d05
+fastapi-cloud-cli==0.15.0 \
+    --hash=sha256:9ffcf90bd713747efa65447620d29cfbb7b3f7de38d97467952ca6346e418d70 \
+    --hash=sha256:d02515231f3f505f7669c20920343934570a88a08af9f9a6463ca2807f27ffe5
     # via fastapi-cli
 fastar==0.8.0 \
     --hash=sha256:003b59a7c3e405b6a7bff8fab17d31e0ccbc7f06730a8f8ca1694eeea75f3c76 \
@@ -893,9 +893,9 @@ mdurl==0.1.2 \
     --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8 \
     --hash=sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba
     # via markdown-it-py
-media-tagging[server]==2.5.1 \
-    --hash=sha256:1bcbc4ce4a0b61adee5b6c9ace29aa1498800f68733b3aba904d2bda635f28ff \
-    --hash=sha256:5bf9f4089e37cb188f8a3fdb2c6e5763ea5d115e76e392412f0e676336dc5c09
+media-tagging[server]==2.5.2 \
+    --hash=sha256:5352c71437369fb672938ff8a3d13274a80aaccc7291ab924386d86895376c08 \
+    --hash=sha256:d872a9d2cc3d77b6135ce3acff3b77f02bb33b1f8b6a0ebbace17b5f67463ec7
     # via -r requirements.in
 numpy==2.4.3 \
     --hash=sha256:0200b25c687033316fb39f0ff4e3e690e8957a2c3c8d22499891ec58c37a3eb5 \
@@ -1031,7 +1031,9 @@ opentelemetry-instrumentation-logging==0.61b0 \
 opentelemetry-instrumentation-sqlalchemy==0.61b0 \
     --hash=sha256:13a3a159a2043a52f0180b3757fbaa26741b0e08abb50deddce4394c118956e6 \
     --hash=sha256:f115e0be54116ba4c327b8d7b68db4045ee18d44439d888ab8130a549c50d1c1
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   media-tagging
 opentelemetry-proto==1.40.0 \
     --hash=sha256:03f639ca129ba513f5819810f5b1f42bcb371391405d99c168fe6937c62febcd \
     --hash=sha256:266c4385d88923a23d63e353e9761af0f47a6ed0d486979777fe4de59dc9b25f
@@ -1245,7 +1247,7 @@ pycparser==3.0 ; implementation_name != 'PyPy' and platform_python_implementatio
     --hash=sha256:600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29 \
     --hash=sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992
     # via cffi
-pydantic==2.12.5 \
+pydantic[email]==2.12.5 \
     --hash=sha256:4d351024c75c0f085a9febbb665ce8c0c6ec5d30e903bdb6394b7ede26aebb49 \
     --hash=sha256:e561593fccf61e8a20fc46dfc2dfe075b8be7d0188df33f221ad1f0139180f9d
     # via
@@ -1257,10 +1259,6 @@ pydantic==2.12.5 \
     #   media-tagging
     #   pydantic-extra-types
     #   pydantic-settings
-pydantic[email]==2.12.5 \
-    --hash=sha256:4d351024c75c0f085a9febbb665ce8c0c6ec5d30e903bdb6394b7ede26aebb49 \
-    --hash=sha256:e561593fccf61e8a20fc46dfc2dfe075b8be7d0188df33f221ad1f0139180f9d
-    # via fastapi-cloud-cli
 pydantic-core==2.41.5 \
     --hash=sha256:0177272f88ab8312479336e1d777f6b124537d47f2123f89cb37e0accea97f90 \
     --hash=sha256:01a3d0ab748ee531f4ea6c3e48ad9dac84ddba4b0d82291f87248f2f9de8d740 \
