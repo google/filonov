@@ -16,7 +16,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/media-tagging
+  IMAGE_NAME: ${{ github.repository_owner }}/media-fetching
 
 jobs:
   build-and-push-image:
