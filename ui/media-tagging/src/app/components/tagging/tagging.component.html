@@ -1,0 +1,37 @@
+<div class="border-1 bg-linear-to-br from-cyan-200 to-pink-200">
+  <p class="font-bold text-xl/12 p-8 text-indigo-600">
+    tagging works so awesome so awesome so awesome so awesome so awesome !
+  </p>
+  <form (ngSubmit)="tag()">
+    <div class="space-y-12">
+      <section>
+        <nav>Tagger Type</nav>
+        <div>
+          <input placeholder="{{tagger}}" name="tagger" [(ngModel)]="tagger" >
+        </div>
+      </section>
+      <section>
+        <nav>Media Type</nav>
+        <select [(ngModel)]="mediaType" name="mediaType">
+          @for (mediaType of mediaTypes; track mediaType) {
+          <option [value]="mediaType">{{mediaType}} </option>
+          }
+        </select>
+        <!-- <div> -->
+        <!--   <input placeholder="{{mediaType}}" name="mediaType" [(ngModel)]="mediaType" > -->
+        <!-- </div> -->
+      </section>
+      <section>
+        <nav>Media</nav>
+        <div>
+          <textarea id="about" name="about" rows="3" class="block w-full rounded-md" [(ngModel)]="mediaPaths"></textarea>
+        </div>
+      </section>
+      <button type="submit"
+        class="p-2 mb-5 ml-4 w-1/6 h-20 shadow-md bg-blue-500 rounded-md text-wide text-white"
+      >
+        Tag
+      </button>
+    </div>
+  </form>
+</div>

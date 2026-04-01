@@ -1,0 +1,12 @@
+<div class="flex flex-col items-left gap-6">
+  <div class="text-2xl font-medium">
+    <h2> Recent executions</h2>
+  </div>
+  <span class="flex gap-2 text-gray-600 dark:text-gray-400">
+  <ul class="execution-list">
+    @for (execution of executions; track execution) {
+    <li [value]="execution">{{execution}}</li>
+    }
+  </ul>
+  </span>
+</div>
