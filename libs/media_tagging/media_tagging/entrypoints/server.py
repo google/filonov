@@ -78,7 +78,17 @@ class Dependencies:
     )
 
 
-@app.post('/tag')
+@app.get('/api/version')
+async def version() -> str:
+  return media_tagging.__version__
+
+
+@app.get('/api/taggers')
+def available_taggers() -> list[str]:
+  return list(taggers.TAGGERS.keys())
+
+
+@app.post('/api/tag')
 def tag(
   request: media_tagging_service.MediaTaggingRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -101,7 +111,7 @@ def tag(
     raise fastapi.HTTPException(status_code=404, detail=str(e))
 
 
-@app.post('/describe')
+@app.post('/api/describe')
 def describe(
   request: media_tagging_service.MediaTaggingRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -122,11 +132,6 @@ def describe(
     )
   except exceptions.MediaTaggingError as e:
     raise fastapi.HTTPException(status_code=404, detail=str(e))
-
-
-@app.get('/taggers')
-def available_taggers() -> list[str]:
-  return list(taggers.TAGGERS.keys())
 
 
 @typer_app.command()

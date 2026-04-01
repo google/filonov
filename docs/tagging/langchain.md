@@ -74,7 +74,7 @@ result.save(output='tagging_results', writer='csv')
 /// tab | curl
 ```bash
 curl -X 'POST' \
-  'http://127.0.0.1:8000/media_tagging/tag' \
+  'http://127.0.0.1:8000/api/tag' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{

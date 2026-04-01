@@ -109,7 +109,7 @@ class Medium:
     if self.type == MediaTypeEnum.YOUTUBE_VIDEO:
       return f'https://www.youtube.com/watch?v={self.name}'
     if self.type == MediaTypeEnum.YOUTUBE_THUMBNAIL:
-      return f'https://img.youtube.com/vi/{self.name}/maxresdefault.jpg'
+      return f'https://img.youtube.com/vi/{self.name}/0.jpg'
     return self._media_path
 
   @property
