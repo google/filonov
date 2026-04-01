@@ -92,7 +92,7 @@ result.save(output='tagging_results', writer='csv')
 
 ```bash
 curl -X 'POST' \
-  'http://127.0.0.1:8000/media_tagging/tag' \
+  'http://127.0.0.1:8000/api/tag' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -149,7 +149,7 @@ result.save(output='tagging_results', writer='csv')
 
 ```bash hl_lines="12-14"
 curl -X 'POST' \
-  'http://127.0.0.1:8000/media_tagging/tag' \
+  'http://127.0.0.1:8000/api/tag' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -206,7 +206,7 @@ result.save(output='tagging_results', writer='csv')
 
 ```bash hl_lines="12-14"
 curl -X 'POST' \
-  'http://127.0.0.1:8000/media_tagging/tag' \
+  'http://127.0.0.1:8000/api/tag' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -261,7 +261,7 @@ result.save(output='description_results', writer='csv')
 
 ```bash
 curl -X 'POST' \
-  'http://127.0.0.1:8000/media_tagging/describe' \
+  'http://127.0.0.1:8000/api/describe' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -320,7 +320,7 @@ result.save(output='tagging_results', writer='csv')
 
 ```bash hl_lines="12-14"
 curl -X 'POST' \
-  'http://127.0.0.1:8000/media_tagging/describe' \
+  'http://127.0.0.1:8000/api/describe' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -387,7 +387,7 @@ result.save(output='tagging_results', writer='csv')
 
 ```bash hl_lines="12-15"
 curl -X 'POST' \
-  'http://127.0.0.1:8000/media_tagging/describe' \
+  'http://127.0.0.1:8000/api/describe' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -465,7 +465,7 @@ result.save(output='tagging_results', writer='csv')
 
 ```bash hl_lines="12-14"
 curl -X 'POST' \
-  'http://127.0.0.1:8000/media_tagging/tag' \
+  'http://127.0.0.1:8000/api/tag' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
