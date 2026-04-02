@@ -15,6 +15,8 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
+import asyncio
+
 import fastapi
 import typer
 import uvicorn
@@ -30,6 +32,7 @@ from media_tagging import (
   repositories,
   taggers,
 )
+from media_tagging.entrypoints import tasks
 from media_tagging.entrypoints.tracer import (
   initialize_logger,
   initialize_meter,
@@ -88,6 +91,7 @@ def available_taggers() -> list[str]:
   return list(taggers.TAGGERS.keys())
 
 
+@app.post('/tag', deprecated=True)
 @app.post('/api/tag')
 def tag(
   request: media_tagging_service.MediaTaggingRequest,
@@ -111,6 +115,36 @@ def tag(
     raise fastapi.HTTPException(status_code=404, detail=str(e))
 
 
+@app.post('/api/tag:task')
+def tag_task(
+  request: media_tagging_service.MediaTaggingRequest,
+) -> dict[str, str]:
+  """Sends tagging request.
+
+  Args:
+    request: Post request for media tagging.
+
+  Returns:
+    Operation id and its status.
+  """
+  task = tasks.tag.delay(request.model_dump())
+  return {'operation_id': task.id, 'status': 'PENDING'}
+
+
+@app.get('/api/operations/{operation_id}')
+def operation_status(operation_id: str):
+  """Gets tagging operation status and results."""
+  operation = tasks.celery_app.AsyncResult(operation_id)
+  return {
+    'operation_id': operation_id,
+    'status': operation.status,
+    'results': operation.result.get('results')
+    if operation.status == 'SUCCESS'
+    else None,
+  }
+
+
+@app.post('/describe', deprecated=True)
 @app.post('/api/describe')
 def describe(
   request: media_tagging_service.MediaTaggingRequest,
@@ -132,6 +166,22 @@ def describe(
     )
   except exceptions.MediaTaggingError as e:
     raise fastapi.HTTPException(status_code=404, detail=str(e))
+
+
+@app.post('/api/describe:task')
+def describe_task(
+  request: media_tagging_service.MediaTaggingRequest,
+) -> dict[str, str]:
+  """Sends tagging request.
+
+  Args:
+    request: Post request for media tagging.
+
+  Returns:
+    Operation id and its status.
+  """
+  task = tasks.describe.delay(request.model_dump())
+  return {'operation_id': task.id, 'status': 'PENDING'}
 
 
 @typer_app.command()
