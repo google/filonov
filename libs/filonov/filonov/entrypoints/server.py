@@ -33,7 +33,7 @@ from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
 import filonov
-from filonov.entrypoints import utils
+from filonov.entrypoints import tasks
 
 app = fastapi.FastAPI(
   title='Filonov API',
@@ -162,153 +162,201 @@ class GenerateCreativeMapBidManagerRequest(filonov.GenerateCreativeMapRequest):
   source: Literal['dbm'] = 'dbm'
 
 
-@app.post('/dashboard/file')
+@app.get('/api/version')
+async def version() -> str:
+  return filonov.__version__
+
+
+@app.get('/api/info')
+async def info() -> dict[str, str]:
+  return {
+    'filonov': filonov.__version__,
+    'media_tagging': media_tagging.__version__,
+    'media_fetching': media_fetching.__version__,
+    'media_similarity': media_similarity.__version__,
+  }
+
+
+@app.get('/api/operations/{operation_id}')
+def operation_status(operation_id: str):
+  """Gets tagging operation status and results."""
+  operation = tasks.app.AsyncResult(operation_id)
+  return {
+    'operation_id': operation_id,
+    'status': operation.status,
+    'results': operation.result if operation.status == 'SUCCESS' else None,
+  }
+
+
+@app.post('/api/dashboard/file:task')
+def tag_task(
+  request: GenerateTablesFileRequest,
+) -> dict[str, str]:
+  """Sends file-based dashboard generating request to Celery.
+
+  Args:
+    request: Post request for generating dashboard based on file input.
+
+  Returns:
+    Operation id and its status.
+  """
+  task = tasks.create_tables.delay(request.model_dump())
+  return {'operation_id': task.id, 'status': 'PENDING'}
+
+
+@app.post('/api/dashboard/file')
+@app.post('/dashboard/file', deprecated=True)
 def generate_tables_file(
   request: GenerateTablesFileRequest,
-  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
   """Generates dashboard sources based on a file."""
-  return generate_tables(
-    'file',
-    request,
-    dependencies,
-  )
+  return generate_tables(request)
 
 
-@app.post('/creative_map/file')
+@app.post('/api/creative_map/file:task')
+def generate_creative_map_file_task(
+  request: GenerateCreativeMapFileRequest,
+) -> dict[str, str]:
+  """Generates creative map JSON based on a file."""
+  task = tasks.create_map.delay(request.model_dump())
+  return {'operation_id': task.id, 'status': 'PENDING'}
+
+
+@app.post('/api/creative_map/file')
+@app.post('/creative_map/file', deprecated=True)
 def generate_creative_map_file(
   request: GenerateCreativeMapFileRequest,
-  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
   """Generates creative map JSON based on a file."""
-  return generate_creative_map(
-    'file',
-    request,
-    dependencies,
-  )
+  return generate_creative_map(request)
 
 
-@app.post('/dashboard/googleads')
+@app.post('/api/dashboard/googleads:task')
+def generate_tables_googleads_task(
+  request: GenerateTablesGoogleAdsRequest,
+) -> dict[str, str]:
+  """Generates dashboard sources based on Google Ads."""
+  task = tasks.create_tables.delay(request.model_dump())
+  return {'operation_id': task.id, 'status': 'PENDING'}
+
+
+@app.post('/api/dashboard/googleads')
+@app.post('/dashboard/googleads', deprecated=True)
 def generate_tables_googleads(
   request: GenerateTablesGoogleAdsRequest,
-  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
   """Generates dashboard sources based on Google Ads."""
-  return generate_tables(
-    'googleads',
-    request,
-    dependencies,
-  )
+  return generate_tables(request)
 
 
-@app.post('/creative_map/googleads')
+@app.post('/api/creative_map/googleads:task')
+def generate_creative_map_googleads_task(
+  request: GenerateCreativeMapGoogleAdsRequest,
+) -> dict[str, str]:
+  """Generates creative map JSON based on Google Ads."""
+  task = tasks.create_map.delay(request.model_dump())
+  return {'operation_id': task.id, 'status': 'PENDING'}
+
+
+@app.post('/api/creative_map/googleads')
+@app.post('/creative_map/googleads', deprecated=True)
 def generate_creative_map_googleads(
   request: GenerateCreativeMapGoogleAdsRequest,
-  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
   """Generates creative map JSON based on Google Ads."""
-  return generate_creative_map(
-    'googleads',
-    request,
-    dependencies,
-  )
+  return generate_creative_map(request)
 
 
-@app.post('/dashboard/youtube')
+@app.post('/api/dashboard/youtube:task')
+def generate_tables_youtube_task(
+  request: GenerateTablesYouTubeRequest,
+) -> dict[str, str]:
+  """Generates dashboard sources JSON based on YouTube channel."""
+  task = tasks.create_tables.delay(request.model_dump())
+  return {'operation_id': task.id, 'status': 'PENDING'}
+
+
+@app.post('/api/dashboard/youtube')
+@app.post('/dashboard/youtube', deprecated=True)
 def generate_tables_youtube(
   request: GenerateTablesYouTubeRequest,
-  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
   """Generates dashboard sources JSON based on YouTube channel."""
-  return generate_tables(
-    'youtube',
-    request,
-    dependencies,
-  )
+  return generate_tables(request)
 
 
-@app.post('/creative_map/youtube')
+@app.post('/api/creative_map/youtube:task')
+def generate_creative_map_youtube_task(
+  request: GenerateCreativeMapYouTubeRequest,
+) -> dict[str, str]:
+  """Generates creative map JSON based on YouTube channel."""
+  task = tasks.create_map.delay(request.model_dump())
+  return {'operation_id': task.id, 'status': 'PENDING'}
+
+
+@app.post('/api/creative_map/youtube')
+@app.post('/creative_map/youtube', deprecated=True)
 def generate_creative_map_youtube(
   request: GenerateCreativeMapYouTubeRequest,
-  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
   """Generates creative map JSON based on YouTube channel."""
-  return generate_creative_map(
-    'youtube',
-    request,
-    dependencies,
-  )
+  return generate_creative_map(request)
 
 
-@app.post('/dashboard/dbm')
+@app.post('/api/dashboard/dbm:task')
+def generate_tables_dbm_task(
+  request: GenerateTablesBidManagerRequest,
+) -> dict[str, str]:
+  """Generates dashboard sources JSON based on BidManager API."""
+  task = tasks.create_tables.delay(request.model_dump())
+  return {'operation_id': task.id, 'status': 'PENDING'}
+
+
+@app.post('/api/dashboard/dbm')
+@app.post('/dashboard/dbm', deprecated=True)
 def generate_tables_dbm(
   request: GenerateTablesBidManagerRequest,
-  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
   """Generates dashboard sources JSON based on BidManager API."""
-  return generate_tables(
-    'dbm',
-    request,
-    dependencies,
-  )
+  return generate_tables(request)
 
 
-@app.post('/creative_map/dbm')
+@app.post('/api/creative_map/dbm:task')
+def generate_creative_map_dbm_task(
+  request: GenerateCreativeMapBidManagerRequest,
+) -> dict[str, str]:
+  """Generates creative map JSON based on BidManager API."""
+  task = tasks.create_map.delay(request.model_dump())
+  return {'operation_id': task.id, 'status': 'PENDING'}
+
+
+@app.post('/api/creative_map/dbm')
+@app.post('/creative_map/dbm', deprecated=True)
 def generate_creative_map_dbm(
   request: GenerateCreativeMapBidManagerRequest,
-  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> fastapi.responses.JSONResponse:
   """Generates creative map JSON based on BidManager API."""
-  return generate_creative_map(
-    'dbm',
-    request,
-    dependencies,
-  )
+  return generate_creative_map(request)
 
 
 def generate_creative_map(
-  source: Literal['youtube', 'googleads', 'file'],
   request: filonov.GenerateCreativeMapRequest,
-  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
-) -> filonov.creative_map.CreativeMapJson:
+) -> fastapi.responses.JSONResponse:
   """Generates creative map JSON based on provided source."""
-  fetching_service = media_fetching.MediaFetchingService.from_source_alias(
-    source=source, **request.source_parameters.model_dump()
-  )
-  generated_map = filonov.FilonovService(
-    fetching_service=fetching_service,
-    tagging_service=dependencies.tagging_service,
-    similarity_service=dependencies.similarity_service,
-  ).generate_creative_map(request)
-
-  if request.output_type == 'file':
-    destination = utils.build_creative_map_destination(request.output_name)
-    generated_map.save(destination)
-    return fastapi.responses.JSONResponse(
-      content=f'Creative map was saved to {destination}.'
-    )
-
+  generated_map = tasks.create_map(request)
   return fastapi.responses.JSONResponse(
-    content=fastapi.encoders.jsonable_encoder(generated_map.to_json())
+    content=fastapi.encoders.jsonable_encoder(generated_map)
   )
 
 
 def generate_tables(
-  source: Literal['youtube', 'googleads', 'file', 'dbm'],
   request: filonov.GenerateTablesRequest,
-  dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
-) -> filonov.creative_map.CreativeMapJson:
+) -> fastapi.responses.JSONResponse:
   """Writes filonov data."""
-  (
-    filonov.FilonovService(
-      fetching_service=media_fetching.MediaFetchingService.from_source_alias(
-        source=source, **request.source_parameters.model_dump()
-      ),
-      tagging_service=dependencies.tagging_service,
-      similarity_service=dependencies.similarity_service,
-    ).generate_tables(request)
+  file_locations = tasks.create_tables(request)
+  return fastapi.responses.JSONResponse(
+    content=fastapi.encoders.jsonable_encoder(file_locations)
   )
-  return fastapi.responses.JSONResponse(content='sources have been created.')
 
 
 @typer_app.command()
