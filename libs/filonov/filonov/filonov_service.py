@@ -84,10 +84,9 @@ class BaseRequest(pydantic.BaseModel):
 
     source_parameters_class = media_fetching.INPUT_MAPPING.get(self.source)
     if not isinstance(self.source_parameters, source_parameters_class):
-      self.source_parameters = source_parameters_class(
-        **self.source_parameters, media_type=self.media_type
-      )
-
+      self.source_parameters = source_parameters_class(**self.source_parameters)
+      if not self.source_parameters.media_type:
+        self.source_parameters.media_type = self.media_type
     self.context.update({self.source: self.source_parameters.model_dump()})
 
 
@@ -226,7 +225,7 @@ class FilonovService:
   def generate_tables(
     self,
     request: GenerateTablesRequest,
-  ) -> None:
+  ) -> dict[str, str]:
     """Generates dashboard data.
 
     Performs the following steps:
@@ -239,7 +238,7 @@ class FilonovService:
       request: Request for creative maps generation.
 
     Returns:
-      Generated creative map.
+      Locations of generated files.
 
     Raises:
       FilonovError: When performance or tagging data not found.
@@ -283,8 +282,16 @@ class FilonovService:
     dashboard_writer = garf_writer.create_writer(
       request.writer, **request.writer_parameters
     )
-    dashboard_writer.write(media_data, 'media_performance')
-    dashboard_writer.write(tags_report, 'tag_performance')
+    media_performance_destination = dashboard_writer.write(
+      media_data, 'media_performance'
+    )
+    tag_performance_destination = dashboard_writer.write(
+      tags_report, 'tag_performance'
+    )
+    return {
+      'media_performance': str(media_performance_destination),
+      'tag_performance': str(tag_performance_destination),
+    }
 
   @tracer.start_as_current_span('generate_creative_map')
   def generate_creative_map(
