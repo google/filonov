@@ -28,12 +28,15 @@ from media_tagging.entrypoints.tracer import (
   initialize_meter,
   initialize_tracer,
 )
+from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
 import filonov
 from filonov.entrypoints import tasks
+
+CeleryInstrumentor().instrument()
 
 app = fastapi.FastAPI(
   title='Filonov API',
@@ -188,7 +191,9 @@ def operation_status(operation_id: str):
   }
 
 
-@app.post('/api/dashboard/file:task')
+@app.post(
+  '/api/dashboard/file:task', status_code=fastapi.status.HTTP_202_ACCEPTED
+)
 def tag_task(
   request: GenerateTablesFileRequest,
 ) -> dict[str, str]:
@@ -213,7 +218,9 @@ def generate_tables_file(
   return generate_tables(request)
 
 
-@app.post('/api/creative_map/file:task')
+@app.post(
+  '/api/creative_map/file:task', status_code=fastapi.status.HTTP_202_ACCEPTED
+)
 def generate_creative_map_file_task(
   request: GenerateCreativeMapFileRequest,
 ) -> dict[str, str]:
@@ -231,7 +238,9 @@ def generate_creative_map_file(
   return generate_creative_map(request)
 
 
-@app.post('/api/dashboard/googleads:task')
+@app.post(
+  '/api/dashboard/googleads:task', status_code=fastapi.status.HTTP_202_ACCEPTED
+)
 def generate_tables_googleads_task(
   request: GenerateTablesGoogleAdsRequest,
 ) -> dict[str, str]:
@@ -249,7 +258,10 @@ def generate_tables_googleads(
   return generate_tables(request)
 
 
-@app.post('/api/creative_map/googleads:task')
+@app.post(
+  '/api/creative_map/googleads:task',
+  status_code=fastapi.status.HTTP_202_ACCEPTED,
+)
 def generate_creative_map_googleads_task(
   request: GenerateCreativeMapGoogleAdsRequest,
 ) -> dict[str, str]:
@@ -267,7 +279,9 @@ def generate_creative_map_googleads(
   return generate_creative_map(request)
 
 
-@app.post('/api/dashboard/youtube:task')
+@app.post(
+  '/api/dashboard/youtube:task', status_code=fastapi.status.HTTP_202_ACCEPTED
+)
 def generate_tables_youtube_task(
   request: GenerateTablesYouTubeRequest,
 ) -> dict[str, str]:
@@ -285,7 +299,9 @@ def generate_tables_youtube(
   return generate_tables(request)
 
 
-@app.post('/api/creative_map/youtube:task')
+@app.post(
+  '/api/creative_map/youtube:task', status_code=fastapi.status.HTTP_202_ACCEPTED
+)
 def generate_creative_map_youtube_task(
   request: GenerateCreativeMapYouTubeRequest,
 ) -> dict[str, str]:
@@ -303,7 +319,9 @@ def generate_creative_map_youtube(
   return generate_creative_map(request)
 
 
-@app.post('/api/dashboard/dbm:task')
+@app.post(
+  '/api/dashboard/dbm:task', status_code=fastapi.status.HTTP_202_ACCEPTED
+)
 def generate_tables_dbm_task(
   request: GenerateTablesBidManagerRequest,
 ) -> dict[str, str]:
@@ -321,7 +339,9 @@ def generate_tables_dbm(
   return generate_tables(request)
 
 
-@app.post('/api/creative_map/dbm:task')
+@app.post(
+  '/api/creative_map/dbm:task', status_code=fastapi.status.HTTP_202_ACCEPTED
+)
 def generate_creative_map_dbm_task(
   request: GenerateCreativeMapBidManagerRequest,
 ) -> dict[str, str]:
