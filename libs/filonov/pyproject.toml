@@ -33,6 +33,7 @@ version = {attr = "filonov.__version__"}
 server = [
   "media-tagging[server]",
   "media-similarity[server]",
+  "opentelemetry-instrumentation-celery",
 ]
 ui = [
   "streamlit"
