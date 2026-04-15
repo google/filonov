@@ -62,6 +62,7 @@ server = [
   "fastapi[standard]",
   "pydantic-settings",
   "opentelemetry-instrumentation-fastapi",
+  "opentelemetry-instrumentation-celery",
   "celery[redis]",
 ]
 gcp= [
