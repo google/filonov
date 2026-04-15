@@ -15,12 +15,11 @@
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 
-import asyncio
-
 import fastapi
 import typer
 import uvicorn
 from garf.executors.entrypoints import utils as garf_utils
+from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
@@ -39,6 +38,7 @@ from media_tagging.entrypoints.tracer import (
   initialize_tracer,
 )
 
+CeleryInstrumentor().instrument()
 app = fastapi.FastAPI(
   title='Media Tagging API',
   version=media_tagging.__version__,
@@ -47,7 +47,7 @@ app = fastapi.FastAPI(
 FastAPIInstrumentor.instrument_app(app)
 typer_app = typer.Typer()
 
-OTEL_SERVICE_NAME = 'media-tagger'
+OTEL_SERVICE_NAME = 'media-tagging'
 initialize_tracer(OTEL_SERVICE_NAME)
 meter = initialize_meter(OTEL_SERVICE_NAME)
 
@@ -115,7 +115,7 @@ def tag(
     raise fastapi.HTTPException(status_code=404, detail=str(e))
 
 
-@app.post('/api/tag:task')
+@app.post('/api/tag:task', status_code=fastapi.status.HTTP_202_ACCEPTED)
 def tag_task(
   request: media_tagging_service.MediaTaggingRequest,
 ) -> dict[str, str]:
@@ -168,7 +168,7 @@ def describe(
     raise fastapi.HTTPException(status_code=404, detail=str(e))
 
 
-@app.post('/api/describe:task')
+@app.post('/api/describe:task', status_code=fastapi.status.HTTP_202_ACCEPTED)
 def describe_task(
   request: media_tagging_service.MediaTaggingRequest,
 ) -> dict[str, str]:
