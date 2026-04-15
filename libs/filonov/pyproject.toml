@@ -34,6 +34,7 @@ server = [
   "media-tagging[server]",
   "media-similarity[server]",
   "opentelemetry-instrumentation-celery",
+  "grpcio-reflection",
 ]
 ui = [
   "streamlit"
