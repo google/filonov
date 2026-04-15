@@ -1,0 +1,92 @@
+syntax = "proto3";
+package filonov;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+
+message Status {
+  int32 code = 1;
+  string message = 2;
+  repeated google.protobuf.Any details = 3;
+}
+enum MediaType {
+  UNSPECIFIED = 0;
+  TEXT = 1;
+  IMAGE = 2;
+  YOUTUBE_VIDEO = 3;
+  YOUTUBE_THUMBNAIL = 4;
+  WEBPAGE = 5;
+  VIDEO = 6;
+}
+
+message Operation {
+  string id = 1;
+  bool done = 2;
+  oneof result {
+    Status error = 3;
+    google.protobuf.Any response = 4;
+  }
+}
+
+message GetOperationRequest {
+  string operation_id = 1;
+}
+
+message ListOperationsResponse {
+  repeated Operation operations = 1;
+}
+
+
+
+service FilonovService {
+  rpc GenerateCreativeMap(GenerateCreativeMapRequest) returns (Operation) {}
+  rpc GenerateTables(GenerateTablesRequest) returns (Operation) {}
+  rpc GetOperation(GetOperationRequest) returns (Operation) {}
+  rpc ListOperations(google.protobuf.Empty) returns (ListOperationsResponse) {}
+}
+
+
+message GenerateCreativeMapRequest {
+  string source = 1;
+  GoogleAdsParameters source_parameters = 2;
+  string output_name = 3;
+  bool embed_previews = 4;
+  bool omit_series = 5;
+  string output_type = 6;
+}
+
+message GenerateTablesRequest {
+  string source = 1;
+  GoogleAdsParameters source_parameters = 2;
+  string writer = 3;
+  google.protobuf.Struct writer_parameters  =  4;
+  string table_alias = 5;
+  bool  need_clustering = 6;
+
+
+}
+
+message GoogleAdsParameters {
+  string account = 1;
+  MediaType media_type = 2;
+  string start_date = 3;
+  string end_date = 4;
+  repeated string campaign_types = 5;
+  repeated string countries = 6;
+  repeated string metrics  = 7;
+  repeated string segments  = 8;
+  repeated string extra_info = 9;
+}
+
+message YouTubeParameters {
+  string channel = 1;
+  string type = 2;
+  string start_date = 3;
+  string end_date = 4;
+  repeated string campaign_types = 5;
+  repeated string countries = 6;
+  repeated string metrics  = 7;
+  repeated string segments  = 8;
+  repeated string extra_info = 9;
+}
