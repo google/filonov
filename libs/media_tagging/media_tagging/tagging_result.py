@@ -115,6 +115,10 @@ class TaggingResult(pydantic.BaseModel):
   hash: str | None = pydantic.Field(description='media hash', default=None)
   media_url: str | None = pydantic.Field(description='media_url', default=None)
 
+  @pydantic.field_serializer('processed_at')
+  def processed_at_serialized(self, dt: datetime.datetime, _info):
+    return int(dt.timestamp())
+
   def trim_tags(self, value: float) -> None:
     """Removes tags from tagging result with low scores."""
     if isinstance(self.content, Description):
