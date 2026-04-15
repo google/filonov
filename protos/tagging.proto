@@ -1,0 +1,86 @@
+syntax = "proto3";
+package media_tagging;
+import "google/protobuf/struct.proto";
+
+
+service MediaTaggingService {
+  rpc Tag(TagRequest) returns (TagResponse) {}
+  rpc Describe(DescribeRequest) returns (DescribeResponse) {}
+}
+
+// Tag
+message TaggingOptions {
+  int64 n_tags = 1;
+  repeated string tags = 2;
+  int64 n_runs = 3;
+}
+
+message TagRequest {
+  string tagger_type = 1;
+  string media_type = 2;
+  repeated string media_paths = 3;
+  TaggingOptions tagging_options = 4;
+  int64 parallel_threshold = 5;
+  bool deduplicate = 6;
+}
+
+message Tag {
+  string name = 1;
+  float score  = 2;
+
+}
+
+message TaggingResult {
+  int64 processed_at = 1;
+  string identifier = 2;
+  string type = 3;
+  repeated Tag content = 4;
+  string tagger = 5;
+  string output = 6;
+  google.protobuf.Struct tagging_details =  7;
+  string hash = 8;
+  string media_url = 9;
+}
+
+message TagResponse {
+  repeated TaggingResult results = 1;
+}
+
+// Description
+message DescriptionOptions {
+  int64 n_tags = 1;
+  repeated string tags = 2;
+  int64 n_runs = 3;
+  string custom_prompt = 4;
+  string custom_schema = 5;
+}
+
+message DescribeRequest {
+  string tagger_type = 1;
+  string media_type = 2;
+  repeated string media_paths = 3;
+  DescriptionOptions tagging_options = 4;
+  int64 parallel_threshold = 5;
+  bool deduplicate = 6;
+}
+
+message Description {
+  string text = 1;
+
+}
+
+message DescriptionResult {
+  int64 processed_at = 1;
+  string identifier = 2;
+  string type = 3;
+  Description content = 4;
+  string tagger = 5;
+  string output = 6;
+  google.protobuf.Struct tagging_details =  7;
+  string hash = 8;
+  string media_url = 9;
+}
+
+message DescribeResponse {
+  repeated DescriptionResult results = 1;
+}

@@ -116,6 +116,29 @@ class MediaTaggingRequest(pydantic.BaseModel):
     )
 
 
+def convert_tagger(tagger_type, tagging_options):
+  if builtin_tagger_class := TAGGERS.get(tagger_type):
+    return builtin_tagger_class(
+      **tagging_options.dict(),
+    )
+  plugin_taggers = discover_taggers(TAGGERS.keys())
+  if plugin_tagger_class := plugin_taggers.get(tagger_type):
+    return plugin_tagger_class(
+      **tagging_options.dict(),
+    )
+  raise base_tagger.TaggerError(
+    f'Unsupported type of tagger {tagger_type}. '
+    f'Supported taggers: {list(TAGGERS.keys())}'
+  )
+
+
+def convert_media_type_to_enum(media_type):
+  try:
+    return media.MediaTypeEnum[media_type.upper()]
+  except KeyError as e:
+    raise media.InvalidMediaTypeError(media_type) from e
+
+
 class MediaFetchingRequest(pydantic.BaseModel):
   """Contains parameters to fetching media tagging results from DB.
 
@@ -301,8 +324,10 @@ class MediaTaggingService:
       path_processor = default_path_processor
     else:
       span.set_attribute('media_tagger.path_processor', path_processor_str)
-    concrete_tagger = tagging_request.tagger
-    media_type_enum = tagging_request.media_type_enum
+    concrete_tagger = convert_tagger(
+      tagging_request.tagger_type, tagging_request.tagging_options
+    )
+    media_type_enum = convert_media_type_to_enum(tagging_request.media_type)
     span.set_attribute('media_tagger.media_type', media_type_enum.name)
     output = 'description' if action == 'describe' else 'tag'
     untagged_media = tagging_request.media_paths
