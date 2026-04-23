@@ -1,4 +1,4 @@
-# Copyright 2026 Google LLC
+#  Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,12 +36,14 @@ similarity_db_url = os.getenv('SIMILARITY_DB_URL', media_tagging_db_url)
 
 @celery.signals.worker_process_init.connect(weak=False)
 def init_celery_telemetry(*args, **kwargs):
-  otel_service_name = 'filonov-celery'
+  otel_service_name = os.getenv('OTEL_SERVICE_NAME', 'filonov-celery')
   initialize_tracer(otel_service_name)
   initialize_meter(otel_service_name)
 
   logger = garf_utils.init_logging(
-    loglevel='INFO', logger_type='local', name=otel_service_name
+    loglevel=os.getenv('OTEL_LOG_LEVEL', 'INFO'),
+    logger_type='local',
+    name=otel_service_name,
   )
   logger.addHandler(initialize_logger(otel_service_name))
   CeleryInstrumentor().instrument()
