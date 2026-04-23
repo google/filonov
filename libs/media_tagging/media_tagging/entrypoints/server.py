@@ -144,6 +144,16 @@ def operation_status(operation_id: str):
   }
 
 
+@app.post('/api/operations/{operation_id}:cancel')
+def cancel_operation(operation_id: str):
+  """Cancels tagging operation."""
+  tasks.celery_app.control.revoke(operation_id, terminate=True)
+  return {
+    'operation_id': operation_id,
+    'status': 'CANCELED',
+  }
+
+
 @app.post('/describe', deprecated=True)
 @app.post('/api/describe')
 def describe(
