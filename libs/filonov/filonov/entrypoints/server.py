@@ -28,6 +28,7 @@ from media_tagging.entrypoints.tracer import (
   initialize_meter,
   initialize_tracer,
 )
+from opentelemetry import trace
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic_settings import BaseSettings
@@ -206,6 +207,8 @@ def tag_task(
     Operation id and its status.
   """
   task = tasks.create_tables.delay(request.model_dump())
+  span = trace.get_current_span()
+  span.set_attribute('filonov.operation.id', task.id)
   return {'operation_id': task.id, 'status': 'PENDING'}
 
 
@@ -226,6 +229,8 @@ def generate_creative_map_file_task(
 ) -> dict[str, str]:
   """Generates creative map JSON based on a file."""
   task = tasks.create_map.delay(request.model_dump())
+  span = trace.get_current_span()
+  span.set_attribute('filonov.operation.id', task.id)
   return {'operation_id': task.id, 'status': 'PENDING'}
 
 
@@ -246,6 +251,8 @@ def generate_tables_googleads_task(
 ) -> dict[str, str]:
   """Generates dashboard sources based on Google Ads."""
   task = tasks.create_tables.delay(request.model_dump())
+  span = trace.get_current_span()
+  span.set_attribute('filonov.operation.id', task.id)
   return {'operation_id': task.id, 'status': 'PENDING'}
 
 
@@ -267,6 +274,8 @@ def generate_creative_map_googleads_task(
 ) -> dict[str, str]:
   """Generates creative map JSON based on Google Ads."""
   task = tasks.create_map.delay(request.model_dump())
+  span = trace.get_current_span()
+  span.set_attribute('filonov.operation.id', task.id)
   return {'operation_id': task.id, 'status': 'PENDING'}
 
 
@@ -287,6 +296,8 @@ def generate_tables_youtube_task(
 ) -> dict[str, str]:
   """Generates dashboard sources JSON based on YouTube channel."""
   task = tasks.create_tables.delay(request.model_dump())
+  span = trace.get_current_span()
+  span.set_attribute('filonov.operation.id', task.id)
   return {'operation_id': task.id, 'status': 'PENDING'}
 
 
@@ -307,6 +318,8 @@ def generate_creative_map_youtube_task(
 ) -> dict[str, str]:
   """Generates creative map JSON based on YouTube channel."""
   task = tasks.create_map.delay(request.model_dump())
+  span = trace.get_current_span()
+  span.set_attribute('filonov.operation.id', task.id)
   return {'operation_id': task.id, 'status': 'PENDING'}
 
 
