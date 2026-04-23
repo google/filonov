@@ -49,20 +49,32 @@ service FilonovService {
 
 message GenerateCreativeMapRequest {
   string source = 1;
-  GoogleAdsParameters source_parameters = 2;
-  string output_name = 3;
-  bool embed_previews = 4;
-  bool omit_series = 5;
-  string output_type = 6;
+  oneof source_parameters {
+    GoogleAdsParameters googleads_parameters = 2;
+    YouTubeParameters youtube_parameters = 3;
+    FileParameters file_parameters = 4;
+    BidManagerParameters bid_manager_parameters = 5;
+    SqlParameters sql_parameters = 6;
+  }
+  string output_name = 8;
+  bool embed_previews = 9;
+  bool omit_series = 10;
+  string output_type = 11;
 }
 
 message GenerateTablesRequest {
   string source = 1;
-  GoogleAdsParameters source_parameters = 2;
-  string writer = 3;
-  google.protobuf.Struct writer_parameters  =  4;
-  string table_alias = 5;
-  bool  need_clustering = 6;
+  oneof source_parameters {
+    GoogleAdsParameters googleads_parameters = 2;
+    YouTubeParameters youtube_parameters = 3;
+    FileParameters file_parameters = 4;
+    BidManagerParameters bid_manager_parameters = 5;
+    SqlParameters sql_parameters = 6;
+  }
+  string writer = 8;
+  google.protobuf.Struct writer_parameters  =  9;
+  string table_alias = 10;
+  bool  need_clustering = 11;
 
 
 }
@@ -81,12 +93,42 @@ message GoogleAdsParameters {
 
 message YouTubeParameters {
   string channel = 1;
-  string type = 2;
+  MediaType media_type = 2;
+  string type = 3;
+  repeated string segments  = 4;
+  repeated string extra_info = 5;
+}
+
+message FileParameters {
+  string path = 1;
+  MediaType media_type = 2;
+  string media_identifier = 3;
+  string media_name = 4;
+  repeated string metrics  = 5;
+  repeated string segments  = 6;
+  repeated string extra_info = 7;
+}
+
+message BidManagerParameters {
+  string advertiser = 1;
+  MediaType media_type = 2;
   string start_date = 3;
   string end_date = 4;
-  repeated string campaign_types = 5;
+  repeated string campaigns = 5;
   repeated string countries = 6;
   repeated string metrics  = 7;
   repeated string segments  = 8;
   repeated string extra_info = 9;
+  string line_item_type = 10;
+}
+
+message SqlParameters {
+  string table = 1;
+  MediaType media_type = 2;
+  string media_identifier = 3;
+  string media_name = 4;
+  repeated string metrics  = 5;
+  repeated string segments  = 6;
+  repeated string extra_info = 7;
+  string connection_string = 8;
 }

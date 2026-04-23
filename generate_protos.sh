@@ -5,4 +5,16 @@ tagging() {
 		protos/tagging.proto
 }
 
-tagging
+filonov() {
+	python -m grpc_tools.protoc -I=protos/ \
+		--python_out=./libs/filonov/filonov \
+		--grpc_python_out=./libs/filonov/filonov \
+		protos/filonov.proto
+}
+
+for i in "$@"; do
+  echo "Generating protos " "$i"
+  if declare -F "$i" > /dev/null; then
+    "$i"
+  fi
+done
