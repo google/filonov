@@ -41,12 +41,14 @@ service = media_tagging_service.MediaTaggingService(
 
 @celery.signals.worker_process_init.connect(weak=False)
 def init_celery_telemetry(*args, **kwargs):
-  otel_service_name = 'media-tagging-celery'
+  otel_service_name = os.getenv('OTEL_SERVICE_NAME', 'media-tagging-celery')
   initialize_tracer(otel_service_name)
   initialize_meter(otel_service_name)
 
   logger = garf_utils.init_logging(
-    loglevel='INFO', logger_type='local', name=otel_service_name
+    loglevel=os.getenv('OTEL_LOG_LEVEL', 'INFO'),
+    logger_type='local',
+    name=otel_service_name,
   )
   logger.addHandler(initialize_logger(otel_service_name))
   CeleryInstrumentor().instrument()
