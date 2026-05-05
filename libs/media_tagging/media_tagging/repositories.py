@@ -103,7 +103,7 @@ class TaggingDetails(Base):
 
   __tablename__ = 'tagging_details'
   id = sqlalchemy.Column(sqlalchemy.String(32), primary_key=True)
-  content = sqlalchemy.Column(sqlalchemy.JSON)
+  content = sqlalchemy.Column(sqlalchemy.Text)
 
   info = relationship('TaggingResults', back_populates='tagging_details')
 
@@ -131,7 +131,7 @@ class TaggingResults(Base):
   output = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
   tagger = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
   type = sqlalchemy.Column(sqlalchemy.String(50), primary_key=True)
-  content = sqlalchemy.Column(sqlalchemy.JSON)
+  content = sqlalchemy.Column(sqlalchemy.Text)
 
   tagging_details_id = sqlalchemy.Column(
     sqlalchemy.String(32),
@@ -147,10 +147,10 @@ class TaggingResults(Base):
       processed_at=self.processed_at,
       identifier=self.identifier.content,
       type=self.type,
-      content=self.content,
+      content=json.loads(self.content),
       output=self.output,
       tagger=self.tagger,
-      tagging_details=self.tagging_details.content,
+      tagging_details=json.loads(self.tagging_details.content),
       hash=self.hash,
     )
 
@@ -327,7 +327,7 @@ class SqlAlchemyTaggingResultsRepository(
       if tagging_details_hash not in saved_tagging_details:
         tagging_detail = TaggingDetails(
           id=tagging_details_hash,
-          content=tagging_details,
+          content=json.dumps(tagging_details),
         )
         session.add(tagging_detail)
         session.commit()
@@ -377,7 +377,7 @@ class SqlAlchemyTaggingResultsRepository(
           ) not in tagging_details_ids:
             tagging_detail = TaggingDetails(
               id=tagging_details_hash,
-              content=result.tagging_details,
+              content=json.dumps(result.tagging_details),
             )
             session.add(tagging_detail)
             tagging_details_ids.append(tagging_details_hash)
@@ -393,7 +393,7 @@ class SqlAlchemyTaggingResultsRepository(
           tagger=result.tagger,
           output=result.output,
           type=result.type,
-          content=content,
+          content=json.dumps(content),
           tagging_details_id=hashlib.md5(
             json.dumps(result.tagging_details).encode('utf-8')
           ).hexdigest(),
