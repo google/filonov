@@ -21,6 +21,7 @@ import hashlib
 import itertools
 import json
 from collections.abc import Sequence
+from typing import Any
 
 import sqlalchemy
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -129,7 +130,7 @@ class TaggingResults(Base):
   )
   output = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
   tagger = sqlalchemy.Column(sqlalchemy.String(255), primary_key=True)
-  type = sqlalchemy.Column(sqlalchemy.String(10), primary_key=True)
+  type = sqlalchemy.Column(sqlalchemy.String(50), primary_key=True)
   content = sqlalchemy.Column(sqlalchemy.JSON)
 
   tagging_details_id = sqlalchemy.Column(
@@ -289,32 +290,97 @@ class SqlAlchemyTaggingResultsRepository(
         )
       return final_results
 
+  def list_identifiers(self):
+    with self.session() as session:
+      return {i.hash: i.content for i in session.query(Identifiers).all()}
+
+  def list_tagging_details(self):
+    with self.session() as session:
+      return {i.id: i.content for i in session.query(TaggingDetails).all()}
+
+  def add_identifiers(self, identifiers: set[tuple[str, str]]):
+    idents = {i for i, content in identifiers}
+    with self.session() as session:
+      ids = [
+        i.hash
+        for i in session.query(Identifiers)
+        .where(Identifiers.hash.in_(idents))
+        .all()
+      ]
+      for ident, content in identifiers:
+        if ident not in ids:
+          identifier = Identifiers(hash=ident, content=content)
+          session.add(identifier)
+      session.commit()
+
+  def add_tagging_details(self, tagging_details: dict[str, Any]):
+    with self.session() as session:
+      tagging_details_hash = hashlib.md5(
+        json.dumps(tagging_details).encode('utf-8')
+      ).hexdigest()
+      saved_tagging_details = [
+        t.id
+        for t in session.query(TaggingDetails)
+        .where(TaggingDetails.id == tagging_details_hash)
+        .all()
+      ]
+      if tagging_details_hash not in saved_tagging_details:
+        tagging_detail = TaggingDetails(
+          id=tagging_details_hash,
+          content=tagging_details,
+        )
+        session.add(tagging_detail)
+        session.commit()
+
   def add(
     self,
     tagging_results: tagging_result.TaggingResult
     | Sequence[tagging_result.TaggingResult],
+    add_identifiers: bool = True,
+    add_tagging_details: bool = True,
   ) -> None:
     """Specifies add operations."""
     if isinstance(tagging_results, tagging_result.TaggingResult):
       tagging_results = [tagging_results]
     with self.session() as session:
-      identifiers = [t.hash for t in tagging_results]
-      tagging_details = [
-        hashlib.md5(json.dumps(t.tagging_details).encode('utf-8')).hexdigest()
-        for t in tagging_results
-      ]
-      ids = [
-        i.hash
-        for i in session.query(Identifiers)
-        .where(Identifiers.hash.in_(identifiers))
-        .all()
-      ]
-      tagging_details_ids = [
-        t.id
-        for t in session.query(TaggingDetails)
-        .where(TaggingDetails.id.in_(tagging_details))
-        .all()
-      ]
+      if add_identifiers:
+        identifiers = [t.hash for t in tagging_results]
+        ids = [
+          i.hash
+          for i in session.query(Identifiers)
+          .where(Identifiers.hash.in_(identifiers))
+          .all()
+        ]
+        for result in tagging_results:
+          if (identifier_hash := result.hash) not in ids:
+            identifier = Identifiers(
+              hash=identifier_hash, content=result.identifier
+            )
+            session.add(identifier)
+            ids.append(identifier_hash)
+      if add_tagging_details:
+        tagging_details = [
+          hashlib.md5(json.dumps(t.tagging_details).encode('utf-8')).hexdigest()
+          for t in tagging_results
+        ]
+        tagging_details_ids = [
+          t.id
+          for t in session.query(TaggingDetails)
+          .where(TaggingDetails.id.in_(tagging_details))
+          .all()
+        ]
+        for result in tagging_results:
+          if (
+            tagging_details_hash := hashlib.md5(
+              json.dumps(result.tagging_details).encode('utf-8')
+            ).hexdigest()
+          ) not in tagging_details_ids:
+            tagging_detail = TaggingDetails(
+              id=tagging_details_hash,
+              content=result.tagging_details,
+            )
+            session.add(tagging_detail)
+            tagging_details_ids.append(tagging_details_hash)
       for result in tagging_results:
         content = (
           [r.model_dump() for r in result.content]
@@ -328,24 +394,10 @@ class SqlAlchemyTaggingResultsRepository(
           output=result.output,
           type=result.type,
           content=content,
-        )
-        if tagging_results_orm.hash not in ids:
-          tagging_results_orm.identifier = Identifiers(
-            hash=tagging_results_orm.hash, content=result.identifier
-          )
-          ids.append(tagging_results_orm.hash)
-        if (
-          tagging_details_hash := hashlib.md5(
+          tagging_details_id=hashlib.md5(
             json.dumps(result.tagging_details).encode('utf-8')
-          ).hexdigest()
-        ) in tagging_details_ids:
-          tagging_results_orm.tagging_details_id = tagging_details_hash
-        else:
-          tagging_results_orm.tagging_details = TaggingDetails(
-            id=tagging_details_hash,
-            content=result.tagging_details,
-          )
-          tagging_details_ids.append(tagging_details_hash)
+          ).hexdigest(),
+        )
         session.add(tagging_results_orm)
       session.commit()
 

@@ -23,7 +23,7 @@ import os
 import time
 from collections.abc import Sequence
 from importlib.metadata import entry_points
-from typing import Callable, Literal
+from typing import Any, Callable, Final, Iterable, Literal
 
 import pydantic
 from garf.io import writer as garf_writer
@@ -48,6 +48,13 @@ media_unprocessed_counter = meter.create_counter(
   unit='1',
   description='Counts processing errors',
 )
+BATCH_SIZE: Final[int] = 10
+
+
+def _batched(iterable: Iterable[Any], chunk_size: int):
+  iterator = iter(iterable)
+  while chunk := tuple(itertools.islice(iterator, chunk_size)):
+    yield chunk
 
 
 @tracer.start_as_current_span('discover_path_processors')
@@ -332,6 +339,9 @@ class MediaTaggingService:
     output = 'description' if action == 'describe' else 'tag'
     untagged_media = tagging_request.media_paths
     tagged_media = []
+    tagging_details = tagging_request.tagging_options.model_dump(
+      exclude_none=True
+    )
     if self.repo and (
       tagged_media := self.repo.get(
         media_paths=tagging_request.media_paths,
@@ -339,9 +349,7 @@ class MediaTaggingService:
         tagger_type=tagging_request.tagger_type,
         output=output,
         deduplicate=deduplicate,
-        tagging_details=tagging_request.tagging_options.model_dump(
-          exclude_none=True
-        ),
+        tagging_details=tagging_details,
       )
     ):
       logger.info('Reusing %d already tagged media', len(tagged_media))
@@ -362,16 +370,22 @@ class MediaTaggingService:
       return MediaTaggingResponse(results=tagged_media)
 
     logger.info('Processing %d media', len(untagged_media))
+    all_media = [
+      media.Medium(
+        media_path=path_processor(path), media_type=tagging_request.media_type
+      )
+      for path in untagged_media
+    ]
+    identifiers = {(m.identifier, m.name) for m in all_media}
+    self.repo.add_identifiers(identifiers)
+    self.repo.add_tagging_details(tagging_details)
+
     span.set_attribute('media_tagger.num_media_to_process', len(untagged_media))
     logger.info(
       'Using %s tagger and parameters: %s',
       tagging_request.tagger_type,
       tagging_request.tagging_options,
     )
-    if n_runs := tagging_request.tagging_options.n_runs:
-      untagged_media = itertools.chain.from_iterable(
-        itertools.repeat(untagged_media, n_runs)
-      )
     if not tagging_request.parallel_threshold:
       results = (
         self._process_media_sequentially(
@@ -385,18 +399,25 @@ class MediaTaggingService:
         + tagged_media
       )
       return MediaTaggingResponse(results=results)
-    result = asyncio.run(
-      self._run(
-        action,
-        concrete_tagger,
-        media_type_enum,
-        untagged_media,
-        tagging_request.tagging_options,
-        path_processor,
-        tagging_request.parallel_threshold,
+
+    processed_results = []
+    for batch in _batched(untagged_media, BATCH_SIZE):
+      result = asyncio.run(
+        self._run(
+          action,
+          concrete_tagger,
+          media_type_enum,
+          batch,
+          tagging_request.tagging_options,
+          path_processor,
+          tagging_request.parallel_threshold,
+        )
       )
-    )
-    tagging_results = itertools.chain.from_iterable(result)
+      result = list(itertools.chain.from_iterable(result))
+      processed_results.append(result)
+      self.repo.add(result, add_identifiers=False, add_tagging_details=False)
+
+    tagging_results = itertools.chain.from_iterable(processed_results)
     results = list(tagging_results) + tagged_media
     return MediaTaggingResponse(results=results)
 
@@ -421,11 +442,11 @@ class MediaTaggingService:
         action,
         concrete_tagger,
         media_type,
-        [media_path],
+        [m],
         tagging_options,
         path_processor,
       )
-      for media_path in media_paths
+      for m in media_paths
     ]
     return await asyncio.gather(
       *(run_with_semaphore(task) for task in tasks), return_exceptions=True
@@ -479,17 +500,30 @@ class MediaTaggingService:
       )
       logger.info('Processing media: %s', path)
       try:
-        tagging_results = getattr(concrete_tagger, action)(
-          medium,
-          tagging_options,
+        if n_runs := tagging_options.n_runs:
+          for j in range(1, n_runs):
+            options = tagging_options
+            options.run_id = j
+            tagging_results = getattr(concrete_tagger, action)(
+              medium,
+              options,
+            )
+            tagging_results.media_url = medium.media_path
+            if tagging_results is None:
+              continue
+            results.append(tagging_results)
+        else:
+          tagging_results = getattr(concrete_tagger, action)(
+            medium,
+            tagging_options,
+          )
+          tagging_results.media_url = medium.media_path
+          if tagging_results is None:
+            continue
+          results.append(tagging_results)
+        media_processed_counter.add(
+          int(n_runs) if n_runs else 1, {'media_type': media_type.name}
         )
-        tagging_results.media_url = medium.media_path
-        if tagging_results is None:
-          continue
-        results.append(tagging_results)
-        media_processed_counter.add(1, {'media_type': media_type.name})
-        if self.repo:
-          self.repo.add([tagging_results])
       except base_tagger.TaggerError as e:
         logger.error('Tagger error: %s', str(e))
         media_unprocessed_counter.add(
@@ -520,5 +554,4 @@ class MediaTaggingService:
           1, {'media_type': media_type.name, 'source': 'unknown'}
         )
         logger.error('Unknown error occurred: %s', str(e))
-
     return results

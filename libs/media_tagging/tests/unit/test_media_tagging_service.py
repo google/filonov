@@ -23,6 +23,7 @@ import pytest
 from google import genai
 from media_tagging import (
   media_tagging_service,
+  repositories,
   tagging_result,
 )
 
@@ -41,15 +42,18 @@ class TestMediaTaggingService:
 
   def test_describe_media_returns_correct_tagging_result(self, service):
     n_runs = 5
-    expected_result = tagging_result.TaggingResult(
-      identifier='test',
-      tagger='fake',
-      output='description',
-      type='text',
-      content=tagging_result.Description(text='fake'),
-      tagging_details={'n_runs': n_runs},
-      hash=hashlib.md5(b'test').hexdigest(),
-    )
+    expected_results = [
+      tagging_result.TaggingResult(
+        identifier='test',
+        tagger='fake',
+        output='description',
+        type='text',
+        content=tagging_result.Description(text='fake'),
+        tagging_details={'n_runs': n_runs, 'run_id': i},
+        hash=hashlib.md5(b'test').hexdigest(),
+      )
+      for i in range(1, n_runs)
+    ]
     test_tagging_result = service.describe_media(
       media_tagging_service.MediaTaggingRequest(
         tagger_type='fake',
@@ -61,7 +65,7 @@ class TestMediaTaggingService:
     )
 
     expected_response = media_tagging_service.MediaTaggingResponse(
-      results=[expected_result] * n_runs
+      results=expected_results
     )
 
     assert test_tagging_result == expected_response
@@ -142,3 +146,19 @@ class TestMediaTaggingService:
       )
     )
     assert 'Resource exhausted' in caplog.text
+
+  def test_tag_media_persists_all_results(self, service, caplog):
+    caplog.at_level(logging.INFO)
+    media_paths = {f'test_{i}' for i in range(12)}
+    service.tag_media(
+      media_tagging_service.MediaTaggingRequest(
+        tagger_type='fake',
+        media_type='TEXT',
+        media_paths=media_paths,
+      )
+    )
+
+    with service.repo.session() as session:
+      res = session.query(repositories.TaggingResults).all()
+      found_media_paths = [r.identifier.content for r in res]
+      assert set(found_media_paths) == media_paths
