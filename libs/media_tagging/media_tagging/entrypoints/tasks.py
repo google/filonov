@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import os
+from typing import Any
 
 import celery
+import pydantic
 from garf.executors.entrypoints import utils as garf_utils
+from garf.io import writer as garf_writer
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
 from media_tagging import media_tagging_service, repositories
@@ -39,6 +42,12 @@ service = media_tagging_service.MediaTaggingService(
 )
 
 
+class TaggingRequest(media_tagging_service.MediaTaggingRequest):
+  writer: garf_writer.WriterOption | None = None
+  writer_parameters: dict[str, Any] = pydantic.Field(default_factory=dict)
+  output: str = 'tagging_results'
+
+
 @celery.signals.worker_process_init.connect(weak=False)
 def init_celery_telemetry(*args, **kwargs):
   otel_service_name = os.getenv('OTEL_SERVICE_NAME', 'media-tagging-celery')
@@ -56,13 +65,23 @@ def init_celery_telemetry(*args, **kwargs):
 
 @celery_app.task(pydantic=True)
 def tag(
-  request: media_tagging_service.MediaTaggingRequest,
+  request: TaggingRequest,
 ) -> media_tagging_service.MediaTaggingResponse:
-  return service.tag_media(request)
+  response = service.tag_media(request)
+  if request.writer:
+    return response.save(
+      request.output, request.writer, **request.writer_parameters
+    )
+  return response
 
 
 @celery_app.task(pydantic=True)
 def describe(
-  request: media_tagging_service.MediaTaggingRequest,
+  request: TaggingRequest,
 ) -> media_tagging_service.MediaTaggingResponse:
-  return service.describe_media(request)
+  response = service.describe_media(request)
+  if request.writer:
+    return response.save(
+      request.output, request.writer, **request.writer_parameters
+    )
+  return response
