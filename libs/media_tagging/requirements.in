@@ -1,2 +1,1 @@
 media-tagging[server]>=2.5.1
-opentelemetry-instrumentation-sqlalchemy
