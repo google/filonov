@@ -70,7 +70,7 @@ class TestMediaTaggingApiQuery:
           tagger_type = gemini
           AND media_type = IMAGE
           AND media_path IN (example.com, 'example2.com')
-          AND tagging_options.custom_schema = {tmp_schema_path}
+          AND tagging_options.custom_schema = '{tmp_schema_path}'
       """
     query_elements = MediaTaggingApiQuery(text=query).generate()
     assert (
