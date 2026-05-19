@@ -59,7 +59,8 @@ class MediaTaggingApiQuery(query_editor.QuerySpecification):
             ) from e
         else:
           try:
-            full_schema = ' '.join(value).replace("'", '')
+            full_schema = ' '.join(value)
+            full_schema = full_schema.replace("'", '"')
             schema_data = json.loads(full_schema)
             filters[key].update({'custom_schema': schema_data})
           except json.decoder.JSONDecoder as e:
