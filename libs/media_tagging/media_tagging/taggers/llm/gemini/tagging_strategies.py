@@ -209,10 +209,6 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       gemini_token_counter.add(
         response.usage_metadata.prompt_token_count, attributes=metric_attributes
       )
-    if medium.type == media.MediaTypeEnum.WEBPAGE:
-      if output == tagging_result.Description:
-        return {'text': response.text}
-      return _parse_json(response.text)
     try:
       return json.loads(response.text)
     except json.decoder.JSONDecodeError as e:
