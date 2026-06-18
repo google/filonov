@@ -343,30 +343,34 @@ class MediaTaggingService:
     tagging_details = tagging_request.tagging_options.model_dump(
       exclude_none=True
     )
-    if self.repo and (
-      tagged_media := self.repo.get(
-        media_paths=tagging_request.media_paths,
-        media_type=tagging_request.media_type,
-        tagger_type=tagging_request.tagger_type,
-        output=output,
-        deduplicate=deduplicate,
-        tagging_details=tagging_details,
-      )
-    ):
-      logger.info('Reusing %d already tagged media', len(tagged_media))
-      span.set_attribute('media_tagger.num_reused_media', len(tagged_media))
-      tagged_media_names = {
-        tagged_medium.identifier for tagged_medium in tagged_media
-      }
-      untagged_media = set()
-      for media_path in tagging_request.media_paths:
-        if (
-          media.convert_path_to_media_name(
-            media_path, tagging_request.media_type
-          )
-          not in tagged_media_names
+    if self.repo:
+      with tracer.start_as_current_span(
+        'media_tagger.get_from_repo'
+      ) as repo_span:
+        if tagged_media := self.repo.get(
+          media_paths=tagging_request.media_paths,
+          media_type=tagging_request.media_type,
+          tagger_type=tagging_request.tagger_type,
+          output=output,
+          deduplicate=deduplicate,
+          tagging_details=tagging_details,
         ):
-          untagged_media.add(media_path)
+          logger.info('Reusing %d already tagged media', len(tagged_media))
+          repo_span.set_attribute(
+            'media_tagger.num_reused_media', len(tagged_media)
+          )
+          tagged_media_names = {
+            tagged_medium.identifier for tagged_medium in tagged_media
+          }
+          untagged_media = set()
+          for media_path in tagging_request.media_paths:
+            if (
+              media.convert_path_to_media_name(
+                media_path, tagging_request.media_type
+              )
+              not in tagged_media_names
+            ):
+              untagged_media.add(media_path)
     if not untagged_media:
       return MediaTaggingResponse(results=tagged_media)
 
@@ -378,8 +382,10 @@ class MediaTaggingService:
       for path in untagged_media
     ]
     identifiers = {(m.identifier, m.name) for m in all_media}
-    self.repo.add_identifiers(identifiers)
-    self.repo.add_tagging_details(tagging_details)
+
+    with tracer.start_as_current_span('media_tagger.add_auxiliary_to_repo'):
+      self.repo.add_identifiers(identifiers)
+      self.repo.add_tagging_details(tagging_details)
 
     span.set_attribute('media_tagger.num_media_to_process', len(untagged_media))
     logger.info(
@@ -387,8 +393,8 @@ class MediaTaggingService:
       tagging_request.tagger_type,
       tagging_request.tagging_options,
     )
-    if not tagging_request.parallel_threshold:
-      results = (
+    if not tagging_request.parallel_threshold or len(untagged_media) == 1:
+      result = (
         self._process_media_sequentially(
           action,
           concrete_tagger,
@@ -399,28 +405,29 @@ class MediaTaggingService:
         )
         + tagged_media
       )
-      return MediaTaggingResponse(results=results)
+      with tracer.start_as_current_span(
+        'media_tagger.save_to_repo'
+      ) as save_repo:
+        self.repo.add(result, add_identifiers=False, add_tagging_details=False)
+        save_repo.set_attribute('n_results', len(result))
+      return MediaTaggingResponse(results=result)
 
     processed_results = []
-    for batch in _batched(untagged_media, BATCH_SIZE):
-      try:
-        asyncio.get_event_loop()
-      except RuntimeError:
-        result = asyncio.run(
-          self._run(
-            action,
-            concrete_tagger,
-            media_type_enum,
-            batch,
-            tagging_request.tagging_options,
-            path_processor,
-            tagging_request.parallel_threshold,
-          )
+    for i, batch in enumerate(_batched(untagged_media, BATCH_SIZE)):
+      batch_size = len(batch)
+      batch_offset = i * (BATCH_SIZE)
+      with tracer.start_as_current_span(
+        'media_tagger.process_batch'
+      ) as batch_span:
+        batch_span.set_attributes(
+          {
+            'batch_size': batch_size,
+            'max_batch_size': BATCH_SIZE,
+            'batch_offset': batch_offset,
+          }
         )
-      else:
-        with futures.ThreadPoolExecutor() as executor:
-          future = executor.submit(
-            asyncio.run,
+        try:
+          result = asyncio.run(
             self._run(
               action,
               concrete_tagger,
@@ -429,12 +436,36 @@ class MediaTaggingService:
               tagging_request.tagging_options,
               path_processor,
               tagging_request.parallel_threshold,
-            ),
+              batch_offset=batch_offset,
+              total_results=len(untagged_media),
+            )
           )
-          result = future.result()
-      result = list(itertools.chain.from_iterable(result))
-      processed_results.append(result)
-      self.repo.add(result, add_identifiers=False, add_tagging_details=False)
+        except RuntimeError:
+          with futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(
+              asyncio.run,
+              self._run(
+                action,
+                concrete_tagger,
+                media_type_enum,
+                batch,
+                tagging_request.tagging_options,
+                path_processor,
+                tagging_request.parallel_threshold,
+                batch_offset=batch_offset,
+                total_results=len(untagged_media),
+              ),
+            )
+            result = future.result()
+        result = list(itertools.chain.from_iterable(result))
+        processed_results.append(result)
+        with tracer.start_as_current_span(
+          'media_tagger.save_to_repo'
+        ) as save_repo:
+          self.repo.add(
+            result, add_identifiers=False, add_tagging_details=False
+          )
+          save_repo.set_attribute('n_results', len(result))
 
     tagging_results = itertools.chain.from_iterable(processed_results)
     results = list(tagging_results) + tagged_media
@@ -449,6 +480,8 @@ class MediaTaggingService:
     tagging_options: base_tagger.TaggingOptions,
     path_processor: Callable[[str], str],
     parallel_threshold: int,
+    batch_offset: int,
+    total_results: int,
   ):
     semaphore = asyncio.Semaphore(value=parallel_threshold)
 
@@ -464,8 +497,10 @@ class MediaTaggingService:
         [m],
         tagging_options,
         path_processor,
+        index=i,
+        total_results=total_results,
       )
-      for m in media_paths
+      for i, m in enumerate(media_paths, batch_offset + 1)
     ]
     return await asyncio.gather(
       *(run_with_semaphore(task) for task in tasks), return_exceptions=True
@@ -479,6 +514,8 @@ class MediaTaggingService:
     media_paths: Sequence[str | os.PathLike[str]],
     tagging_options: base_tagger.TaggingOptions,
     path_processor: Callable[[str], str],
+    index: int,
+    total_results: int,
   ) -> list[tagging_result.TaggingResult]:
     return await asyncio.to_thread(
       self._process_media_sequentially,
@@ -488,6 +525,8 @@ class MediaTaggingService:
       media_paths,
       tagging_options,
       path_processor,
+      index=index,
+      total_results=total_results,
     )
 
   def _process_media_sequentially(
@@ -498,6 +537,8 @@ class MediaTaggingService:
     media_paths: Sequence[str | os.PathLike[str]],
     tagging_options: base_tagger.TaggingOptions,
     path_processor: Callable[[str], str],
+    index: int | None = None,
+    total_results: int | None = None,
   ) -> list[tagging_result.TaggingResult]:
     """Runs media tagging algorithm.
 
@@ -508,16 +549,26 @@ class MediaTaggingService:
       media_paths: Local or remote path to media file.
       tagging_options: Optional parameters to be sent for tagging.
       path_processor: Custom processor of media paths.
+      index: Optional index of processed medium.
+      total_results: Optional number of total results that is processed.
 
     Returns:
       Results of tagging for all media.
     """
     results = []
-    for path in media_paths:
+    total_results = total_results or len(media_paths)
+    width = len(str(total_results))
+    for i, path in enumerate(media_paths, 1):
       medium = media.Medium(
         media_path=path_processor(path), media_type=media_type
       )
-      logger.info('Processing media: %s', path)
+      logger.info(
+        '[%*d of %d] Processing media: %s',
+        width,
+        index or i,
+        total_results,
+        path,
+      )
       try:
         if n_runs := tagging_options.n_runs:
           for j in range(1, n_runs):
