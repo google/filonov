@@ -213,7 +213,7 @@ def discover_taggers(
       for name, obj in inspect.getmembers(tagger_module):
         if inspect.isclass(obj) and issubclass(obj, base_tagger.BaseTagger):
           taggers[obj.alias] = getattr(tagger_module, name)
-    except ModuleNotFoundError:
+    except (ModuleNotFoundError, ImportError):
       continue
   return taggers
 
