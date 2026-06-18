@@ -99,10 +99,13 @@ class LangchainLLMTagger(base.BaseTagger):
   def create_tagging_strategy(
     self, media_type: media.MediaTypeEnum
   ) -> base.TaggingStrategy:
-    if media_type == media.MediaTypeEnum.IMAGE:
-      return ts.ImageTaggingStrategy(self.llm)
-    if media_type == media.MediaTypeEnum.VIDEO:
-      return ts.VideoTaggingStrategy(self.llm)
+    strategies = {
+      media.MediaTypeEnum.TEXT: ts.TextTaggingStrategy,
+      media.MediaTypeEnum.IMAGE: ts.ImageTaggingStrategy,
+      media.MediaTypeEnum.VIDEO: ts.VideoTaggingStrategy,
+    }
+    if strategy := strategies.get(media_type):
+      return strategy(self.llm)
     raise base.TaggerError(
       f'There are no supported taggers for media type: {media_type.name}'
     )

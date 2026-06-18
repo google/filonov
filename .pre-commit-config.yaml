@@ -70,3 +70,9 @@ repos:
     language: system
     pass_filenames: false
     files: ^libs/(media_tagging/.*|media_similarity/.*|media-fetching/.*|filonov/.*)\.py$
+  - id: langchain-tagging-tests
+    name: langchain-tagging-tests
+    entry: pytest -n auto libs/langchain-media-tagging/tests/unit
+    language: system
+    pass_filenames: false
+    files: ^libs/langchain-media-tagging/
