@@ -22,6 +22,7 @@ import logging
 import os
 import time
 from collections.abc import Sequence
+from concurrent import futures
 from importlib.metadata import entry_points
 from typing import Any, Callable, Final, Iterable, Literal
 
@@ -97,7 +98,7 @@ class MediaTaggingRequest(pydantic.BaseModel):
 
   def model_post_init(self, __context):
     if isinstance(self.media_paths, str):
-      self.media_paths = [path.strip() for path in self.media_paths.split(',')]
+      self.media_paths = {path.strip() for path in self.media_paths.split(',')}
 
   @property
   def media_type_enum(self):
@@ -402,17 +403,35 @@ class MediaTaggingService:
 
     processed_results = []
     for batch in _batched(untagged_media, BATCH_SIZE):
-      result = asyncio.run(
-        self._run(
-          action,
-          concrete_tagger,
-          media_type_enum,
-          batch,
-          tagging_request.tagging_options,
-          path_processor,
-          tagging_request.parallel_threshold,
+      try:
+        asyncio.get_event_loop()
+      except RuntimeError:
+        result = asyncio.run(
+          self._run(
+            action,
+            concrete_tagger,
+            media_type_enum,
+            batch,
+            tagging_request.tagging_options,
+            path_processor,
+            tagging_request.parallel_threshold,
+          )
         )
-      )
+      else:
+        with futures.ThreadPoolExecutor() as executor:
+          future = executor.submit(
+            asyncio.run,
+            self._run(
+              action,
+              concrete_tagger,
+              media_type_enum,
+              batch,
+              tagging_request.tagging_options,
+              path_processor,
+              tagging_request.parallel_threshold,
+            ),
+          )
+          result = future.result()
       result = list(itertools.chain.from_iterable(result))
       processed_results.append(result)
       self.repo.add(result, add_identifiers=False, add_tagging_details=False)
