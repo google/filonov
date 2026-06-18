@@ -21,6 +21,8 @@ import typer
 from garf.executors.entrypoints import utils as garf_utils
 from garf.io import writer as garf_writer
 from opentelemetry import trace
+from rich.console import Console
+from rich.table import Table
 from typing_extensions import Annotated
 
 import media_tagging
@@ -34,6 +36,7 @@ from media_tagging.telemetry import tracer
 
 initialize_tracer('media-tagger')
 typer_app = typer.Typer()
+console = Console()
 
 MediaPaths = Annotated[
   Optional[list[str]],
@@ -119,6 +122,17 @@ def _version_callback(show_version: bool) -> None:
   if show_version:
     print(f'media-tagging version: {media_tagging.__version__}')
     raise typer.Exit()
+
+
+@typer_app.command()
+@tracer.start_as_current_span('media_tagger.cli.taggers')
+def taggers() -> list[str]:
+  builtin_taggers = list(media_tagging.taggers.TAGGERS.keys())
+  loaded = media_tagging_service.discover_taggers(builtin_taggers)
+  table = Table('Tagger')
+  for tagger in list(loaded) + builtin_taggers:
+    table.add_row(tagger)
+  console.print(table)
 
 
 @typer_app.command(
