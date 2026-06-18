@@ -40,6 +40,7 @@ class TestLangchainLLMTagger:
   @pytest.mark.parametrize(
     ('media_type', 'media_type_enum'),
     [
+      ('text', media.MediaTypeEnum.TEXT),
       ('image', media.MediaTypeEnum.IMAGE),
       ('video', media.MediaTypeEnum.VIDEO),
     ],
@@ -74,6 +75,7 @@ class TestLangchainLLMTagger:
   @pytest.mark.parametrize(
     ('media_type', 'media_type_enum'),
     [
+      ('text', media.MediaTypeEnum.TEXT),
       ('image', media.MediaTypeEnum.IMAGE),
       ('video', media.MediaTypeEnum.VIDEO),
     ],
@@ -118,4 +120,6 @@ class TestLangchainLLMTagger:
       ),
     )
     with pytest.raises(base.TaggerError):
-      test_tagger.tag(media.Medium('test', media_type))
+      test_tagger.tag(
+        media.Medium('https://www.youtube.com/watch?v=eBRzdfU-K30', media_type)
+      )

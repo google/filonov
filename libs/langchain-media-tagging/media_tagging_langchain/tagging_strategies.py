@@ -52,26 +52,33 @@ class LLMTaggingStrategy(base.TaggingStrategy):
 
   def get_chain(
     self,
+    media_type: str,
     output: tagging_result.TaggingOutput,
     include_media_data: bool,
     custom_prompt: str,
   ) -> runnables.base.RunnableSequence:  # noqa: D102
     if not self._chain:
-      prompt = self.get_prompt(output, include_media_data, custom_prompt)
+      prompt = self.get_prompt(
+        media_type, output, include_media_data, custom_prompt
+      )
       self._chain = prompt | self.llm
     return self._chain
 
   def get_prompt(
     self,
+    media_type: str,
     output: tagging_result.TaggingOutput,
     include_media_data: bool,
     custom_prompt: str,
   ) -> prompts.ChatPromptTemplate:
     """Builds correct prompt to send to LLM."""
     if custom_prompt:
-      return _build_prompt_template(custom_prompt, include_media_data)
+      return _build_prompt_template(
+        media_type, custom_prompt, include_media_data
+      )
     prompt_file_name = 'tag' if output == tagging_result.Tag else 'description'
     return _build_prompt_template(
+      media_type,
       media_tagging_llm_utils.read_prompt_content(prompt_file_name),
       include_media_data,
     )
@@ -111,6 +118,7 @@ class LLMTaggingStrategy(base.TaggingStrategy):
       image_data = medium.media_path
       include_media_data = False
     chain = self.get_chain(
+      str(medium.type),
       parser.pydantic_object,
       include_media_data=include_media_data,
       custom_prompt=tagging_options.custom_prompt,
@@ -172,21 +180,27 @@ class LLMTaggingStrategy(base.TaggingStrategy):
     )
 
 
+class TextTaggingStrategy(LLMTaggingStrategy):
+  """Tags texts via LLM."""
+
+
 class ImageTaggingStrategy(LLMTaggingStrategy):
-  """Tags image via LLM."""
+  """Tags images via LLM."""
 
 
 class VideoTaggingStrategy(LLMTaggingStrategy):
-  """Tags video via LLM."""
+  """Tags videos via LLM."""
 
 
 def _build_prompt_template(
+  media_type: str,
   prompt: str,
   include_image_data: bool = False,
 ) -> prompts.ChatPromptTemplate | str:
   """Constructs prompt template from file.
 
   Args:
+    media_type: Type of media to process.
     prompt: Text of a prompt.
     include_image_data: Whether to include image_urls in prompt.
 
@@ -206,12 +220,13 @@ def _build_prompt_template(
   else:
     image_data = '{image_data}'
 
-  user_input.append(
-    {
-      'type': 'image_url',
-      'image_url': {'url': image_data},
-    }
-  )
+  if media_type == 'IMAGE':
+    user_input.append(
+      {
+        'type': 'image_url',
+        'image_url': {'url': image_data},
+      }
+    )
 
   user_prompt = ('human', user_input)
   return prompts.ChatPromptTemplate.from_messages([system_prompt, user_prompt])
