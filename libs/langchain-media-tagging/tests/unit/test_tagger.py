@@ -19,6 +19,7 @@ from collections.abc import Sequence
 
 import pytest
 from langchain_core import language_models
+from langchain_core.runnables import RunnableLambda
 from media_tagging import media, tagging_result
 from media_tagging.taggers import base
 from media_tagging_langchain import tagger
@@ -34,6 +35,22 @@ def _build_tags_from_dicts(
   raw_tags: Sequence[dict[str, str]],
 ) -> tuple[tagging_result.Tag, ...]:
   return tuple(tagging_result.Tag(**raw_tag) for raw_tag in raw_tags)
+
+
+class MockTagsModel(language_models.FakeListChatModel):
+  def with_structured_output(self, schema, **kwargs):
+    def mock_invoke(_):
+      return schema(content=[tagging_result.Tag(name='test', score=1.0)])
+
+    return RunnableLambda(mock_invoke)
+
+
+class MockDescriptionModel(language_models.FakeListChatModel):
+  def with_structured_output(self, schema, **kwargs):
+    def mock_invoke(_):
+      return schema(content=[tagging_result.Description(text='Text')])
+
+    return RunnableLambda(mock_invoke)
 
 
 class TestLangchainLLMTagger:
@@ -55,9 +72,7 @@ class TestLangchainLLMTagger:
       return_value=bytes(),
     )
     test_tagger = tagger.LangchainLLMTagger(
-      llm=language_models.FakeListChatModel(
-        responses=[json.dumps([_TAGS_RESPONSE[0]])]
-      ),
+      llm=MockTagsModel(responses=[json.dumps([_TAGS_RESPONSE[0]])]),
     )
     result = test_tagger.tag(medium, base.TaggingOptions(n_tags=100))
 
@@ -91,7 +106,7 @@ class TestLangchainLLMTagger:
     )
     test_description = 'This is a test description'
     test_tagger = tagger.LangchainLLMTagger(
-      llm=language_models.FakeListChatModel(
+      llm=MockDescriptionModel(
         responses=[json.dumps({'text': test_description})]
       ),
     )
