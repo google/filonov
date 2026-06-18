@@ -11,19 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Module for performing media tagging with LLMs."""
+"""Performs media tagging with Langchain supported LLMs."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 import base64
-import logging
 import pathlib
 from typing import Final
 
+import pydantic
 from langchain_core import (
   language_models,
-  output_parsers,
   prompts,
-  runnables,
 )
 from media_tagging import media, tagging_result
 from media_tagging.taggers import base
@@ -33,112 +31,83 @@ from typing_extensions import override
 MAX_NUMBER_LLM_TAGS: Final[int] = 10
 
 
-class LLMTaggingStrategy(base.TaggingStrategy):
-  """Defines LLM specific tagging strategy.
+class Tags(pydantic.BaseModel):
+  content: list[tagging_result.Tag]
 
-  Attributes:
-    chain: Langchain chain.
-  """
+
+class Descriptions(pydantic.BaseModel):
+  content: list[tagging_result.Description]
+
+
+class LLMTaggingStrategy(base.TaggingStrategy):
+  """Defines Langchain specific tagging strategy."""
 
   def __init__(
-    self,
-    llm: language_models.BaseLanguageModel,
+    self, llm: language_models.BaseLanguageModel, **kwargs: str
   ) -> None:
     """Initializes LLMTaggingStrategy based on selected LLM."""
     self.llm = llm
     self._prompt = None
-    self._chain = None
-    self.include_media_data_in_prompt = True
 
-  def get_chain(
-    self,
-    media_type: str,
-    output: tagging_result.TaggingOutput,
-    include_media_data: bool,
-    custom_prompt: str,
-  ) -> runnables.base.RunnableSequence:  # noqa: D102
-    if not self._chain:
-      prompt = self.get_prompt(
-        media_type, output, include_media_data, custom_prompt
-      )
-      self._chain = prompt | self.llm
-    return self._chain
+  def build_content(self, medium: media.Medium, **kwargs):
+    """Convert media to a format usable by LLM."""
+    raise NotImplementedError
 
-  def get_prompt(
-    self,
-    media_type: str,
-    output: tagging_result.TaggingOutput,
-    include_media_data: bool,
-    custom_prompt: str,
-  ) -> prompts.ChatPromptTemplate:
-    """Builds correct prompt to send to LLM."""
-    if custom_prompt:
-      return _build_prompt_template(
-        media_type, custom_prompt, include_media_data
-      )
-    prompt_file_name = 'tag' if output == tagging_result.Tag else 'description'
-    return _build_prompt_template(
-      media_type,
-      media_tagging_llm_utils.read_prompt_content(prompt_file_name),
-      include_media_data,
-    )
-
-  def convert_medium_to_encoded_string(self, medium) -> str:
-    """Helper method for converting medium content to a string."""
-    return base64.b64encode(medium.content).decode('utf-8')
-
-  def get_llm_response(
+  def build_prompt(
     self,
     medium: media.Medium,
-    parser: output_parsers.JsonOutputParser,
-    tagging_options: base.TaggingOptions = base.TaggingOptions(),
-  ):
-    """Defines how to interact with LLM to perform media tagging.
-
-    Args:
-      medium: Instantiated media object.
-      output: Type of output to request from LLM.
-      tagging_options: Additional parameters to fine-tune tagging.
-
-    Returns:
-      Formatted LLM response.
-    """
-    if not tagging_options:
-      tagging_options = base.TaggingOptions(n_tags=MAX_NUMBER_LLM_TAGS)
+    output: tagging_result.TaggingOutput,
+    tagging_options: base.TaggingOptions,
+  ) -> str:
+    """Builds correct prompt based on medium and tagging options."""
+    if self._prompt:
+      return self._prompt
+    include_media_data = (
+      bool(medium.media_path) and pathlib.Path(medium.media_path).is_file()
+    )
     if custom_prompt := tagging_options.custom_prompt:
-      self.custom_prompt = custom_prompt
-
-    logging.debug(
-      'Tagging %s "%s" with LLMTagger', medium.type.name, medium.name
-    )
-    if medium.media_path and pathlib.Path(medium.media_path).is_file():
-      image_data = self.convert_medium_to_encoded_string(medium)
-      include_media_data = True
-    else:
-      image_data = medium.media_path
-      include_media_data = False
-    chain = self.get_chain(
-      str(medium.type),
-      parser.pydantic_object,
-      include_media_data=include_media_data,
-      custom_prompt=tagging_options.custom_prompt,
-    )
-    invocation_parameters = media_tagging_llm_utils.get_invocation_parameters(
+      self._prompt = _build_prompt_template(
+        media_type=medium.type,
+        prompt=custom_prompt,
+        include_image_data=include_media_data,
+      )
+      return self._prompt
+    prompt_file_name = 'tag' if output == tagging_result.Tag else 'description'
+    prompt = media_tagging_llm_utils.read_prompt_content(prompt_file_name)
+    parameters = media_tagging_llm_utils.get_invocation_parameters(
       media_type=medium.type.name,
       tagging_options=tagging_options,
     )
-    invocation_parameters['format_instructions'] = (
-      parser.get_format_instructions()
+    prompt = prompt.format(**parameters)
+    self._prompt = _build_prompt_template(
+      media_type=medium.type,
+      prompt=prompt,
+      include_image_data=include_media_data,
     )
-    invocation_parameters['image_data'] = image_data
-    response = chain.invoke(invocation_parameters)
-    if hasattr(response, 'usage_metadata'):
-      logging.debug(
-        'usage_metadata for media %s: %s',
-        medium.name,
-        response.usage_metadata,
-      )
-    return parser.parse(response.content)
+    return self._prompt
+
+  def _process_medium(
+    self,
+    medium: media.Medium,
+    tagging_options: base.TaggingOptions,
+    output: tagging_result.TaggingOutput,
+    output_schema: pydantic.BaseModel,
+  ):
+    prompt = self.build_prompt(
+      medium=medium,
+      output=output,
+      tagging_options=tagging_options,
+    )
+    medium_content = self.build_content(medium)
+    result = (
+      prompt | self.llm.with_structured_output(schema=output_schema)
+    ).invoke({'medium_content': medium_content})
+    return tagging_result.TaggingResult(
+      identifier=medium.name,
+      type=medium.type.name.lower(),
+      content=result.content,
+      hash=medium.identifier,
+    )
 
   @override
   def tag(
@@ -149,16 +118,10 @@ class LLMTaggingStrategy(base.TaggingStrategy):
     ),
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
-    parser = output_parsers.JsonOutputParser(pydantic_object=tagging_result.Tag)
-    result = self.get_llm_response(medium, parser, tagging_options)
-    if 'tags' in result:
-      result = result.get('tags')
-    tags = [
-      tagging_result.Tag(name=r.get('name'), score=r.get('score'))
-      for r in result
-    ]
-    return tagging_result.TaggingResult(
-      identifier=medium.name, type=medium.type.name.lower(), content=tags
+    if not tagging_options:
+      tagging_options.n_tags = MAX_NUMBER_LLM_TAGS
+    return self._process_medium(
+      medium, tagging_options, output=tagging_result.Tag, output_schema=Tags
     )
 
   @override
@@ -168,28 +131,35 @@ class LLMTaggingStrategy(base.TaggingStrategy):
     tagging_options: base.TaggingOptions = base.TaggingOptions(),
     **kwargs: str,
   ) -> tagging_result.TaggingResult:
-    parser = output_parsers.JsonOutputParser(
-      pydantic_object=tagging_result.Description
-    )
-    result = self.get_llm_response(medium, parser, tagging_options)
-    description = result.get('text')
-    return tagging_result.TaggingResult(
-      identifier=medium.name,
-      type=medium.type.name.lower(),
-      content=tagging_result.Description(text=description),
+    return self._process_medium(
+      medium,
+      tagging_options,
+      output=tagging_result.Description,
+      output_schema=Descriptions,
     )
 
 
 class TextTaggingStrategy(LLMTaggingStrategy):
   """Tags texts via LLM."""
 
+  def build_content(self, medium, **kwargs):
+    return str(medium.content)
+
 
 class ImageTaggingStrategy(LLMTaggingStrategy):
   """Tags images via LLM."""
 
+  def build_content(self, medium, **kwargs):
+    if medium.media_path and pathlib.Path(medium.media_path).is_file():
+      return base64.b64encode(medium.content).decode('utf-8')
+    return medium.media_path
+
 
 class VideoTaggingStrategy(LLMTaggingStrategy):
   """Tags videos via LLM."""
+
+  def build_content(self, medium, **kwargs):
+    return str(medium.content)
 
 
 def _build_prompt_template(
@@ -208,23 +178,24 @@ def _build_prompt_template(
     Generated prompt template.
   """
   system_prompt = ('system', 'You are a helpful assistant')
-  user_input = [
-    {
-      'type': 'text',
-      'text': prompt
-      + 'Use the following formatting instructions: {format_instructions}',
-    }
-  ]
+  user_input = [{'type': 'text', 'text': prompt}]
   if include_image_data:
-    image_data = 'data:image/jpeg;base64,{image_data}'
+    medium_content = 'data:image/jpeg;base64,{medium_content}'
   else:
-    image_data = '{image_data}'
+    medium_content = '{medium_content}'
 
   if media_type == 'IMAGE':
     user_input.append(
       {
         'type': 'image_url',
-        'image_url': {'url': image_data},
+        'image_url': {'url': medium_content},
+      }
+    )
+  elif media_type == 'TEXT':
+    user_input.append(
+      {
+        'type': 'image_url',
+        'text': medium_content,
       }
     )
 

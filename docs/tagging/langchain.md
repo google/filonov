@@ -2,7 +2,7 @@
 [![Downloads PyPI](https://img.shields.io/pypi/dw/media-tagging-langchain?logo=pypi)](https://pypi.org/project/media-tagging-langchain/)
 # Tagging media with Langchain
 
-If you're working with images you can use the multimodal LLMs supported by Langchain.
+If you're working with images & texts you can use the multimodal LLMs supported by Langchain.
 
 ## Prerequisites
 
@@ -10,6 +10,7 @@ If you're working with images you can use the multimodal LLMs supported by Langc
 
 ## Supported media
 
+* TEXT
 * IMAGE
 
 
@@ -86,6 +87,72 @@ curl -X 'POST' \
     ],
     "tagging_options": {
       "llm_class_name": "langchain_google_genai.ChatGoogleGenerativeAI"
+    }
+  }'
+```
+///
+
+## Customization
+
+Depending on selected LLM you may pass additional parameters to configure it.
+For example, for `ChatOllama` you can
+[setup over 20 parameters](https://reference.langchain.com/python/langchain-ollama/chat_models/ChatOllama)
+of your choice such as `base_url`, `temperature`, `reasoning`, etc.
+
+### model
+
+/// tab | cli
+```bash
+media-tagger tag MEDIA_PATHs \
+  --media-type IMAGE \
+  --tagger langchain \
+  --tagger.llm_class_name=<FULLY_QUALIFIED_CLASS_NAME> \
+  --tagger.model=MODEL_NAME
+```
+
+Where
+
+* `MODEL_NAME` - name of the models supported by a concrete LLM (i.e. `gemma4:e2b` supported by `langchain_ollama.ChatOllama`).
+///
+
+/// tab | python
+```python
+import media_tagging
+
+media_tagger = media_tagging.MediaTaggingService()
+
+request = media_tagging.MediaTaggingRequest(
+  media_type='IMAGE',
+  media_paths=['image1.png', 'image2.png'],
+  tagger_type='langchain',
+  tagging_options={
+    'llm_class_name': 'langchain_ollama.ChatOllama',
+    'model': 'gemma4:e2b',
+  }
+)
+
+result = media_tagger.tag_media(request)
+
+result.save(output='tagging_results', writer='csv')
+```
+///
+
+/// tab | curl
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/api/tag' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "langchain",
+    "media_type": "IMAGE",
+    "media_paths": [
+      "image1.png",
+      "image2.png"
+    ],
+    "tagging_options": {
+      "llm_class_name": "langchain_google_genai.ChatGoogleGenerativeAI",
+      "model": "gemma4:e2b"
     }
   }'
 ```
