@@ -89,7 +89,10 @@ async def version() -> str:
 
 @app.get('/api/taggers')
 def available_taggers() -> list[str]:
-  return list(taggers.TAGGERS.keys())
+  """Lists taggers that can be used for media processing."""
+  builtin_taggers = list(taggers.TAGGERS.keys())
+  loaded = media_tagging_service.discover_taggers(builtin_taggers)
+  return list(loaded) + builtin_taggers
 
 
 @app.post('/tag', deprecated=True)
