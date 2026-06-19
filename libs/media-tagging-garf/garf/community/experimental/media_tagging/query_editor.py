@@ -41,13 +41,15 @@ class MediaTaggingApiQuery(query_editor.QuerySpecification):
       else:
         nested_key = None
       if nested_key == 'custom_schema':
-        if (schema := _destringify(value[0])) in (
-          'boolean',
-          'integer',
-          'number',
-          'string',
-        ):
+        schema = _destringify(value[0])
+        if schema in ('boolean', 'integer', 'number', 'string'):
           filters[key].update({'custom_schema': {'type': schema}})
+        elif schema.lower().startswith('enum'):
+          _, *enum_values = schema.split(':')
+          enum_values = enum_values[0].split(',')
+          filters[key].update(
+            {'custom_schema': {'type': 'string', 'enum': enum_values}}
+          )
         elif schema.endswith('.json'):
           try:
             with smart_open.open(schema, 'r', encoding='utf-8') as f:
