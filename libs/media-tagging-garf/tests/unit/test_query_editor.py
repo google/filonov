@@ -99,6 +99,27 @@ class TestMediaTaggingApiQuery:
       == custom_schema
     )
 
+  def test_generate_processes_enum_schema_from_builtin(self):
+    builtin_schema = 'enum:Category1,Category2'
+    query = f"""
+        SELECT
+          media_url
+        FROM tag
+        WHERE
+          tagger_type = gemini
+          AND media_type = IMAGE
+          AND media_path IN (example.com, example2.com)
+          AND tagging_options.custom_prompt = "Do something"
+          AND tagging_options.model_name = 'gemini-3.0-flash'
+          AND tagging_options.custom_schema = '{builtin_schema}'
+      """
+    query_elements = MediaTaggingApiQuery(text=query).generate()
+    expected_schema = {'type': 'string', 'enum': ['Category1', 'Category2']}
+    assert (
+      query_elements.filters.get('tagging_options').get('custom_schema')
+      == expected_schema
+    )
+
   @pytest.mark.skip('Inline schemas are not supported')
   def test_generate_processes_schema_from_inline_macro(self):
     custom_schema = {'type': 'boolean'}

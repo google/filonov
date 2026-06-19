@@ -13,4 +13,4 @@
 # limitations under the License.
 """Connect to Media Tagging API with garf."""
 
-__version__ = '0.0.4'
+__version__ = '0.0.5'
