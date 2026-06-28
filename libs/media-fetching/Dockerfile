@@ -7,8 +7,7 @@ ADD requirements.txt .
 RUN uv venv /opt/venv/ && \
   VIRTUAL_ENV=/opt/venv uv pip install -r requirements.txt --require-hashes --no-cache
 WORKDIR /opt/venv/lib/python3.13/site-packages
-RUN rm -rf google/ads/googleads/v20 google/ads/googleads/v21 google/ads/googleads/v22
-RUN rm -rf googleapiclient/discovery_cache/documents
+RUN rm -rf google/ads/googleads/v21 google/ads/googleads/v22 google/ads/googleads/v23
 RUN rm -rf pandas/tests
 RUN rm -rf numpy/**/tests
 RUN rm -rf \
