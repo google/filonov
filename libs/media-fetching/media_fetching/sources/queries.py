@@ -199,7 +199,6 @@ class VideoPerformance(PerformanceQuery):
 
   start_date: str
   end_date: str
-  media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
   campaign_ids: list[int] | None = None
@@ -307,7 +306,6 @@ class SearchAssetPerformance(PerformanceQuery):
 
   start_date: str
   end_date: str
-  media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
   campaign_ids: list[int] | None = None
@@ -401,7 +399,6 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
 
   start_date: str
   end_date: str
-  media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
   campaign_ids: list[int] | None = None
@@ -443,7 +440,6 @@ class DemandGenVideoAssetPerformance(PerformanceQuery):
 
   start_date: str
   end_date: str
-  media_type: SupportedMediaTypes
   campaign_type: SupportedCampaignTypes
   min_cost: int = 0
   campaign_ids: list[int] | None = None
@@ -536,6 +532,7 @@ QUERIES_MAPPING: dict[
   'pmax': PmaxAssetPerformance,
   'video': VideoPerformance,
   'demandgen': {
+    'YOUTUBE_THUMBNAIL': DemandGenVideoAssetPerformance,
     'YOUTUBE_VIDEO': DemandGenVideoAssetPerformance,
     'IMAGE': DemandGenImageAssetPerformance,
     'TEXT': DemandGenTextAssetPerformance,
