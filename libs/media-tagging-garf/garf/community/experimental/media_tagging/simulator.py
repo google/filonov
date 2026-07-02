@@ -23,6 +23,7 @@ import garf.core
 from garf.community.experimental.media_tagging import (
   api_clients,
   query_editor,
+  version,
 )
 from garf.core import simulator
 
@@ -35,6 +36,8 @@ class MediaTaggingApiSimulatorSpecification(simulator.SimulatorSpecification):
 
 class MediaTaggingApiReportSimulator(simulator.ApiReportSimulator):
   """Defines simulator for Media Tagging API."""
+
+  version = version.__version__
 
   def __init__(
     self,

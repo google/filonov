@@ -25,7 +25,7 @@ classifiers = [
 dynamic=["version"]
 
 [tool.setuptools.dynamic]
-version = {attr = "garf.community.experimental.media_tagging.__version__"}
+version = {attr = "garf.community.experimental.media_tagging.version.__version__"}
 
 [project.entry-points.garf]
 media-tagging = "garf.community.experimental.media_tagging.report_fetcher"
