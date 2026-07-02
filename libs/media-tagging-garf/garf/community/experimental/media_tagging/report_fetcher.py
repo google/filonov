@@ -17,12 +17,15 @@
 from garf.community.experimental.media_tagging import (
   api_clients,
   query_editor,
+  version,
 )
 from garf.core import parsers, report_fetcher
 
 
 class MediaTaggingApiReportFetcher(report_fetcher.ApiReportFetcher):
   """Defines report fetcher."""
+
+  version = version.__version__
 
   def __init__(
     self,
