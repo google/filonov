@@ -59,7 +59,16 @@ class MediaTaggingApiClient(api_clients.RestApiClient):
   def get_response(
     self, request: query_editor.MediaTaggingApiQuery, **kwargs: str
   ) -> api_clients.GarfApiResponse:
-    tagging_request = MediaTaggingRequest(**request.filters)
+    if schema := kwargs.get('tagging_options', {}).get('custom_schema'):
+      kwargs['tagging_options'] = query_editor.process_schema(schema)
+    media_paths = kwargs.pop('media_paths')
+    if not isinstance(media_paths, list):
+      media_paths = [media_paths]
+
+    tagging_parameters = {**kwargs, **request.filters}
+    tagging_request = MediaTaggingRequest(
+      media_paths=media_paths, **tagging_parameters
+    )
     with tracer.start_as_current_span('request') as span:
       span.set_attribute(
         'media_tagger.num_media_to_process', len(tagging_request.media_paths)

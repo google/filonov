@@ -34,6 +34,10 @@ where:
 |----- | ----- | -------- |
 | `endpoint`   | http endpoint when media-tagging API is running |  |
 | `db-uri`   | Optional connection string to DB where tagging results can be found |  |
+| `tagger-type`   | Type of [tagger](https://google.github.io/filonov/tagging/overview/#supported-taggers) to use | Optional, can be specified in query filters |
+| `media-type`   | Type of [media](https://google.github.io/filonov/tagging/media/#supported-media-types) to use | Optional, can be specified in query filters |
+| `media-paths`   | Type of [media](https://google.github.io/filonov/tagging/media/#supported-media-types) to use | Optional, can be specified in query filters |
+| `tagging-options`   | Key-value pairs  to [fine-tune tagging process](https://google.github.io/filonov/tagging/overview/#usage) | Optional, can be specified in query filters |
 
 
 ## Queries for Media Tagging API
