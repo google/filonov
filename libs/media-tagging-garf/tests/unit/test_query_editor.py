@@ -17,7 +17,7 @@ import pytest
 from garf.community.experimental.media_tagging.query_editor import (
   MediaTaggingApiQuery,
 )
-from garf.core import query_editor, query_parser
+from garf.core import query_editor
 
 
 class TestMediaTaggingApiQuery:
@@ -25,12 +25,6 @@ class TestMediaTaggingApiQuery:
     with pytest.raises(query_editor.GarfResourceError):
       MediaTaggingApiQuery(
         text='SELECT media_url FROM unknown_resource'
-      ).generate()
-
-  def test_generate_raises_error_on_missing_media_type(self):
-    with pytest.raises(query_parser.GarfQueryError):
-      MediaTaggingApiQuery(
-        text='SELECT media_url FROM tag WHERE tagger_type = gemini'
       ).generate()
 
   def test_generate_processes_filters(self):

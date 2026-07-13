@@ -42,31 +42,7 @@ class MediaTaggingApiQuery(query_editor.QuerySpecification):
         nested_key = None
       if nested_key == 'custom_schema':
         schema = _destringify(value[0])
-        if schema in ('boolean', 'integer', 'number', 'string'):
-          filters[key].update({'custom_schema': {'type': schema}})
-        elif schema.lower().startswith('enum'):
-          _, *enum_values = schema.split(':')
-          enum_values = enum_values[0].split(',')
-          filters[key].update(
-            {'custom_schema': {'type': 'string', 'enum': enum_values}}
-          )
-        elif schema.endswith('.json'):
-          try:
-            with smart_open.open(schema, 'r', encoding='utf-8') as f:
-              schema_data = json.load(f)
-              filters[key].update({'custom_schema': schema_data})
-          except FileNotFoundError as e:
-            raise MediaTaggingApiQueryError(
-              f'Failed to read schema from a file {schema}'
-            ) from e
-        else:
-          try:
-            full_schema = ' '.join(value)
-            full_schema = full_schema.replace("'", '"')
-            schema_data = json.loads(full_schema)
-            filters[key].update({'custom_schema': schema_data})
-          except json.decoder.JSONDecoder as e:
-            raise MediaTaggingApiQueryError(f'Invalid schema {schema}') from e
+        filters[key].update(process_schema(schema))
         continue
       if operator.lower() == 'in':
         values = re.findall(r'\((.*?)\)', field)
@@ -81,8 +57,6 @@ class MediaTaggingApiQuery(query_editor.QuerySpecification):
         filters[key].update({nested_key: formatted_value})
       else:
         filters[key] = formatted_value
-    if 'media_type' not in filters:
-      raise query_parser.GarfQueryError('Missing required filters:')
     self.query.filters = filters
     return self
 
@@ -101,3 +75,29 @@ class MediaTaggingApiQuery(query_editor.QuerySpecification):
 def _destringify(field: str) -> str:
   field = re.sub(r'\[|\]$', '', field.strip())
   return re.sub(r'^[\'"]|[\'"]$', '', field)
+
+
+def process_schema(schema):
+  if schema in ('boolean', 'integer', 'number', 'string'):
+    return {'custom_schema': {'type': schema}}
+  if schema.lower().startswith('enum'):
+    _, *enum_values = schema.split(':')
+    enum_values = enum_values[0].split(',')
+    return {'custom_schema': {'type': 'string', 'enum': enum_values}}
+  if schema.endswith('.json'):
+    try:
+      with smart_open.open(schema, 'r', encoding='utf-8') as f:
+        schema_data = json.load(f)
+        return {'custom_schema': schema_data}
+    except FileNotFoundError as e:
+      raise MediaTaggingApiQueryError(
+        f'Failed to read schema from a file {schema}'
+      ) from e
+  else:
+    try:
+      full_schema = ' '.join(value)
+      full_schema = full_schema.replace("'", '"')
+      schema_data = json.loads(full_schema)
+      return {'custom_schema': schema_data}
+    except json.decoder.JSONDecoder as e:
+      raise MediaTaggingApiQueryError(f'Invalid schema {schema}') from e
