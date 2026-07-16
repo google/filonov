@@ -16,6 +16,7 @@
 import json
 import re
 from collections import defaultdict
+from typing import Any
 
 import smart_open
 from garf.core import query_editor, query_parser
@@ -32,9 +33,6 @@ class MediaTaggingApiQuery(query_editor.QuerySpecification):
     super().extract_filters()
     filters = defaultdict(dict)
     for field in self.query.filters:
-      # key, operator, *value = re.split(
-      #   pattern=r'(=|in)', string=field.lower(), maxsplit=3
-      # )
       key, operator, *value = field.split(' ', maxsplit=3)
       if len(nested_keys := key.split('.')) > 1:
         key, nested_key = nested_keys
@@ -77,9 +75,11 @@ def _destringify(field: str) -> str:
   return re.sub(r'^[\'"]|[\'"]$', '', field)
 
 
-def process_schema(schema):
+def process_schema(schema: str | dict[str, Any]) -> dict[str, Any]:
   if schema in ('boolean', 'integer', 'number', 'string'):
     return {'custom_schema': {'type': schema}}
+  if isinstance(schema, dict):
+    return {'custom_schema': schema}
   if schema.lower().startswith('enum'):
     _, *enum_values = schema.split(':')
     enum_values = enum_values[0].split(',')
