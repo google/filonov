@@ -15,6 +15,7 @@
 import logging
 import urllib.parse
 
+import garf.executors
 import requests
 from garf.community.experimental.media_tagging import query_editor
 from garf.core import api_clients
@@ -27,7 +28,8 @@ tracer = trace.get_tracer(
 )
 
 
-logging.getLogger('media-tagger').setLevel(logging.WARNING)
+logger = logging.getLogger('media-tagger')
+logger.setLevel(logging.WARNING)
 
 
 class MediaTaggingApiClient(api_clients.RestApiClient):
@@ -61,14 +63,31 @@ class MediaTaggingApiClient(api_clients.RestApiClient):
   ) -> api_clients.GarfApiResponse:
     if schema := kwargs.get('tagging_options', {}).get('custom_schema'):
       kwargs['tagging_options'] = query_editor.process_schema(schema)
-    media_paths = kwargs.pop('media_paths')
+    media_paths = kwargs.get('media_paths') or request.filters.get(
+      'media_paths'
+    )
+    tagging_parameters = garf.executors.utils.merge_dicts(
+      kwargs, request.filters
+    )
+    if not media_paths:
+      logger.warning('No media provided, generating placeholders')
+      service = MediaTaggingService()
+      tagging_parameters['tagger_type'] = 'fake'
+      tagging_parameters['media_paths'] = ['placeholder']
+      tagging_request = MediaTaggingRequest(**tagging_parameters)
+      if request.resource_name == 'description':
+        response = service.describe_media(tagging_request)
+      else:
+        response = service.tag_media(tagging_request)
+      results = [result.model_dump() for result in response.results]
+      return api_clients.GarfApiResponse(
+        results=[], results_placeholder=results
+      )
     if not isinstance(media_paths, list):
       media_paths = [media_paths]
 
-    tagging_parameters = {**kwargs, **request.filters}
-    tagging_request = MediaTaggingRequest(
-      media_paths=media_paths, **tagging_parameters
-    )
+    tagging_parameters['media_paths'] = media_paths
+    tagging_request = MediaTaggingRequest(**tagging_parameters)
     with tracer.start_as_current_span('request') as span:
       span.set_attribute(
         'media_tagger.num_media_to_process', len(tagging_request.media_paths)
