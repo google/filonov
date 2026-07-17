@@ -20,6 +20,9 @@ import requests
 from garf.community.experimental.media_tagging import query_editor
 from garf.core import api_clients
 from opentelemetry import trace
+from opentelemetry.trace.propagation.tracecontext import (
+  TraceContextTextMapPropagator,
+)
 
 from media_tagging import MediaTaggingRequest, MediaTaggingService, repositories
 
@@ -100,11 +103,14 @@ class MediaTaggingApiClient(api_clients.RestApiClient):
         'media_tagger.backend', 'remote' if self.endpoint else 'local'
       )
     if self.endpoint:
+      headers = {}
+      TraceContextTextMapPropagator().inject(headers)
       resource = 'describe' if request.resource_name == 'description' else 'tag'
       url = urllib.parse.urljoin(self.endpoint, f'/media_tagging/{resource}')
       response = requests.post(
         url=url,
         json=tagging_request.model_dump(exclude_none=True),
+        headers=headers,
       )
       return api_clients.GarfApiResponse(results=response.json().get('results'))
     service = MediaTaggingService(
