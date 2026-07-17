@@ -65,7 +65,7 @@ class MediaTaggingApiClient(api_clients.RestApiClient):
     self, request: query_editor.MediaTaggingApiQuery, **kwargs: str
   ) -> api_clients.GarfApiResponse:
     if schema := kwargs.get('tagging_options', {}).get('custom_schema'):
-      kwargs['tagging_options'] = query_editor.process_schema(schema)
+      kwargs['tagging_options'].update(query_editor.process_schema(schema))
     media_paths = kwargs.get('media_paths') or request.filters.get(
       'media_paths'
     )
@@ -106,13 +106,15 @@ class MediaTaggingApiClient(api_clients.RestApiClient):
       headers = {}
       TraceContextTextMapPropagator().inject(headers)
       resource = 'describe' if request.resource_name == 'description' else 'tag'
-      url = urllib.parse.urljoin(self.endpoint, f'/media_tagging/{resource}')
+      url = urllib.parse.urljoin(self.endpoint, f'/{resource}')
       response = requests.post(
         url=url,
         json=tagging_request.model_dump(exclude_none=True),
         headers=headers,
       )
-      return api_clients.GarfApiResponse(results=response.json().get('results'))
+      response.raise_for_status()
+      results = response.json().get('results')
+      return api_clients.GarfApiResponse(results=results, full_results=results)
     service = MediaTaggingService(
       repositories.SqlAlchemyTaggingResultsRepository(self.db_uri)
     )
