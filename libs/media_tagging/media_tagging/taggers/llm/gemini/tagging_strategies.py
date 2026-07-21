@@ -206,6 +206,13 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
         medium.name,
         response.usage_metadata.dict(),
       )
+      span.set_attributes(
+        {
+          f'gemini.{k}': json.dumps(v) if isinstance(v, list) else v
+          for k, v in response.usage_metadata.dict().items()
+          if v
+        }
+      )
       gemini_token_counter.add(
         response.usage_metadata.prompt_token_count, attributes=metric_attributes
       )
