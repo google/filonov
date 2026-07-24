@@ -168,15 +168,11 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     logger.debug('Tagging %s "%s"', medium.type, medium.name)
     prompt = self.build_prompt(medium.type, output, tagging_options)
     media_content = self.build_content(medium, **tagging_options.model_dump())
-    prompt_config = genai.types.GenerateContentConfig()
-    if medium.type == media.MediaTypeEnum.WEBPAGE:
-      prompt_config.tools = [{'url_context': {}}]
-    else:
-      prompt_config.response_mime_type = 'application/json'
-    if not tagging_options.no_schema:
-      prompt_config.response_schema = (
-        tagging_options.custom_schema or self.get_response_schema(output)
-      )
+    prompt_config = build_prompt_config(
+      medium=medium,
+      tagging_options=tagging_options,
+      fallback_schema=self.get_response_schema(output),
+    )
     metric_attributes = {
       'model_name': self.model_name,
       'media_type': medium.type,
@@ -368,3 +364,39 @@ def _get_video_metadata(**kwargs: str) -> genai.types.VideoMetadata | None:
     if k in genai.types.VideoMetadata.model_fields
   }
   return genai.types.VideoMetadata(**d) if d else None
+
+
+def build_prompt_config(
+  medium: media.Medium,
+  tagging_options: base.TaggingOptions,
+  fallback_schema=None,
+) -> genai.types.GenerateContentConfig:
+  prompt_config = genai.types.GenerateContentConfig()
+  if satefy_settings := getattr(tagging_options, 'safety_settings', None):
+    prompt_config.safety_settings = _format_safety_settings(
+      satefy_settings
+      if isinstance(satefy_settings, list)
+      else [satefy_settings]
+    )
+
+  if medium.type == media.MediaTypeEnum.WEBPAGE:
+    prompt_config.tools = [{'url_context': {}}]
+  else:
+    prompt_config.response_mime_type = 'application/json'
+  if not tagging_options.no_schema:
+    prompt_config.response_schema = (
+      tagging_options.custom_schema or fallback_schema
+    )
+  return prompt_config
+
+
+def _format_safety_settings(safety_settings: list[dict[str, str]]):
+  safety_settings_types = []
+  for safety_setting in safety_settings:
+    for category, threshold in safety_setting.items():
+      safety_settings_type = genai.types.SafetySetting(
+        category=getattr(genai.types.HarmCategory, category.upper()),
+        threshold=getattr(genai.types.HarmBlockThreshold, threshold.upper()),
+      )
+    safety_settings_types.append(safety_settings_type)
+  return safety_settings_types
