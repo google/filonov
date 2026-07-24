@@ -72,6 +72,17 @@ class MediaTaggingApiClient(api_clients.RestApiClient):
     tagging_parameters = garf.executors.utils.merge_dicts(
       kwargs, request.filters
     )
+    if custom_prompt := tagging_parameters.get('tagging_options', {}).get(
+      'custom_prompt'
+    ):
+      tagging_parameters['tagging_options'].update(
+        {
+          'custom_prompt': custom_prompt[0]
+          if isinstance(custom_prompt, list)
+          else custom_prompt
+        }
+      )
+
     if not media_paths:
       logger.warning('No media provided, generating placeholders')
       service = MediaTaggingService()
