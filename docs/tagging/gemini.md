@@ -149,3 +149,63 @@ curl -X 'POST' \
   }'
 ```
 ///
+
+### safety_settings
+
+You can specify [safety_settings](https://ai.google.dev/gemini-api/docs/safety-settings) when performing tagging.
+
+/// tab | cli
+```bash
+media-tagger tag MEDIA_PATHs \
+  --media-type YOUTUBE_VIDEO \
+  --tagger gemini \
+  --tagger.safety_settings.harm_category_hate_speech=off \
+  --writer csv \
+  --output tagging_results
+```
+///
+
+/// tab | python
+```python
+import media_tagging
+
+media_tagger = media_tagging.MediaTaggingService()
+request = media_tagging.MediaTaggingRequest(
+  media_type='VIDEO',
+  media_paths=['video1.mp4', 'video2.mp4'],
+  tagger_type='gemini',
+  tagging_options={
+    'fps': 5,
+    'safety_settings': [
+      {'harm_category_hate_speech': 'off'}
+    ],
+  },
+)
+result = media_tagger.tag_media(request)
+
+result.save(output='tagging_results', writer='csv')
+```
+///
+
+/// tab | curl
+
+```bash
+curl -X 'POST' \
+  'http://127.0.0.1:8000/api/tag' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagger_type": "gemini",
+    "media_type": "VIDEO",
+    "media_paths": [
+      "video1.mp4",
+      "video2.mp4"
+    ],
+    "tagging_options": {
+      "safety_settings": [
+        {"harm_category_hate_speech": "off"}
+      ]
+    }
+  }'
+```
+///
