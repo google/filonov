@@ -24,6 +24,7 @@ from collections.abc import Sequence
 from typing import Any
 
 import sqlalchemy
+from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from sqlalchemy.orm import declarative_base, joinedload, relationship
 from sqlalchemy.pool import StaticPool
@@ -150,7 +151,9 @@ class TaggingResults(Base):
       content=json.loads(self.content),
       output=self.output,
       tagger=self.tagger,
-      tagging_details=json.loads(self.tagging_details.content),
+      tagging_details=json.loads(self.tagging_details.content)
+      if self.tagging_details
+      else None,
       hash=self.hash,
     )
 
@@ -314,10 +317,17 @@ class SqlAlchemyTaggingResultsRepository(
       session.commit()
 
   def add_tagging_details(self, tagging_details: dict[str, Any]):
+    span = trace.get_current_span()
     with self.session() as session:
       tagging_details_hash = hashlib.md5(
         json.dumps(tagging_details).encode('utf-8')
       ).hexdigest()
+      span.set_attributes(
+        {
+          'media_tagging.tagging_details.hash': tagging_details_hash,
+          'media_tagging.tagging_details': json.dumps(tagging_details),
+        }
+      )
       saved_tagging_details = [
         t.id
         for t in session.query(TaggingDetails)
@@ -331,6 +341,11 @@ class SqlAlchemyTaggingResultsRepository(
         )
         session.add(tagging_detail)
         session.commit()
+        span.set_attributes(
+          {
+            'media_tagging.tagging_details.added': True,
+          }
+        )
 
   def add(
     self,
@@ -360,7 +375,11 @@ class SqlAlchemyTaggingResultsRepository(
             ids.append(identifier_hash)
       if add_tagging_details:
         tagging_details = [
-          hashlib.md5(json.dumps(t.tagging_details).encode('utf-8')).hexdigest()
+          hashlib.md5(
+            json.dumps(
+              {k: v for k, v in t.tagging_details.items() if v is not None}
+            ).encode('utf-8')
+          ).hexdigest()
           for t in tagging_results
         ]
         tagging_details_ids = [
@@ -372,7 +391,13 @@ class SqlAlchemyTaggingResultsRepository(
         for result in tagging_results:
           if (
             tagging_details_hash := hashlib.md5(
-              json.dumps(result.tagging_details).encode('utf-8')
+              json.dumps(
+                {
+                  k: v
+                  for k, v in result.tagging_details.items()
+                  if v is not None
+                }
+              ).encode('utf-8')
             ).hexdigest()
           ) not in tagging_details_ids:
             tagging_detail = TaggingDetails(
@@ -387,6 +412,9 @@ class SqlAlchemyTaggingResultsRepository(
           if isinstance(result.content, (tuple, list))
           else result.content.model_dump()
         )
+        tagging_details = {
+          k: v for k, v in result.tagging_details.items() if v is not None
+        }
         tagging_results_orm = TaggingResults(
           processed_at=result.processed_at,
           hash=result.hash,
@@ -395,7 +423,7 @@ class SqlAlchemyTaggingResultsRepository(
           type=result.type,
           content=json.dumps(content),
           tagging_details_id=hashlib.md5(
-            json.dumps(result.tagging_details).encode('utf-8')
+            json.dumps(tagging_details).encode('utf-8')
           ).hexdigest(),
         )
         session.add(tagging_results_orm)

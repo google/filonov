@@ -17,17 +17,18 @@ jobs:
       id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f
 
       - name: Get versions and check for change
         id: version_check
         run: |
-          PREV_VERSION=$(git show HEAD~1:libs/media_tagging/media_tagging/__init__.py | grep -oE "__version__ = '([0-9]+\.[0-9]+\.[0-9]+)'" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          CURRENT_VERSION=$(grep -oE "__version__ = '([0-9]+\.[0-9]+\.[0-9]+)'" libs/media_tagging/media_tagging/__init__.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          PREV_VERSION=$(git show HEAD~1:libs/media_tagging/media_tagging/version.py | grep -oE "__version__ = '([0-9]+\.[0-9]+\.[0-9]+)'" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          CURRENT_VERSION=$(grep -oE "__version__ = '([0-9]+\.[0-9]+\.[0-9]+)'" libs/media_tagging/media_tagging/version.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
 
           if [[ "$CURRENT_VERSION" != "$PREV_VERSION" ]]; then
             echo "Version change detected: $PREV_VERSION -> $CURRENT_VERSION"

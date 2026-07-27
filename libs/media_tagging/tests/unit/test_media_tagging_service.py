@@ -77,6 +77,7 @@ class TestMediaTaggingService:
       output='tag',
       type='text',
       content=FAKE_TAGS,
+      tagging_details={'n_tags': media_tagging_service.DEFAULT_NUMBER_TAGS},
       hash=hashlib.md5(b'test').hexdigest(),
     )
     test_tagging_result = service.tag_media(
