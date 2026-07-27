@@ -384,7 +384,7 @@ class SqlAlchemyTaggingResultsRepository(
       for result in tagging_results:
         content = (
           [r.model_dump() for r in result.content]
-          if isinstance(result.content, tuple)
+          if isinstance(result.content, (tuple, list))
           else result.content.model_dump()
         )
         tagging_results_orm = TaggingResults(
