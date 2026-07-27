@@ -18,6 +18,7 @@
 import asyncio
 import inspect
 import itertools
+import json
 import logging
 import os
 import time
@@ -36,16 +37,18 @@ from media_tagging.taggers import TAGGERS
 from media_tagging.taggers import base as base_tagger
 from media_tagging.telemetry import tracer
 
+DEFAULT_NUMBER_TAGS: Final[int] = 10
+
 logger = logging.getLogger(__name__)
 meter = metrics.get_meter('media-tagger')
 
 media_processed_counter = meter.create_counter(
-  'media_tagger_processed_total',
+  'media_tagging_processed_total',
   unit='1',
   description='Counts number of processed media',
 )
 media_unprocessed_counter = meter.create_counter(
-  'media_tagger_process_errors_total',
+  'media_tagging_process_errors_total',
   unit='1',
   description='Counts processing errors',
 )
@@ -324,20 +327,30 @@ class MediaTaggingService:
       return x
 
     span = trace.get_current_span()
-    span.set_attribute('media_tagger.tagger', tagging_request.tagger_type)
+    if action == 'tag' and not tagging_request.tagging_options.n_tags:
+      tagging_request.tagging_options.n_tags = DEFAULT_NUMBER_TAGS
+    output = 'description' if action == 'describe' else 'tag'
+    media_type_enum = convert_media_type_to_enum(tagging_request.media_type)
+    span.set_attributes(
+      {
+        'media_tagging.tagger': tagging_request.tagger_type,
+        'media_tagging.media_type': media_type_enum.name,
+        'media_tagging.num_media': len(tagging_request.media_paths),
+        'media_tagging.tagging_options': json.dumps(
+          tagging_request.tagging_options.model_dump(exclude_none=True)
+        ),
+      }
+    )
     if isinstance(path_processor, str):
       path_processor_str = path_processor
       path_processor = discover_path_processors().get(path_processor_str)
     if not path_processor:
       path_processor = default_path_processor
     else:
-      span.set_attribute('media_tagger.path_processor', path_processor_str)
+      span.set_attribute('media_tagging.path_processor', path_processor_str)
     concrete_tagger = convert_tagger(
       tagging_request.tagger_type, tagging_request.tagging_options
     )
-    media_type_enum = convert_media_type_to_enum(tagging_request.media_type)
-    span.set_attribute('media_tagger.media_type', media_type_enum.name)
-    output = 'description' if action == 'describe' else 'tag'
     untagged_media = tagging_request.media_paths
     tagged_media = []
     tagging_details = tagging_request.tagging_options.model_dump(
@@ -345,7 +358,7 @@ class MediaTaggingService:
     )
     if self.repo:
       with tracer.start_as_current_span(
-        'media_tagger.get_from_repo'
+        'media_tagging.get_from_repo'
       ) as repo_span:
         if tagged_media := self.repo.get(
           media_paths=tagging_request.media_paths,
@@ -357,7 +370,7 @@ class MediaTaggingService:
         ):
           logger.info('Reusing %d already tagged media', len(tagged_media))
           repo_span.set_attribute(
-            'media_tagger.num_reused_media', len(tagged_media)
+            'media_tagging.num_reused_media', len(tagged_media)
           )
           tagged_media_names = {
             tagged_medium.identifier for tagged_medium in tagged_media
@@ -383,11 +396,13 @@ class MediaTaggingService:
     ]
     identifiers = {(m.identifier, m.name) for m in all_media}
 
-    with tracer.start_as_current_span('media_tagger.add_auxiliary_to_repo'):
+    with tracer.start_as_current_span('media_tagging.add_auxiliary_to_repo'):
       self.repo.add_identifiers(identifiers)
       self.repo.add_tagging_details(tagging_details)
 
-    span.set_attribute('media_tagger.num_media_to_process', len(untagged_media))
+    span.set_attribute(
+      'media_tagging.num_media_to_process', len(untagged_media)
+    )
     logger.info(
       'Using %s tagger and parameters: %s',
       tagging_request.tagger_type,
@@ -406,8 +421,13 @@ class MediaTaggingService:
         + tagged_media
       )
       with tracer.start_as_current_span(
-        'media_tagger.save_to_repo'
+        'media_tagging.save_to_repo'
       ) as save_repo:
+        if result:
+          save_repo.set_attribute(
+            'tagging_result.tagging_options',
+            json.dumps(result[0].tagging_details),
+          )
         self.repo.add(result, add_identifiers=False, add_tagging_details=False)
         save_repo.set_attribute('n_results', len(result))
       return MediaTaggingResponse(results=result)
@@ -417,7 +437,7 @@ class MediaTaggingService:
       batch_size = len(batch)
       batch_offset = i * (BATCH_SIZE)
       with tracer.start_as_current_span(
-        'media_tagger.process_batch'
+        'media_tagging.process_batch'
       ) as batch_span:
         batch_span.set_attributes(
           {
@@ -460,7 +480,7 @@ class MediaTaggingService:
         result = list(itertools.chain.from_iterable(result))
         processed_results.append(result)
         with tracer.start_as_current_span(
-          'media_tagger.save_to_repo'
+          'media_tagging.save_to_repo'
         ) as save_repo:
           self.repo.add(
             result, add_identifiers=False, add_tagging_details=False

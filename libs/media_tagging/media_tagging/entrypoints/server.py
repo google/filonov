@@ -31,6 +31,7 @@ from media_tagging import (
   media_tagging_service,
   repositories,
   taggers,
+  version,
 )
 from media_tagging.entrypoints import tasks
 from media_tagging.entrypoints.tracer import (
@@ -42,7 +43,7 @@ from media_tagging.entrypoints.tracer import (
 CeleryInstrumentor().instrument()
 app = fastapi.FastAPI(
   title='Media Tagging API',
-  version=media_tagging.__version__,
+  version=version.__version__,
   description='Performs tagging of media based on various taggers',
 )
 FastAPIInstrumentor.instrument_app(app)
@@ -84,7 +85,7 @@ class Dependencies:
 
 @app.get('/api/version')
 async def version() -> str:
-  return media_tagging.__version__
+  return version.__version__
 
 
 @app.get('/api/taggers')

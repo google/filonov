@@ -37,6 +37,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Intended Audience :: Developers",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Operating System :: OS Independent",
@@ -46,7 +47,7 @@ classifiers = [
 dynamic = ["version"]
 
 [tool.setuptools.dynamic]
-version = {attr = "media_tagging.__version__"}
+version = {attr = "media_tagging.version.__version__"}
 
 [project.optional-dependencies]
 google-cloud-vision=[
@@ -101,6 +102,10 @@ markers = [
   "gemini: Gemini Tagger tests",
   "google_cloud: Google Cloud Tagger tests",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include=["media_tagging.*"]
 
 [project.scripts]
 media-tagger="media_tagging.entrypoints.cli:typer_app"

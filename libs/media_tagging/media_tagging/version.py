@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,23 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=C0330, g-bad-import-order, g-multiple-import
-
-"""Performs tagging of media based on various taggers.
-
-Media can be images, videos, urls, texts.
-"""
-
-import logging
-
-from media_tagging.media_tagging_service import (
-  MediaTaggingRequest,
-  MediaTaggingService,
-)
-
-logging.getLogger(__name__).addHandler(logging.NullHandler())
-
-__all__ = [
-  'MediaTaggingService',
-  'MediaTaggingRequest',
-]
+__version__ = '2.5.7'

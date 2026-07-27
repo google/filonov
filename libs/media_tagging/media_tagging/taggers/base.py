@@ -172,11 +172,19 @@ class BaseTagger(abc.ABC):
   ) -> tagging_result.TaggingResult:
     """Tags media based on specified parameters."""
     span = trace.get_current_span()
-    span.set_attribute('tag.media.name', medium.name)
-    span.set_attribute('tag.media.type', medium.type)
-    span.set_attribute('tag.media.path', medium.media_path)
+    span.set_attributes(
+      {
+        'media.name': medium.name,
+        'media.type': medium.type,
+        'media.path': medium.media_path,
+      }
+    )
     result = self.get_tagging_strategy(medium.type).tag(
       medium, tagging_options, **kwargs
+    )
+    span.set_attribute(
+      'media_tagging.result.tags',
+      json.dumps({t.name: t.score for t in result.content}),
     )
     return self._enrich_tagging_result(
       output='tag', result=result, tagging_options=tagging_options
@@ -196,11 +204,23 @@ class BaseTagger(abc.ABC):
   ) -> tagging_result.TaggingResult:
     """Describes media based on specified parameters."""
     span = trace.get_current_span()
-    span.set_attribute('tag.media.name', medium.name)
-    span.set_attribute('tag.media.type', medium.type)
-    span.set_attribute('tag.media.path', medium.media_path)
+    span.set_attributes(
+      {
+        'media.name': medium.name,
+        'media.type': medium.type,
+        'media.path': medium.media_path,
+      }
+    )
     result = self.get_tagging_strategy(medium.type).describe(
       medium, tagging_options, **kwargs
+    )
+    span.set_attribute(
+      'media_tagging.result.description',
+      json.dumps(
+        [d.model_dump() for d in result.content]
+        if isinstance(result.content, list)
+        else result.content.model_dump()
+      ),
     )
     return self._enrich_tagging_result(
       output='description', result=result, tagging_options=tagging_options
@@ -215,7 +235,9 @@ class BaseTagger(abc.ABC):
     """Adds to tagging result extra parameters."""
     parameters = result.model_dump()
     if tagging_details := tagging_options.dict():
-      tagging_details = {k: v for k, v in tagging_details.items() if v}
+      tagging_details = {
+        k: v for k, v in tagging_details.items() if v is not None
+      }
     else:
       tagging_details = {}
     parameters.update(

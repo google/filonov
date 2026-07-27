@@ -14,6 +14,8 @@
 
 """Opentelemetry initialization functions."""
 
+from __future__ import annotations
+
 import logging
 import os
 
@@ -38,7 +40,20 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-DEFAULT_SERVICE_NAME = 'media-tagger'
+from media_tagging import version
+
+DEFAULT_SERVICE_NAME = 'media-tagging'
+
+
+def _init_resource(otel_service_name: str | None = None) -> Resource:
+  attributes = {
+    SERVICE_NAME: otel_service_name
+    or os.getenv('OTEL_SERVICE_NAME', DEFAULT_SERVICE_NAME),
+    'media_tagging.version': version.__version__,
+  }
+  if mode := os.getenv('MEDIA_TAGGING_MODE'):
+    attributes['media_tagging.mode'] = mode
+  return Resource.create(attributes=attributes)
 
 
 def initialize_tracer(service_name: str | None = None) -> None:
@@ -50,27 +65,24 @@ def initialize_tracer(service_name: str | None = None) -> None:
   If OTEL_EXPORTER_GCP_PROJECT_ID ENV variable is set, traces are exported
   to Google Cloud traces.
   """
-  resource = Resource.create(
-    {
-      SERVICE_NAME: service_name
-      or os.getenv('OTLP_SERVICE_NAME', DEFAULT_SERVICE_NAME)
-    }
-  )
+  resource = _init_resource(service_name)
 
   tracer_provider = TracerProvider(resource=resource)
 
   if otel_endpoint := os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT'):
     if gcp_project_id := os.getenv('OTEL_EXPORTER_GCP_PROJECT_ID'):
       try:
-        from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
+        from opentelemetry.exporter.cloud_trace import (
+          CloudTraceSpanExporter,
+        )
       except ImportError as e:
         raise ImportError(
-          'Please install media-tagger with GCP support - '
-          '`pip install media-tagging[gcp]`'
+          'Please install garf-executors with GCP support '
+          '- `pip install garf-executors[gcp]`'
         ) from e
 
       cloud_span_processor = BatchSpanProcessor(
-        CloudTraceSpanExporter(project_id=gcp_project_id, resource_regexp='*')
+        CloudTraceSpanExporter(project_id=gcp_project_id)
       )
       tracer_provider.add_span_processor(cloud_span_processor)
     else:
@@ -94,12 +106,7 @@ def initialize_meter(service_name: str | None = None) -> MeterProvider:
   Returns:
     Initialized meter provider.
   """
-  resource = Resource.create(
-    {
-      SERVICE_NAME: service_name
-      or os.getenv('OTLP_SERVICE_NAME', DEFAULT_SERVICE_NAME)
-    }
-  )
+  resource = _init_resource(service_name)
   meter_provider = MeterProvider(resource=resource)
 
   if otel_endpoint := os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT'):
@@ -110,12 +117,12 @@ def initialize_meter(service_name: str | None = None) -> MeterProvider:
         )
       except ImportError as e:
         raise ImportError(
-          'Please install media-tagger with GCP support - '
-          '`pip install media-tagging[gcp]`'
+          'Please install garf-executors with GCP support '
+          '- `pip install garf-executors[gcp]`'
         ) from e
 
       metric_exporter = CloudMonitoringMetricsExporter(
-        project_id=gcp_project_id, resource_regexp='*'
+        project_id=gcp_project_id
       )
     else:
       metric_exporter = OTLPMetricExporter(
@@ -140,12 +147,7 @@ def initialize_logger(service_name: str | None = None):
   Returns:
     Initialized logger handler.
   """
-  resource = Resource.create(
-    {
-      SERVICE_NAME: service_name
-      or os.getenv('OTLP_SERVICE_NAME', DEFAULT_SERVICE_NAME)
-    }
-  )
+  resource = _init_resource(service_name)
   logger_provider = LoggerProvider(resource=resource)
   set_logger_provider(logger_provider)
   if otel_endpoint := os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT'):

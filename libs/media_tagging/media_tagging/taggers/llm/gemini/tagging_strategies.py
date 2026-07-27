@@ -46,18 +46,18 @@ logger = logging.getLogger(__name__)
 meter = metrics.get_meter('media-tagger')
 
 gemini_calls_counter = meter.create_counter(
-  'media_tagger_gemini_calls_total',
+  'media_tagging_gemini_calls_total',
   unit='1',
   description='Counts number of LLM calls',
 )
 
 gemini_errors_counter = meter.create_counter(
-  'media_tagger_gemini_errors_total',
+  'media_tagging_gemini_errors_total',
   unit='1',
   description='Counts number of failed LLM calls',
 )
 gemini_token_counter = meter.create_counter(
-  'media_tagger_gemini_token_total',
+  'media_tagging_gemini_token_total',
   unit='1',
   description='Counts number of token used',
 )

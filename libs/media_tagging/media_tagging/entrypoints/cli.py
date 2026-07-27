@@ -26,7 +26,7 @@ from rich.table import Table
 from typing_extensions import Annotated
 
 import media_tagging
-from media_tagging import media, media_tagging_service, repositories
+from media_tagging import media, media_tagging_service, repositories, version
 from media_tagging.entrypoints import utils
 from media_tagging.entrypoints.tracer import (
   initialize_logger,
@@ -120,12 +120,12 @@ ParallelTreshold = Annotated[
 
 def _version_callback(show_version: bool) -> None:
   if show_version:
-    print(f'media-tagging version: {media_tagging.__version__}')
+    print(f'media-tagging version: {version.__version__}')
     raise typer.Exit()
 
 
 @typer_app.command()
-@tracer.start_as_current_span('media_tagger.cli.taggers')
+@tracer.start_as_current_span('media_tagging.cli.taggers')
 def taggers() -> list[str]:
   builtin_taggers = list(media_tagging.taggers.TAGGERS.keys())
   loaded = media_tagging_service.discover_taggers(builtin_taggers)
@@ -138,7 +138,7 @@ def taggers() -> list[str]:
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
-@tracer.start_as_current_span('media_tagger.cli.tag')
+@tracer.start_as_current_span('media_tagging.cli.tag')
 @utils.log_shutdown
 def tag(
   media_type: MediaType,
@@ -159,7 +159,7 @@ def tag(
     repositories.SqlAlchemyTaggingResultsRepository(db_uri)
   )
   media_paths, parameters = utils.parse_typer_arguments(media_paths)
-  span.set_attribute('media_tagger.num_media_to_process', len(media_paths))
+  span.set_attribute('media_tagging.num_media_to_process', len(media_paths))
   extra_parameters = garf_utils.ParamsParser(['tagger', writer, 'input']).parse(
     parameters
   )
@@ -196,7 +196,7 @@ def tag(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True}
 )
 @utils.log_shutdown
-@tracer.start_as_current_span('media_tagger.cli.describe')
+@tracer.start_as_current_span('media_tagging.cli.describe')
 def describe(
   media_type: MediaType,
   media_paths: MediaPaths = None,
