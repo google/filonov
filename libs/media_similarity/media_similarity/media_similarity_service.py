@@ -414,7 +414,7 @@ class MediaSimilarityService:
     logger.info('threshold is %.2f', threshold.threshold)
     logger.info('assigning clusters...')
     return _calculate_cluster_assignments(
-      similarity_pairs=calculated_similarity_pairs,
+      similarity_pairs=similarity_pairs,
       threshold=threshold,
       hash_to_identifiers_mapping=hash_to_identifiers_mapping,
       algorithm=request.algorithm,

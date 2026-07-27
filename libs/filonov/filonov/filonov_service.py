@@ -204,7 +204,7 @@ class FilonovService:
       tagging_response=tagging_response,
     )
     clustering_results = similarity_service.cluster_media(clustering_request)
-    if request.tagger and request.tagger_parameters:
+    if request.tagger and request.tagger_parameters.get('custom_prompt'):
       logger.info('Generating custom tags...')
       tagging_response = tagging_service.tag_media(
         MediaTaggingRequest(
