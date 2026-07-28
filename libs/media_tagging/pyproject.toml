@@ -103,9 +103,6 @@ markers = [
   "google_cloud: Google Cloud Tagger tests",
 ]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include=["media_tagging.*"]
 
 [project.scripts]
 media-tagger="media_tagging.entrypoints.cli:typer_app"
