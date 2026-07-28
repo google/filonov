@@ -18,6 +18,7 @@ from collections import UserDict, defaultdict
 from collections.abc import Sequence
 
 from media_tagging import tagging_result
+from opentelemetry import trace
 
 from media_similarity.telemetry import tracer
 
@@ -46,6 +47,7 @@ def calculate_idf_context(
   Returns:
     Mapping between each tag and its IDF value.
   """
+  span = trace.get_current_span()
   idf_context: dict[str, dict[str, float]] = defaultdict(
     lambda: defaultdict(float)
   )
@@ -56,4 +58,7 @@ def calculate_idf_context(
     idf_context[tag]['idf'] = statistics.log(
       len(tagging_results) / idf_context[tag]['total_media']
     )
+  span.set_attributes(
+    {'num_tagging_results': len(tagging_results), 'num_tags': len(idf_context)}
+  )
   return IdfContext(idf_context)

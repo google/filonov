@@ -280,6 +280,8 @@ class MediaSimilarityService:
     Raises:
       MediaSimilarityError: When not tagging results were found.
     """
+    span = trace.get_current_span()
+    span.set_attributes(request.model_dump(exclude_none=True))
     logger.info(
       'Performing media clustering with parameters: %s',
       {

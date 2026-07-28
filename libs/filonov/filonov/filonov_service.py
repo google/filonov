@@ -32,6 +32,7 @@ from media_tagging.media_tagging_service import (
   MediaFetchingRequest,
   MediaTaggingRequest,
 )
+from opentelemetry import trace
 
 from filonov import creative_map, exceptions
 from filonov.telemetry import tracer
@@ -243,6 +244,8 @@ class FilonovService:
     Raises:
       FilonovError: When performance or tagging data not found.
     """
+    span = trace.get_current_span()
+    span.set_attributes(request.model_dump(exclude_none=True))
     media_data, tagging_response, clustering_results = (
       self._prepare_data_sources(request)
     )
@@ -315,6 +318,8 @@ class FilonovService:
     Raises:
       FilonovError: When performance or tagging data not found.
     """
+    span = trace.get_current_span()
+    span.set_attributes(request.model_dump(exclude_none=True))
     media_data, tagging_response, clustering_results = (
       self._prepare_data_sources(request)
     )
