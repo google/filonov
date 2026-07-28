@@ -132,6 +132,8 @@ class Fetcher(models.BaseMediaInfoFetcher):
     if isinstance(fetching_request, Mapping):
       fetching_request = GoogleAdsFetchingParameters(**fetching_request)
 
+    if fetching_request.media_type == 'YOUTUBE_THUMBNAIL':
+      fetching_request.media_type = 'YOUTUBE_VIDEO'
     performance_queries = self._define_performance_queries(fetching_request)
     self.accounts = self._define_customer_ids(fetching_request)
     performance = self._execute_performance_queries(
