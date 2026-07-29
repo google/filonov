@@ -30,10 +30,11 @@ from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
 import media_similarity
+from media_similarity import version
 
 app = fastapi.FastAPI(
   title='Media Similarity API',
-  version=media_similarity.__version__,
+  version=version.__version__,
   description='Identifies similarity between media',
 )
 FastAPIInstrumentor.instrument_app(app)

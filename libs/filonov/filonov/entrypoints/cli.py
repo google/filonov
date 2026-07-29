@@ -35,6 +35,7 @@ from opentelemetry import trace
 from typing_extensions import Annotated
 
 import filonov
+from filonov import version
 from filonov.entrypoints import utils
 from filonov.telemetry import tracer
 
@@ -62,7 +63,7 @@ class Output(str, enum.Enum):
 
 def _version_callback(show_version: bool) -> None:
   if show_version:
-    print(f'filonov version: {filonov.__version__}')
+    print(f'filonov version: {version.__version__}')
     raise typer.Exit()
 
 

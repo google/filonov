@@ -30,6 +30,7 @@ from media_tagging.entrypoints.tracer import (
 from typing_extensions import Annotated
 
 import media_fetching
+from media_fetching import version
 from media_fetching.sources import fetcher, models
 
 initialize_tracer('media-fetching')
@@ -38,7 +39,7 @@ typer_app = typer.Typer()
 
 def _version_callback(show_version: bool) -> None:
   if show_version:
-    print(f'media-fetcher version: {media_fetching.__version__}')
+    print(f'media-fetcher version: {version.__version__}')
     raise typer.Exit()
 
 

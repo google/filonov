@@ -31,7 +31,7 @@ classifiers = [
 dynamic = ["version"]
 
 [tool.setuptools.dynamic]
-version = {attr = "media_fetching.__version__"}
+version = {attr = "media_fetching.version.__version__"}
 
 [project.optional-dependencies]
 server = [

@@ -30,11 +30,12 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from typing_extensions import Annotated
 
 import media_fetching
+from media_fetching import version
 from media_fetching.sources import models
 
 app = fastapi.FastAPI(
   title='Media Fetching API',
-  version=media_fetching.__version__,
+  version=version.__version__,
   description='Fetches media from various sources',
 )
 FastAPIInstrumentor.instrument_app(app)
