@@ -38,6 +38,13 @@ import filonov
 from filonov import version
 from filonov.entrypoints import tasks
 
+OTEL_SERVICE_NAME = 'filonov'
+_OTEL_ATTRIBUTES = {
+  'filonov.version': version.__version__,
+  'media_fetching.version': version.fetching_version,
+  'media_similarity.version': version.similarity_version,
+}
+
 CeleryInstrumentor().instrument()
 
 app = fastapi.FastAPI(
@@ -49,14 +56,15 @@ FastAPIInstrumentor.instrument_app(app)
 
 typer_app = typer.Typer()
 
-OTEL_SERVICE_NAME = 'filonov'
-initialize_tracer(OTEL_SERVICE_NAME)
-meter = initialize_meter(OTEL_SERVICE_NAME)
+initialize_tracer(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
+meter = initialize_meter(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
 
 logger = garf_utils.init_logging(
   loglevel='INFO', logger_type='local', name=OTEL_SERVICE_NAME
 )
-logger.addHandler(initialize_logger(OTEL_SERVICE_NAME))
+logger.addHandler(
+  initialize_logger(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
+)
 
 
 class FilonovSettings(BaseSettings):

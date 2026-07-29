@@ -45,18 +45,26 @@ from media_tagging import version
 DEFAULT_SERVICE_NAME = 'media-tagging'
 
 
-def _init_resource(otel_service_name: str | None = None) -> Resource:
+def _init_resource(
+  otel_service_name: str | None = None,
+  extra_attributes: dict[str, int | str] | None = None,
+) -> Resource:
   attributes = {
     SERVICE_NAME: otel_service_name
     or os.getenv('OTEL_SERVICE_NAME', DEFAULT_SERVICE_NAME),
     'media_tagging.version': version.__version__,
   }
+  if extra_attributes:
+    attributes.update(extra_attributes)
   if mode := os.getenv('MEDIA_TAGGING_MODE'):
     attributes['media_tagging.mode'] = mode
   return Resource.create(attributes=attributes)
 
 
-def initialize_tracer(service_name: str | None = None) -> None:
+def initialize_tracer(
+  service_name: str | None = None,
+  extra_attributes: dict[str, int | str] | None = None,
+) -> None:
   """Initializes tracer based on a provided service name.
 
   If OTEL_EXPORTER_OTLP_ENDPOINT ENV variable is set, traces are exported
@@ -65,7 +73,7 @@ def initialize_tracer(service_name: str | None = None) -> None:
   If OTEL_EXPORTER_GCP_PROJECT_ID ENV variable is set, traces are exported
   to Google Cloud traces.
   """
-  resource = _init_resource(service_name)
+  resource = _init_resource(service_name, extra_attributes)
 
   tracer_provider = TracerProvider(resource=resource)
 
@@ -94,7 +102,10 @@ def initialize_tracer(service_name: str | None = None) -> None:
   trace.set_tracer_provider(tracer_provider)
 
 
-def initialize_meter(service_name: str | None = None) -> MeterProvider:
+def initialize_meter(
+  service_name: str | None = None,
+  extra_attributes: dict[str, int | str] | None = None,
+) -> MeterProvider:
   """Initializes meter based on a provided service name.
 
   If OTEL_EXPORTER_OTLP_ENDPOINT ENV variable is set, metrics are exported
@@ -106,7 +117,7 @@ def initialize_meter(service_name: str | None = None) -> MeterProvider:
   Returns:
     Initialized meter provider.
   """
-  resource = _init_resource(service_name)
+  resource = _init_resource(service_name, extra_attributes)
   meter_provider = MeterProvider(resource=resource)
 
   if otel_endpoint := os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT'):
@@ -138,7 +149,10 @@ def initialize_meter(service_name: str | None = None) -> MeterProvider:
   return meter_provider
 
 
-def initialize_logger(service_name: str | None = None):
+def initialize_logger(
+  service_name: str | None = None,
+  extra_attributes: dict[str, int | str] | None = None,
+):
   """Initializes logger handler based on a provided service name.
 
   If OTEL_EXPORTER_OTLP_ENDPOINT ENV variable is set, logs are exported
@@ -147,7 +161,7 @@ def initialize_logger(service_name: str | None = None):
   Returns:
     Initialized logger handler.
   """
-  resource = _init_resource(service_name)
+  resource = _init_resource(service_name, extra_attributes)
   logger_provider = LoggerProvider(resource=resource)
   set_logger_provider(logger_provider)
   if otel_endpoint := os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT'):

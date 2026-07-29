@@ -34,7 +34,8 @@ from media_tagging.entrypoints.tracer import (
 )
 from media_tagging.telemetry import tracer
 
-initialize_tracer('media-tagger')
+OTEL_SERVICE_NAME = 'media-tagging'
+initialize_tracer(service_name=OTEL_SERVICE_NAME)
 typer_app = typer.Typer()
 console = Console()
 
@@ -167,7 +168,7 @@ def tag(
   logger = garf_utils.init_logging(
     loglevel=loglevel, logger_type=logger.upper(), name=log_name
   )
-  logger.addHandler(initialize_logger('media-tagger'))
+  logger.addHandler(initialize_logger(service_name=OTEL_SERVICE_NAME))
 
   media_paths = media_paths or media.get_media_paths_from_file(
     media.InputConfig(path=input, **extra_parameters.get('input'))

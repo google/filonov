@@ -27,25 +27,34 @@ from media_tagging.entrypoints.tracer import (
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
 import filonov
+from filonov import version
 from filonov.entrypoints import utils
 
 redis_url = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
 media_tagging_db_url = os.getenv('MEDIA_TAGGING_DB_URL')
 similarity_db_url = os.getenv('SIMILARITY_DB_URL', media_tagging_db_url)
 
+_OTEL_ATTRIBUTES = {
+  'filonov.version': version.__version__,
+  'media_fetching.version': version.fetching_version,
+  'media_similarity.version': version.similarity_version,
+}
+
 
 @celery.signals.worker_process_init.connect(weak=False)
 def init_celery_telemetry(*args, **kwargs):
   otel_service_name = os.getenv('OTEL_SERVICE_NAME', 'filonov-celery')
-  initialize_tracer(otel_service_name)
-  initialize_meter(otel_service_name)
+  initialize_tracer(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
+  initialize_meter(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
 
   logger = garf_utils.init_logging(
     loglevel=os.getenv('OTEL_LOG_LEVEL', 'INFO'),
     logger_type='local',
     name=otel_service_name,
   )
-  logger.addHandler(initialize_logger(otel_service_name))
+  logger.addHandler(
+    initialize_logger(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
+  )
   CeleryInstrumentor().instrument()
 
 
