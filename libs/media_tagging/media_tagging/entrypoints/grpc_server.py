@@ -15,17 +15,21 @@
 """gRPC endpoint for media_tagging."""
 
 import argparse
-import logging
 import os
 from concurrent import futures
 
 import grpc
+from garf.executors.entrypoints import utils as garf_utils
 from google.protobuf.json_format import MessageToDict, ParseDict
 from grpc_reflection.v1alpha import reflection
 
 import media_tagging
-from media_tagging import repositories, tagging_pb2, tagging_pb2_grpc
-from media_tagging.entrypoints.tracer import initialize_tracer
+from media_tagging import repositories, tagging_pb2, tagging_pb2_grpc, version
+from media_tagging.entrypoints.tracer import (
+  DEFAULT_SERVICE_NAME,
+  initialize_logger,
+  initialize_tracer,
+)
 
 
 class MediaTaggingService(tagging_pb2_grpc.MediaTaggingService):
@@ -57,6 +61,9 @@ class MediaTaggingService(tagging_pb2_grpc.MediaTaggingService):
     ParseDict(result.model_dump(), response)
     return response
 
+  def GetVersion(self, request, context):
+    return tagging_pb2.GetVersionResponse(version=version.__version__)
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -65,7 +72,14 @@ if __name__ == '__main__':
     '--parallel-threshold', dest='parallel_threshold', default=10, type=int
   )
   args, _ = parser.parse_known_args()
-  initialize_tracer()
+  otel_service_name = os.getenv('OTEL_SERVICE_NAME', DEFAULT_SERVICE_NAME)
+  initialize_tracer(otel_service_name)
+  logger = garf_utils.init_logging(
+    loglevel='INFO',
+    logger_type='local',
+    name=otel_service_name,
+  )
+  logger.addHandler(initialize_logger(otel_service_name))
   server = grpc.server(
     futures.ThreadPoolExecutor(max_workers=args.parallel_threshold)
   )
@@ -79,5 +93,5 @@ if __name__ == '__main__':
   reflection.enable_server_reflection(service_names, server)
   server.add_insecure_port(f'[::]:{args.port}')
   server.start()
-  logging.info('MediaTagging service started, listening on port %d', 50051)
+  logger.info('MediaTagging service started, listening on port %d', args.port)
   server.wait_for_termination()
