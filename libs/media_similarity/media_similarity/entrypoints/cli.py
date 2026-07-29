@@ -35,7 +35,14 @@ import media_similarity
 from media_similarity import version
 from media_similarity.telemetry import tracer
 
-initialize_tracer('media-similarity')
+OTEL_SERVICE_NAME = 'media-similarity'
+_OTEL_ATTRIBUTES = {
+  'media_similarity.version': version.__version__,
+}
+
+initialize_tracer(
+  service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+)
 typer_app = typer.Typer()
 
 
@@ -168,7 +175,11 @@ def cluster(
   logger = garf_utils.init_logging(
     logger_type=logger, loglevel=loglevel.upper(), name=log_name
   )
-  logger.addHandler(initialize_logger('media-similarity'))
+  logger.addHandler(
+    initialize_logger(
+      service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+    )
+  )
   media_paths, parameters = tagging_utils.parse_typer_arguments(media_paths)
   extra_parameters = garf_utils.ParamsParser([writer, 'input', 'tagger']).parse(
     parameters

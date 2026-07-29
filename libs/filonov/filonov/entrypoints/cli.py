@@ -39,7 +39,15 @@ from filonov import version
 from filonov.entrypoints import utils
 from filonov.telemetry import tracer
 
-initialize_tracer('filonov')
+_OTEL_ATTRIBUTES = {
+  'filonov.version': version.__version__,
+  'media_fetching.version': version.fetching_version,
+  'media_similarity.version': version.similarity_version,
+}
+OTEL_SERVICE_NAME = 'filonov'
+initialize_tracer(
+  service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+)
 typer_app = typer.Typer()
 
 Tagger = Annotated[
@@ -123,7 +131,7 @@ def main(
   need_clustering: Annotated[
     bool,
     typer.Option(
-      help='Whether include clustering information into output tables',
+      help='Whether include clustering version.information into output tables',
     ),
   ] = True,
   omit_series: Annotated[
@@ -170,7 +178,11 @@ def main(
   logger = garf_utils.init_logging(
     loglevel=loglevel.upper(), logger_type=logger, name=log_name
   )
-  logger.addHandler(initialize_logger('filonov'))
+  logger.addHandler(
+    initialize_logger(
+      service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+    )
+  )
 
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()

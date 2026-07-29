@@ -33,7 +33,13 @@ import media_fetching
 from media_fetching import version
 from media_fetching.sources import fetcher, models
 
-initialize_tracer('media-fetching')
+OTEL_SERVICE_NAME = 'media-fetching'
+_OTEL_ATTRIBUTES = {
+  'media_fetching.version': version.__version__,
+}
+initialize_tracer(
+  service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+)
 typer_app = typer.Typer()
 
 
@@ -121,7 +127,9 @@ def main(
   logger = garf_utils.init_logging(
     logger_type=logger, loglevel=loglevel.upper(), name=log_name
   )
-  logger.addHandler(initialize_logger('media-fetching'))
+  logger.addHandler(
+    initialize_logger(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
+  )
 
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()

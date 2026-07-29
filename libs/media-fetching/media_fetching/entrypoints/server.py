@@ -42,13 +42,20 @@ FastAPIInstrumentor.instrument_app(app)
 typer_app = typer.Typer()
 
 OTEL_SERVICE_NAME = 'media-fetching'
-initialize_tracer(OTEL_SERVICE_NAME)
-meter = initialize_meter(OTEL_SERVICE_NAME)
+_OTEL_ATTRIBUTES = {
+  'media_fetching.version': version.__version__,
+}
+initialize_tracer(
+  service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+)
+meter = initialize_meter(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
 
 logger = garf_utils.init_logging(
   loglevel='INFO', logger_type='local', name=OTEL_SERVICE_NAME
 )
-logger.addHandler(initialize_logger(OTEL_SERVICE_NAME))
+logger.addHandler(
+  initialize_logger(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
+)
 
 
 class WriterOptions(pydantic.BaseModel):
