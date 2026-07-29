@@ -3,9 +3,10 @@
 import grpc
 import warnings
 
-import tagging_pb2 as tagging__pb2
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
+from . import tagging_pb2 as tagging__pb2
 
-GRPC_GENERATED_VERSION = '1.80.0'
+GRPC_GENERATED_VERSION = '1.83.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -25,7 +26,7 @@ if _version_not_supported:
     )
 
 
-class MediaTaggingServiceStub(object):
+class MediaTaggingServiceStub:
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -44,9 +45,14 @@ class MediaTaggingServiceStub(object):
                 request_serializer=tagging__pb2.DescribeRequest.SerializeToString,
                 response_deserializer=tagging__pb2.DescribeResponse.FromString,
                 _registered_method=True)
+        self.GetVersion = channel.unary_unary(
+                '/media_tagging.MediaTaggingService/GetVersion',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=tagging__pb2.GetVersionResponse.FromString,
+                _registered_method=True)
 
 
-class MediaTaggingServiceServicer(object):
+class MediaTaggingServiceServicer:
     """Missing associated documentation comment in .proto file."""
 
     def Tag(self, request, context):
@@ -56,6 +62,12 @@ class MediaTaggingServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Describe(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetVersion(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -74,6 +86,11 @@ def add_MediaTaggingServiceServicer_to_server(servicer, server):
                     request_deserializer=tagging__pb2.DescribeRequest.FromString,
                     response_serializer=tagging__pb2.DescribeResponse.SerializeToString,
             ),
+            'GetVersion': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetVersion,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=tagging__pb2.GetVersionResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'media_tagging.MediaTaggingService', rpc_method_handlers)
@@ -82,7 +99,7 @@ def add_MediaTaggingServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class MediaTaggingService(object):
+class MediaTaggingService:
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -129,6 +146,33 @@ class MediaTaggingService(object):
             '/media_tagging.MediaTaggingService/Describe',
             tagging__pb2.DescribeRequest.SerializeToString,
             tagging__pb2.DescribeResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetVersion(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/media_tagging.MediaTaggingService/GetVersion',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            tagging__pb2.GetVersionResponse.FromString,
             options,
             channel_credentials,
             insecure,

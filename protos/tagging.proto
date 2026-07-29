@@ -1,11 +1,13 @@
 syntax = "proto3";
 package media_tagging;
 import "google/protobuf/struct.proto";
+import "google/protobuf/empty.proto";
 
 
 service MediaTaggingService {
   rpc Tag(TagRequest) returns (TagResponse) {}
   rpc Describe(DescribeRequest) returns (DescribeResponse) {}
+  rpc GetVersion(google.protobuf.Empty) returns (GetVersionResponse) {}
 }
 
 // Tag
@@ -13,6 +15,7 @@ message TaggingOptions {
   int64 n_tags = 1;
   repeated string tags = 2;
   int64 n_runs = 3;
+  string custom_prompt = 4;
 }
 
 message TagRequest {
@@ -52,7 +55,8 @@ message DescriptionOptions {
   repeated string tags = 2;
   int64 n_runs = 3;
   string custom_prompt = 4;
-  string custom_schema = 5;
+  google.protobuf.Struct custom_schema = 5;
+  bool no_schema = 6;
 }
 
 message DescribeRequest {
@@ -83,4 +87,9 @@ message DescriptionResult {
 
 message DescribeResponse {
   repeated DescriptionResult results = 1;
+}
+
+// Version
+message GetVersionResponse {
+  string version = 1;
 }

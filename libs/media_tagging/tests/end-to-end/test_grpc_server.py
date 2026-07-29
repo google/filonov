@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import pytest
+from google.protobuf import empty_pb2
 from media_tagging import tagging_pb2 as pb
-from media_tagging import tagging_pb2_grpc
+from media_tagging import tagging_pb2_grpc, version
 from media_tagging.entrypoints import grpc_server
 
 
@@ -53,3 +54,8 @@ def test_describe(grpc_stub):
   )
   response = grpc_stub.Describe(request)
   assert len(response.results) == len(media)
+
+
+def test_version(grpc_stub):
+  result = grpc_stub.GetVersion(empty_pb2.Empty())
+  assert result.version == version.__version__
