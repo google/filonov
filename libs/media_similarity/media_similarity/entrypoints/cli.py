@@ -32,6 +32,7 @@ from media_tagging.entrypoints.tracer import (
 from typing_extensions import Annotated
 
 import media_similarity
+from media_similarity import version
 from media_similarity.telemetry import tracer
 
 initialize_tracer('media-similarity')
@@ -94,7 +95,7 @@ LogName = Annotated[
 
 def _version_callback(show_version: bool) -> None:
   if show_version:
-    print(f'media-similarity version: {media_similarity.__version__}')
+    print(f'media-similarity version: {version.__version__}')
     raise typer.Exit()
 
 

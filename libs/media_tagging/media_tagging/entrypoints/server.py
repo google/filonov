@@ -25,7 +25,6 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
-import media_tagging
 from media_tagging import (
   exceptions,
   media_tagging_service,
@@ -84,7 +83,7 @@ class Dependencies:
 
 
 @app.get('/api/version')
-async def version() -> str:
+async def tagging_version() -> str:
   return version.__version__
 
 

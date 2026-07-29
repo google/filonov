@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,21 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import media_fetching.version as fetching_version
+import media_similarity.version as similarity_version
+import media_tagging.version as tagging_version
 
-# pylint: disable=C0330, g-bad-import-order, g-multiple-import
-
-"""Identifies similarity between media."""
-
-from media_similarity.media_similarity_service import (
-  MediaClusteringRequest,
-  MediaSimilarityComparisonRequest,
-  MediaSimilaritySearchRequest,
-  MediaSimilarityService,
-)
-
-__all__ = [
-  'MediaSimilarityService',
-  'MediaSimilarityComparisonRequest',
-  'MediaSimilaritySearchRequest',
-  'MediaClusteringRequest',
-]
+__version__ = '0.11.2'
+tagging_version = tagging_version.__version__
+fetching_version = fetching_version.__version__
+similarity_version = similarity_version.__version__

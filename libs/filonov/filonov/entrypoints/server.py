@@ -35,13 +35,14 @@ from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
 import filonov
+from filonov import version
 from filonov.entrypoints import tasks
 
 CeleryInstrumentor().instrument()
 
 app = fastapi.FastAPI(
   title='Filonov API',
-  version=filonov.__version__,
+  version=version.__version__,
   description='API for creative analysis',
 )
 FastAPIInstrumentor.instrument_app(app)
@@ -167,17 +168,17 @@ class GenerateCreativeMapBidManagerRequest(filonov.GenerateCreativeMapRequest):
 
 
 @app.get('/api/version')
-async def version() -> str:
-  return filonov.__version__
+async def filonov_version() -> str:
+  return version.__version__
 
 
 @app.get('/api/info')
 async def info() -> dict[str, str]:
   return {
-    'filonov': filonov.__version__,
-    'media_tagging': media_tagging.__version__,
-    'media_fetching': media_fetching.__version__,
-    'media_similarity': media_similarity.__version__,
+    'filonov': version.__version__,
+    'media_tagging': version.tagging_version,
+    'media_fetching': version.fetching_version,
+    'media_similarity': version.similarity_version,
   }
 
 

@@ -27,7 +27,7 @@ classifiers = [
 dynamic = ["version"]
 
 [tool.setuptools.dynamic]
-version = {attr = "filonov.__version__"}
+version = {attr = "filonov.version.__version__"}
 
 [project.optional-dependencies]
 server = [

@@ -36,5 +36,3 @@ __all__ = [
   'GenerateTablesRequest',
   'CreativeMap',
 ]
-
-__version__ = '0.11.2'
