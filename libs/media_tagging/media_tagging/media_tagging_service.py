@@ -409,16 +409,13 @@ class MediaTaggingService:
       tagging_request.tagging_options,
     )
     if not tagging_request.parallel_threshold or len(untagged_media) == 1:
-      result = (
-        self._process_media_sequentially(
-          action,
-          concrete_tagger,
-          tagging_request.media_type_enum,
-          untagged_media,
-          tagging_request.tagging_options,
-          path_processor,
-        )
-        + tagged_media
+      result = self._process_media_sequentially(
+        action,
+        concrete_tagger,
+        tagging_request.media_type_enum,
+        untagged_media,
+        tagging_request.tagging_options,
+        path_processor,
       )
       with tracer.start_as_current_span(
         'media_tagging.save_to_repo'
@@ -430,7 +427,8 @@ class MediaTaggingService:
           )
         self.repo.add(result, add_identifiers=False, add_tagging_details=False)
         save_repo.set_attribute('n_results', len(result))
-      return MediaTaggingResponse(results=result)
+      results = list(result) + tagged_media
+      return MediaTaggingResponse(results=results)
 
     processed_results = []
     for i, batch in enumerate(_batched(untagged_media, BATCH_SIZE)):
