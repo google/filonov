@@ -40,8 +40,6 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from media_tagging import version
-
 DEFAULT_SERVICE_NAME = 'media-tagging'
 
 
@@ -52,7 +50,6 @@ def _init_resource(
   attributes = {
     SERVICE_NAME: otel_service_name
     or os.getenv('OTEL_SERVICE_NAME', DEFAULT_SERVICE_NAME),
-    'media_tagging.version': version.__version__,
   }
   if extra_attributes:
     attributes.update(extra_attributes)

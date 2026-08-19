@@ -56,7 +56,7 @@ FastAPIInstrumentor.instrument_app(app)
 
 typer_app = typer.Typer()
 
-initialize_tracer(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
+initialize_tracer(OTEL_SERVICE_NAME)
 meter = initialize_meter(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
 
 logger = garf_utils.init_logging(

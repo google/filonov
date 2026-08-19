@@ -15,6 +15,9 @@
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
 from opentelemetry import trace
 
+from media_tagging import version
+
 tracer = trace.get_tracer(
   instrumenting_module_name='media_tagging',
+  instrumenting_library_version=version.__version__,
 )
