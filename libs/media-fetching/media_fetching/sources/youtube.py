@@ -50,7 +50,9 @@ class Fetcher(models.BaseMediaInfoFetcher):
     fetching_request: YouTubeFetchingParameters,
   ) -> report.GarfReport:
     """Get all public videos from YouTube channel."""
-    youtube_api_fetcher = YouTubeDataApiReportFetcher(**fetching_request)
+    youtube_api_fetcher = YouTubeDataApiReportFetcher(
+      **fetching_request.model_dump()
+    )
     channel_uploads_playlist_query = """
     SELECT
       contentDetails.relatedPlaylists.uploads AS uploads_playlist

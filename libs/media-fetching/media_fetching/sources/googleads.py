@@ -26,7 +26,6 @@ from typing import Literal, get_args
 
 import pydantic
 from garf.community.google.ads import GoogleAdsApiReportFetcher, api_clients
-from garf.community.google.youtube import YouTubeDataApiReportFetcher
 from garf.core import report
 from media_tagging import media
 
@@ -294,45 +293,24 @@ class Fetcher(models.BaseMediaInfoFetcher):
     Returns:
       Mapping between video id and its information.
     """
-    video_orientations_query = """
+    video_duration_query = """
     SELECT
-      id,
-      player.embedWidth AS width,
-      player.embedHeight AS height
-    FROM videos
+      video.id,
+      video.duration_millis / 1e3 AS duration
+    FROM video
     """
-
-    video_ids = performance['media_url'].to_list(
-      row_type='scalar', distinct=True
-    )
-    video_ids.sort()
-    youtube_api_fetcher = YouTubeDataApiReportFetcher(
-      enable_cache=self.enable_cache,
-    )
-    video_orientations = youtube_api_fetcher.fetch(
-      video_orientations_query,
-      id=video_ids,
-      maxWidth=500,
+    video_durations = self.fetcher.fetch(
+      query_specification=video_duration_query, account=self.accounts
     )
 
-    for row in video_orientations:
-      aspect_ratio = round(int(row.width) / int(row.height), 2)
-      if aspect_ratio > 1:
-        row['orientation'] = 'Landscape'
-      elif aspect_ratio < 1:
-        row['orientation'] = 'Portrait'
-      else:
-        row['orientation'] = 'Square'
-
-    video_orientations = video_orientations.to_dict(
-      key_column='id',
-      value_column='orientation',
+    video_durations = video_durations.to_dict(
+      key_column='video_id',
+      value_column='duration',
       value_column_output='scalar',
     )
     for row in performance:
       video_id = row.media_url
-      row['orientation'] = video_orientations.get(video_id, 0.0)
-      row['duration'] = row.video_duration
+      row['duration'] = video_durations.get(video_id, 0.0)
 
   def _get_campaign_ids_for_countries(self, countries: list[str]) -> list[int]:
     threshold = 0.5
