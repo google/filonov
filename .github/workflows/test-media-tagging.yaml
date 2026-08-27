@@ -38,3 +38,5 @@ jobs:
         run: |
           cd libs/media_tagging
           pytest -m 'not cloud' tests/unit
+        env:
+          GEMINI_API_KEY: test-key
