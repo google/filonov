@@ -15,7 +15,7 @@ import media_fetching.version as fetching_version
 import media_similarity.version as similarity_version
 import media_tagging.version as tagging_version
 
-__version__ = '0.11.2'
+__version__ = '0.11.3'
 tagging_version = tagging_version.__version__
 fetching_version = fetching_version.__version__
 similarity_version = similarity_version.__version__

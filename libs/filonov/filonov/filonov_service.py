@@ -79,7 +79,7 @@ class BaseRequest(pydantic.BaseModel):
       self.tagger_parameters = self.default_tagger_parameters
     if 'n_tags' not in self.tagger_parameters:
       self.tagger_parameters.update(self.default_tagger_parameters)
-    if self.source == 'youtube':
+    if self.source == 'youtube' and not self.media_type:
       self.media_type = 'YOUTUBE_VIDEO'
       self.tagger = 'gemini'
 

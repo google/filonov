@@ -224,7 +224,6 @@ def main(
     ),
   )
   if source == 'youtube':
-    media_type = 'YOUTUBE_VIDEO'
     tagger = 'gemini'
   params = {
     'source': source,

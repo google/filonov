@@ -371,7 +371,7 @@ def _aggregate_nested_metric(
     return sum(res)
   except TypeError:
     if len(result := sorted(set(res))) == 1:
-      return ','.join(result)
+      return result[0]
     return result
 
 
