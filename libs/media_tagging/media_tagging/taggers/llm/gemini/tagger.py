@@ -14,6 +14,7 @@
 """Module for performing media tagging with Gemini."""
 
 # pylint: disable=C0330, g-bad-import-order, g-multiple-import
+import os
 from typing import Final
 
 from typing_extensions import override
@@ -54,6 +55,15 @@ class GeminiTagger(base.BaseTagger):
       location: Location of Vertex AI endpoint.
     """
     self.model_name = self._format_model_name(model_name or kwargs.get('model'))
+    api_key = (
+      api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+    )
+    if not api_key:
+      raise GeminiTaggerError(
+        'Gemini API key not found. '
+        'Either provide as GEMINI_API_KEY environmental variable ',
+        'or pass `api_key` parameter to GeminiTagger class',
+      )
     self.api_key = api_key
     self.vertexai = vertexai
     self.project = project
