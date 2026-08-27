@@ -84,6 +84,7 @@ class DisplayAssetPerformance(PerformanceQuery):
     campaign.advertising_channel_type AS channel_type,
     ad_group_ad.ad.name AS media_name,
     ad_group_ad.ad.id AS asset_id,
+    '' AS orientation,
     ad_group_ad.ad.image_ad.image_url AS media_url,
     'UNKNOWN' AS format_type,
     ad_group_ad.ad.image_ad.pixel_width / ad_group_ad.ad.image_ad.pixel_height
@@ -129,6 +130,7 @@ class ResponsiveDisplayAssetPerformance(PerformanceQuery):
     campaign.advertising_channel_type AS channel_type,
     asset.name AS media_name,
     asset.id AS asset_id,
+    asset.orientation AS orientation,
     asset.image_asset.full_size.url AS media_url,
     ad_group_ad_asset_view.field_type AS format_type,
     asset.image_asset.full_size.width_pixels /
@@ -219,6 +221,7 @@ class PmaxAssetPerformance(PerformanceQuery):
     campaign.id AS campaign_id,
     campaign.advertising_channel_type AS channel_type,
     asset.id AS asset_id,
+    asset.orientation AS orientation,
     {media_name} AS media_name,
     {media_url} AS media_url,
     asset_group_asset.field_type AS format_type,
@@ -283,6 +286,7 @@ class SearchAssetPerformance(PerformanceQuery):
     campaign.advertising_channel_type AS channel_type,
     asset.text_asset.text AS media_name,
     asset.id AS asset_id,
+    asset.orientation AS orientation,
     asset.text_asset.text AS media_url,
     ad_group_ad_asset_view.field_type AS format_type,
     0 AS aspect_ratio,
@@ -327,6 +331,7 @@ class DemandGenTextAssetPerformance(PerformanceQuery):
     campaign.advertising_channel_type AS channel_type,
     asset.text_asset.text AS media_name,
     asset.id AS asset_id,
+    asset.orientation AS orientation,
     asset.text_asset.text AS media_url,
     ad_group_ad_asset_view.field_type AS format_type,
     0 AS aspect_ratio,
@@ -372,6 +377,7 @@ class DemandGenImageAssetPerformance(PerformanceQuery):
     campaign.advertising_channel_type AS channel_type,
     asset.name AS media_name,
     asset.id AS asset_id,
+    asset.orientation AS orientation,
     asset.image_asset.full_size.url AS media_url,
     ad_group_ad_asset_view.field_type AS format_type,
     asset.image_asset.full_size.width_pixels /
@@ -418,22 +424,25 @@ class DemandGenVideoAssetPerformance(PerformanceQuery):
     segments.date AS date,
     campaign.id AS campaign_id,
     campaign.advertising_channel_type AS channel_type,
-    video.id AS media_url,
-    video.title AS media_name,
-    segments.ad_format_type AS format_type,
+    asset.text_asset.text AS media_name,
+    asset.id AS asset_id,
+    asset.orientation AS orientation,
+    asset.youtube_video_asset.youtube_video_id AS media_url,
+    ad_group_ad_asset_view.field_type AS format_type,
     0 AS aspect_ratio,
-    video.duration_millis / 1000 AS video_duration,
-    ad_group_ad.policy_summary.approval_status AS approval_status,
+    0 AS file_size,
+    ad_group_ad.ad.name AS ad_name,
+    ad_group_ad_asset_view.policy_summary:approval_status AS approval_status,
     metrics.cost_micros / 1e6 AS cost,
     metrics.clicks AS clicks,
     metrics.impressions AS impressions,
     metrics.conversions AS conversions,
     metrics.conversions_value AS conversions_value
-  FROM video
+  FROM ad_group_ad_asset_view
   WHERE
     campaign.advertising_channel_type =  DEMAND_GEN
+    AND asset.type = YOUTUBE_VIDEO
     AND segments.date BETWEEN '{start_date}' AND '{end_date}'
-    AND video.id != ''
     AND metrics.cost_micros > {min_cost}
     {campaign_ids}
   """
@@ -459,6 +468,7 @@ class AppAssetPerformance(PerformanceQuery):
     segments.date AS date,
     campaign.id AS campaign_id,
     asset.id AS asset_id,
+    asset.orientation AS orientation,
     {media_name} AS media_name,
     {media_url} AS media_url,
     ad_group_ad_asset_view.field_type AS format_type,
