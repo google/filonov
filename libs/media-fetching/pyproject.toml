@@ -63,3 +63,7 @@ markers = [
 
 [project.scripts]
 media-fetcher="media_fetching.entrypoints.cli:typer_app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["media_fetching*"]

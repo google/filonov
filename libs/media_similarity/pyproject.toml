@@ -58,3 +58,7 @@ markers = [
 
 [project.scripts]
 media-similarity="media_similarity.entrypoints.cli:typer_app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["media_similarity*"]
