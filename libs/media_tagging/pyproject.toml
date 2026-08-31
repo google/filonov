@@ -107,3 +107,7 @@ markers = [
 [project.scripts]
 media-tagger="media_tagging.entrypoints.cli:typer_app"
 media-loader="media_tagging.loaders.entrypoints.cli:typer_app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["media_tagging*"]

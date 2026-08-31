@@ -71,3 +71,7 @@ markers = [
 [project.scripts]
 filonov="filonov.entrypoints.cli:typer_app"
 filonov-ui="filonov.entrypoints.streamlit_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["filonov*"]
