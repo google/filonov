@@ -1,0 +1,8 @@
+apiVersion: v2
+name: media-tagging
+description: A Helm chart for Media Tagging
+type: application
+version: 0.1.0
+appVersion: "2.5.7"
+maintainers:
+   - name: Andrei Markin
