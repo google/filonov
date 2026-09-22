@@ -3,6 +3,15 @@
 # Declare variables to be passed into your templates.
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+mediaTagging:
+  worker:
+    enabled: false
+    replicaCount: 1
+  taggingDb:
+    enabled: false
+    name: media_tagging
+    connectionString: ""
+
 replicaCount: 1
 
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
@@ -160,6 +169,30 @@ tolerations: []
 
 affinity: {}
 
-env: []
+env: {}
 
 initContainers: []
+
+postgresql:
+  image:
+    tag: latest
+  auth:
+    enabled: true
+    username: "postgres"
+    postgresPassword: "postgres_admin123"
+    password: "postgres_admin123"
+  architecture: "standalone"
+  primary:
+    persistence:
+      enabled: true
+      size: "8Gi"
+
+redis:
+  auth:
+    enabled: true
+    password: "redisadmin123"
+  architecture: "standalone"
+  master:
+    persistence:
+      enabled: true
+      size: "1Gi"

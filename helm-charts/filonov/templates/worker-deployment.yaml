@@ -1,16 +1,17 @@
+{{- if .Values.filonov.worker.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "media-tagging.fullname" . }}
+  name: {{ include "filonov.workerName" . }}
   labels:
-    {{- include "media-tagging.labels" . | nindent 4 }}
+    {{- include "filonov.workerLabels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "media-tagging.selectorLabels" . | nindent 6 }}
+      {{- include "filonov.workerSelectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,7 +19,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "media-tagging.labels" . | nindent 8 }}
+        {{- include "filonov.workerLabels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -27,7 +28,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "media-tagging.serviceAccountName" . }}
+      serviceAccountName: {{ include "filonov.serviceAccountName" . }}
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -36,7 +37,7 @@ spec:
         - name: deps-volume
           emptyDir: {}
       initContainers:
-        {{- if .Values.mediaTagging.taggingDb.enabled }}
+        {{- if or  .Values.filonov.taggingDb.enabled .Values.filonov.similarityDb.enabled }}
         - name: install-postres-driver
           image: ghcr.io/astral-sh/uv:0.10-python3.13-trixie
           command: ["uv", "pip", "install"]
@@ -58,25 +59,24 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          command:
+            - "celery"
+            - "-A"
+            - "filonov.entrypoints.tasks"
+            - "--broker=$(CELERY_BROKER_URL)"
+            - "worker"
+            - "--loglevel=info"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
-          {{- with .Values.livenessProbe }}
-          livenessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.readinessProbe }}
-          readinessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
-            {{- if .Values.mediaTagging.taggingDb.enabled }}
+            {{- if or  .Values.filonov.taggingDb.enabled .Values.filonov.similarityDb.enabled }}
               - name: deps-volume
                 mountPath: /shared-deps
             {{- end }}
@@ -84,17 +84,21 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
           env:
-            {{- if .Values.mediaTagging.worker.enabled }}
+            {{- if .Values.filonov.worker.enabled }}
             - name: CELERY_BROKER_URL
-              value: {{ include "media-tagging.redisUrl" . | quote }}
+              value: {{ include "filonov.redisUrl" . | quote }}
             {{- end }}
-            {{- if .Values.mediaTagging.taggingDb.enabled }}
+            {{- if .Values.filonov.taggingDb.enabled }}
             - name: MEDIA_TAGGING_DB_URL
-              value: {{ include "media-tagging.mediaTaggingDb" . | quote }}
+              value: {{ include "filonov.mediaTaggingDb" . | quote }}
+            {{- end }}
+            {{- if .Values.filonov.similarityDb.enabled }}
+            - name: SIMILARITY_DB_URL
+              value: {{ include "filonov.mediaSimilarityDb" . | quote }}
             {{- end }}
             {{- with .Values.env }}
-            {{- include "media-tagging.renderEnv" . | nindent 12 }}
-          {{- end }}
+            {{- include "filonov.renderEnv" . | nindent 12 }}
+            {{- end }}
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
@@ -111,3 +115,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end }}
