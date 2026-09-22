@@ -32,10 +32,25 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.initContainers }}
+      volumes:
+        - name: deps-volume
+          emptyDir: {}
       initContainers:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- if or  .Values.mediaSimilarity.taggingDb.enabled .Values.mediaSimilarity.similarityDb.enabled }}
+        - name: install-postres-driver
+          image: ghcr.io/astral-sh/uv:0.10-python3.13-trixie
+          command: ["uv", "pip", "install"]
+          args:
+            - "--target"
+            - "/shared-deps"
+            - "psycopg2-binary"
+          volumeMounts:
+            - name: deps-volume
+              mountPath: /shared-deps
+        {{- end }}
+        {{- with .Values.initContainers }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
@@ -60,14 +75,26 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.volumeMounts }}
           volumeMounts:
+            {{- if or  .Values.mediaSimilarity.taggingDb.enabled .Values.mediaSimilarity.similarityDb.enabled }}
+              - name: deps-volume
+                mountPath: /shared-deps
+            {{- end }}
+            {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.env }}
+            {{- end }}
           env:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- if .Values.mediaSimilarity.taggingDb.enabled }}
+            - name: MEDIA_TAGGING_DB_URL
+              value: {{ include "media-similarity.mediaTaggingDb" . | quote }}
+            {{- end }}
+            {{- if .Values.mediaSimilarity.similarityDb.enabled }}
+            - name: SIMILARITY_DB_URL
+              value: {{ include "media-similarity.mediaSimilarityDb" . | quote }}
+            {{- end }}
+            {{- with .Values.env }}
+            {{- include "media-similarity.renderEnv" . | nindent 12 }}
+            {{- end }}
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}

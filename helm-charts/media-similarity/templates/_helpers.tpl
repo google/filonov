@@ -60,3 +60,50 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Create postgresql connection string for media tagging Db
+*/}}
+{{- define "media-similarity.mediaTaggingDb" -}}
+{{- if .Values.mediaSimilarity.taggingDb.connectionString }}
+{{- .Values.mediaSimilarity.taggingDb.connectionString }}
+{{- else }}
+{{- printf "postgresql+psycopg2://%s:%s@%s-postgresql:%v/%s"
+.Values.postgresql.auth.username
+.Values.postgresql.auth.postgresPassword
+.Release.Name
+.Values.postgresql.containerPorts.postgresql
+.Values.mediaSimilarity.taggingDb.name }}
+{{- end }}
+{{- end }}
+
+{{/*
+Create postgresql connection string for media similarity Db
+*/}}
+{{- define "media-similarity.mediaSimilarityDb" -}}
+{{- if .Values.mediaSimilarity.similarityDb.connectionString }}
+{{- .Values.mediaSimilarity.similarityDb.connectionString }}
+{{- else }}
+{{- printf "postgresql+psycopg2://%s:%s@%s-postgresql:%v/%s"
+.Values.postgresql.auth.username
+.Values.postgresql.auth.postgresPassword
+.Release.Name
+.Values.postgresql.containerPorts.postgresql
+.Values.mediaSimilarity.similarityDb.name }}
+{{- end }}
+{{- end }}
+
+
+{{/*
+Render env variables
+*/}}
+{{- define "media-similarity.renderEnv" -}}
+{{- range $key, $val := . }}
+- name: {{ $key }}
+  {{- if kindIs "map" $val }}
+{{ toYaml $val | indent 2 }}
+  {{- else }}
+  value: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+{{- end -}}

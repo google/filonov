@@ -3,4 +3,13 @@ name: filonov
 description: A Helm chart for Filonov backend
 type: application
 version: 0.1.0
-appVersion: "0.11.2"
+appVersion: "0.12.0"
+dependencies:
+   - name: redis
+     condition: filonov.worker.enabled
+     version: "23.x.x"
+     repository: oci://registry-1.docker.io/bitnamicharts
+   - name: postgresql
+     condition: filonov.taggingDb.enabled, filonov.similarityDb.enabled
+     version: "15.x.x"
+     repository: https://charts.bitnami.com/bitnami
