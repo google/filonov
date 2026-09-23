@@ -24,7 +24,6 @@ from media_tagging.entrypoints.tracer import (
   initialize_meter,
   initialize_tracer,
 )
-from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
 import filonov
 from filonov import version
@@ -55,7 +54,6 @@ def init_celery_telemetry(*args, **kwargs):
   logger.addHandler(
     initialize_logger(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
   )
-  CeleryInstrumentor().instrument()
 
 
 app = celery.Celery(

@@ -29,8 +29,6 @@ from media_tagging.entrypoints.tracer import (
   initialize_tracer,
 )
 from opentelemetry import trace
-from opentelemetry.instrumentation.celery import CeleryInstrumentor
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
@@ -45,15 +43,11 @@ _OTEL_ATTRIBUTES = {
   'media_similarity.version': version.similarity_version,
 }
 
-CeleryInstrumentor().instrument()
-
 app = fastapi.FastAPI(
   title='Filonov API',
   version=version.__version__,
   description='API for creative analysis',
 )
-FastAPIInstrumentor.instrument_app(app)
-
 typer_app = typer.Typer()
 
 initialize_tracer(OTEL_SERVICE_NAME)

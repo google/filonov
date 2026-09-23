@@ -25,7 +25,6 @@ from typing import Any
 
 import sqlalchemy
 from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from sqlalchemy.orm import declarative_base, joinedload, relationship
 from sqlalchemy.pool import StaticPool
 from typing_extensions import override
@@ -193,7 +192,6 @@ class SqlAlchemyRepository:
       )
     else:
       self._engine = sqlalchemy.create_engine(self.db_url)
-    SQLAlchemyInstrumentor().instrument(engine=self._engine)
     return self._engine
 
 
