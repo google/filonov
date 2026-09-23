@@ -19,7 +19,6 @@ import celery
 import pydantic
 from garf.executors.entrypoints import utils as garf_utils
 from garf.io import writer as garf_writer
-from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
 from media_tagging import media_tagging_service, repositories
 from media_tagging.entrypoints.tracer import (
@@ -60,7 +59,6 @@ def init_celery_telemetry(*args, **kwargs):
     name=otel_service_name,
   )
   logger.addHandler(initialize_logger(otel_service_name))
-  CeleryInstrumentor().instrument()
 
 
 @celery_app.task(pydantic=True)

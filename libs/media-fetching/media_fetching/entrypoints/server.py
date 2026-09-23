@@ -26,7 +26,6 @@ from media_tagging.entrypoints.tracer import (
   initialize_meter,
   initialize_tracer,
 )
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from typing_extensions import Annotated
 
 import media_fetching
@@ -38,7 +37,6 @@ app = fastapi.FastAPI(
   version=version.__version__,
   description='Fetches media from various sources',
 )
-FastAPIInstrumentor.instrument_app(app)
 typer_app = typer.Typer()
 
 OTEL_SERVICE_NAME = 'media-fetching'
@@ -62,7 +60,8 @@ class WriterOptions(pydantic.BaseModel):
   output: str = 'media_results'
 
 
-@app.post('/fetch:file')
+@app.post('/fetch:file', deprecated=True)
+@app.post('/api/fetch:file')
 async def fetch_file(
   request: media_fetching.sources.file.FileFetchingParameters,
   writer_options: WriterOptions,
@@ -72,7 +71,8 @@ async def fetch_file(
   return fetch('file', request, writer_options, enable_cache)
 
 
-@app.post('/fetch:googleads')
+@app.post('/fetch:googleads', deprecated=True)
+@app.post('/api/fetch:googleads')
 async def fetch_googleads(
   request: media_fetching.sources.googleads.GoogleAdsFetchingParameters,
   writer_options: WriterOptions,
@@ -82,7 +82,8 @@ async def fetch_googleads(
   return fetch('googleads', request, writer_options, enable_cache)
 
 
-@app.post('/fetch:youtube')
+@app.post('/fetch:youtube', deprecated=True)
+@app.post('/api/fetch:youtube')
 async def fetch_youtube(
   request: media_fetching.sources.youtube.YouTubeFetchingParameters,
   writer_options: WriterOptions,
@@ -92,7 +93,8 @@ async def fetch_youtube(
   return fetch('youtube', request, writer_options, enable_cache)
 
 
-@app.post('/fetch:bq')
+@app.post('/fetch:bq', deprecated=True)
+@app.post('/api/fetch:bq')
 async def fetch_bq(
   request: media_fetching.sources.sql.BigQueryFetchingParameters,
   writer_options: WriterOptions,
@@ -102,7 +104,8 @@ async def fetch_bq(
   return fetch('bq', request, writer_options, enable_cache)
 
 
-@app.post('/fetch:sqldb')
+@app.post('/fetch:sqldb', deprecated=True)
+@app.post('/api/fetch:sqldb')
 async def fetch_sqldb(
   request: media_fetching.sources.sql.SqlAlchemyQueryFetchingParameters,
   writer_options: WriterOptions,
@@ -112,7 +115,8 @@ async def fetch_sqldb(
   return fetch('sqldb', request, writer_options, enable_cache)
 
 
-@app.post('/fetch:dbm')
+@app.post('/fetch:dbm', deprecated=True)
+@app.post('/api/fetch:dbm')
 async def fetch_dbm(
   request: media_fetching.sources.dbm.BidManagerFetchingParameters,
   writer_options: WriterOptions,

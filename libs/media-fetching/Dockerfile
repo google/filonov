@@ -26,12 +26,12 @@ ENV PATH="/opt/venv/bin:$PATH" \
   PYTHONDONTWRITEBYTECODE=1 \
 	PYTHONUNBUFFERED=1
 COPY --from=builder /opt/venv/ /opt/venv/
-WORKDIR /app/
+WORKDIR /opt/venv/
 COPY media_fetching/ ./media_fetching/
 COPY pyproject.toml .
 
-RUN chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /opt/venv/media_fetching
 EXPOSE 8000
-ENV PYTHONPATH="/app"
+ENV PYTHONPATH="/opt/venv"
 USER appuser
-CMD ["python", "-m",  "media_fetching.entrypoints.server", "--port", "8000"]
+CMD ["uvicorn", "media_fetching.entrypoints.server:app", "--host", "0.0.0.0"]

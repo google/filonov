@@ -20,8 +20,6 @@ import fastapi
 import typer
 import uvicorn
 from garf.executors.entrypoints import utils as garf_utils
-from opentelemetry.instrumentation.celery import CeleryInstrumentor
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
@@ -39,13 +37,11 @@ from media_tagging.entrypoints.tracer import (
   initialize_tracer,
 )
 
-CeleryInstrumentor().instrument()
 app = fastapi.FastAPI(
   title='Media Tagging API',
   version=version.__version__,
   description='Performs tagging of media based on various taggers',
 )
-FastAPIInstrumentor.instrument_app(app)
 typer_app = typer.Typer()
 
 OTEL_SERVICE_NAME = 'media-tagging'

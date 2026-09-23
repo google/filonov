@@ -25,7 +25,6 @@ from media_tagging.entrypoints.tracer import (
   initialize_meter,
   initialize_tracer,
 )
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
@@ -37,7 +36,6 @@ app = fastapi.FastAPI(
   version=version.__version__,
   description='Identifies similarity between media',
 )
-FastAPIInstrumentor.instrument_app(app)
 typer_app = typer.Typer()
 
 OTEL_SERVICE_NAME = 'media-similarity'
@@ -89,7 +87,13 @@ class Dependencies:
     )
 
 
-@app.post('/cluster')
+@app.get('/api/version')
+async def similarity_version() -> str:
+  return version.__version__
+
+
+@app.post('/cluster', deprecated=True)
+@app.post('/api/cluster')
 async def cluster_media(
   request: media_similarity.MediaClusteringRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
@@ -101,7 +105,8 @@ async def cluster_media(
   )
 
 
-@app.get('/search')
+@app.post('/search', deprecated=True)
+@app.get('/api/search')
 async def search_media(
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
   seed_media_identifiers: str,
@@ -133,7 +138,8 @@ async def search_media(
   )
 
 
-@app.post('/compare')
+@app.post('/compare', deprecated=True)
+@app.post('/api/compare')
 async def compare_media(
   request: media_similarity.MediaSimilarityComparisonRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
