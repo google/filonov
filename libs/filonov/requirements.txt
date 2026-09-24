@@ -26,10 +26,6 @@ anyio==4.15.1 \
     #   httpx
     #   starlette
     #   watchfiles
-asgiref==3.12.1 \
-    --hash=sha256:59dcb51c272ad209d59bed5708a64a333083e86017d7fcdd67498eeab7784340 \
-    --hash=sha256:fe386d1c2bff7259ea95929266d12a8cf9a8b5a1c2598402967d8792e7a7c094
-    # via opentelemetry-instrumentation-asgi
 async-timeout==5.0.1 ; python_full_version < '3.11.3' \
     --hash=sha256:39e3809566ff85354557ec2398b55e096c8364bacac9405a7a1fa429e77fe76c \
     --hash=sha256:d9321a7a3d5a6a5e187e824d2fa0793ce379a202935782d555d6e9d2735677d3
@@ -383,7 +379,9 @@ cryptography==50.0.1 \
     --hash=sha256:fc3ed7ebd2a8c96f5b166de0ab9b624996bef3b07bbeb19364dfb78222c22c80 \
     --hash=sha256:fd3718b960d0b5dd213cdf03f3bcb7000e69dda0de8b956061947ff6bcff5558 \
     --hash=sha256:ff838d62ec1bfce4f9ba7fa16f4a7b554cd8d0c299e6be37502161a660c84eef
-    # via google-auth
+    # via
+    #   google-auth
+    #   jwt
 db-dtypes==1.7.1 \
     --hash=sha256:450b94cd010cfa6d4d13cca2593009eba4fbe15516084c332cde1a47bbce0625 \
     --hash=sha256:75adf3bdf3174a6474ea4162d9a345ea0b3102ec4fd603e69ec26b6e8a99145a
@@ -597,9 +595,9 @@ garf-google-ads==1.2.1 \
     --hash=sha256:3f1e0f4a00814d1737b20a95f04ab10f3cafb2c3b3f20d5ba412e898f52b8d66 \
     --hash=sha256:9e466d99934ef4b593733a12ab4278fd6becbe9361590c0b59e8e2abfd286467
     # via media-fetching
-garf-io==1.3.6 \
-    --hash=sha256:1704a53a2646d33ce48f53231d33857d2aa84a395a1be983bbbf6baa13f2492e \
-    --hash=sha256:e6e6e54a5536ff93d2ff46bb3ac3a3b04c8488bcd2586b2a782a76895a318a11
+garf-io==1.3.7 \
+    --hash=sha256:213832e46414bc1cdd70cb553261f157cc3306f8089c9fffdd553592b9396661 \
+    --hash=sha256:fd9190c8989f53f40b44955ac20537acc12904c11a8019b1f93d1b0205e50742
     # via
     #   garf-bid-manager
     #   garf-executors
@@ -610,9 +608,9 @@ garf-youtube==1.0.0 \
     --hash=sha256:195d247d6fc9437c47e6e646097095af3c25c90d0d7688616b738b6d6cfd28eb \
     --hash=sha256:78b8de1f335d716bb71786904da19a6ae7eb19c863a06116c1cb0e2a6e431bae
     # via media-fetching
-google-ads==32.0.0 \
-    --hash=sha256:83a3fe8be741a249afc261a97754e3c42d6181308121df652d0b37225053e867 \
-    --hash=sha256:ceddefd1d927b6c5cfb2c4c8c7e546c0f2dc7cc9b0fc2b5c6b51a49d93d1aeec
+google-ads==33.0.0 \
+    --hash=sha256:113a679e708779400e7318b202036f0aa0d02b665d78c9b940b58ade26504d63 \
+    --hash=sha256:d58309f22943b613f66250a231eba677af7963f3cec91e6d11620c7b402058ce
     # via garf-google-ads
 google-api-core==2.38.0 \
     --hash=sha256:31e326eafa31b34f1db7a715f50f61dbca7e6e37277762f252ed90e6ce94c246 \
@@ -1067,6 +1065,10 @@ jq==1.12.0 \
     --hash=sha256:f553f6f89530e6e0af1e87e24adbf9764787077fe7b7bee672eb152c93bfe71a \
     --hash=sha256:fa39d443121159ec90226ef0b1f93d2fb457bf1dd4a45479c7bf0a50b65b3c78
     # via media-tagging
+jwt==1.4.0 \
+    --hash=sha256:7560a7f1de4f90de94ac645ee0303ac60c95b9e08e058fb69f6c330f71d71b11 \
+    --hash=sha256:f6f789128ac247142c79ee10f3dba6e366ec4e77c9920d18c1592e28aa0a7952
+    # via garf-executors
 kombu==5.6.2 \
     --hash=sha256:8060497058066c6f5aed7c26d7cd0d3b574990b09de842a8c5aaed0b92cc5a55 \
     --hash=sha256:efcfc559da324d41d61ca311b0c64965ea35b4c55cc04ee36e55386145dace93
@@ -1159,17 +1161,17 @@ mdurl==0.1.2 \
     --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8 \
     --hash=sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba
     # via markdown-it-py
-media-fetching==0.6.5 \
-    --hash=sha256:159af938d08c69fd0139b566bf01a1033df036d3105891a9c30bddebbd250570 \
-    --hash=sha256:ee3f071a717f21045c40f34e8f88a256fd625a56b996a8f2979f49f26ab206f8
+media-fetching==0.7.0 \
+    --hash=sha256:ebb0fdef8e9b6edf050a6fdda217d03e20b1820bdeb6dcb0c898d22dace2c1de \
+    --hash=sha256:fdf86fae53c257971a02b45f1a99c1af2536f28c18654e94f7686bb48c6c10c2
     # via filonov
-media-similarity==0.9.2 \
-    --hash=sha256:34d0da71bb1c484b2d4e8f5f61a47d8e31d9517620198970d6924cacb2e9d8db \
-    --hash=sha256:a8f04c43e15f820a520ed3642945037ae5683b74f655dc895291a5604d6c96a9
+media-similarity==0.10.0 \
+    --hash=sha256:4bc24251a7793a915f98edda37166bfd680689008f4a069be5e151d16790c3f4 \
+    --hash=sha256:c7c808651029a0867195ac6e4190f2f716b5101041f5140996af230065084189
     # via filonov
-media-tagging==2.5.11 \
-    --hash=sha256:809f18b4049c069b7388ac9e67976190ee9d58161941a6d33c6ad0da78b4a1e1 \
-    --hash=sha256:cee46de393264b0389a2d8cd5fbb929ba5aad341f76de049d150fe3319ae4bf7
+media-tagging==2.6.0 \
+    --hash=sha256:1f447fe9f2ed302d217fc5f563691a00ad0a26ddaea6138afd283c89be8bcff5 \
+    --hash=sha256:7e8c0e6311e9c15ef98a6ba50bb3a37f2147ffbc0858044aeedc52e3c8838d61
     # via
     #   filonov
     #   media-fetching
@@ -1402,9 +1404,7 @@ opentelemetry-api==1.44.0 \
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-instrumentation
-    #   opentelemetry-instrumentation-asgi
     #   opentelemetry-instrumentation-celery
-    #   opentelemetry-instrumentation-fastapi
     #   opentelemetry-instrumentation-sqlalchemy
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
@@ -1435,30 +1435,16 @@ opentelemetry-instrumentation==0.65b0 \
     --hash=sha256:071d9d9eced9bd6460444ec3b0c77229870ed05a881c22c84fdede58e4eed09b \
     --hash=sha256:ea967a72b9939b5fcfdad572753b4306c59dcb99e3f382d95dae04286805e137
     # via
-    #   opentelemetry-instrumentation-asgi
     #   opentelemetry-instrumentation-celery
-    #   opentelemetry-instrumentation-fastapi
     #   opentelemetry-instrumentation-sqlalchemy
-opentelemetry-instrumentation-asgi==0.65b0 \
-    --hash=sha256:3a845a8ebd1c4ef0d8263401e6545f5b219b2feee612090d50f578a87e71fd65 \
-    --hash=sha256:892bca67c56522ffa85a8a83cf934d7b50b3be2132e45cbee705825f0a5ba426
-    # via opentelemetry-instrumentation-fastapi
 opentelemetry-instrumentation-celery==0.65b0 \
     --hash=sha256:8510357a6a9e2cb1a6485fe98642a39f06c2970eb58656de06260b922ffe7888 \
     --hash=sha256:ff4d192b6371cfe06969005862dc558cc8b79b03b0bbdfbf65b9a59e4dcd7fee
-    # via
-    #   filonov
-    #   media-tagging
-opentelemetry-instrumentation-fastapi==0.65b0 \
-    --hash=sha256:10a3a95486036230413a58fe4fdf4a83fa6bba46918407e527476994bd92bd97 \
-    --hash=sha256:cda2610a0ec1b22d19886f33e4d861e9f5dbb886aeaa3a1263b47aff82c36943
-    # via media-tagging
+    # via filonov
 opentelemetry-instrumentation-sqlalchemy==0.65b0 \
     --hash=sha256:4d8a2e5afc7b505a48d05cb1fb6db5f8b31681814c1d7767bd6d4b5bdd3a3047 \
     --hash=sha256:8ec2e79f1e00808c5dc639ab5b2cfcdf9dcdef55efd6442c6019707fe2894028
-    # via
-    #   garf-io
-    #   media-tagging
+    # via garf-io
 opentelemetry-proto==1.44.0 \
     --hash=sha256:898b155a0e1557afd867478fb6158e8122a46329ca0bb8dc53cc55e98f017f56 \
     --hash=sha256:c547a79c2f8c0c515d31509154682e5921c7cfd5ca67b70e1f9266e2c3e103f3
@@ -1482,17 +1468,9 @@ opentelemetry-semantic-conventions==0.65b0 \
     --hash=sha256:f9b2b81e9d5b64f11bc952075e7e9c7fb0aab075c7fd1c46d597f1b919852d60
     # via
     #   opentelemetry-instrumentation
-    #   opentelemetry-instrumentation-asgi
     #   opentelemetry-instrumentation-celery
-    #   opentelemetry-instrumentation-fastapi
     #   opentelemetry-instrumentation-sqlalchemy
     #   opentelemetry-sdk
-opentelemetry-util-http==0.65b0 \
-    --hash=sha256:7553b606f963097cb190536dc30556cce85090692e471a422fff30ca29b04348 \
-    --hash=sha256:84f82d826978bba416ab453460ff6a7391cdc3534c93a786595e4068680016b7
-    # via
-    #   opentelemetry-instrumentation-asgi
-    #   opentelemetry-instrumentation-fastapi
 packaging==26.3 \
     --hash=sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79 \
     --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
@@ -1997,9 +1975,9 @@ python-multipart==0.0.32 \
     --hash=sha256:be54b7f3fa167bb83e4fcd936b887b708f4e57fe75911c02aebf53efaf8d938e \
     --hash=sha256:ff6d3f776f16878c894e52e107296ffc890e913c611b1a4ec6c44e2821fe2e23
     # via fastapi
-pytz==2026.3.post1 ; python_full_version < '3.11' \
-    --hash=sha256:2211d3fcf9a797d3405cac96ac7f61d80e6a644f72a3309607282fe8a2010c5d \
-    --hash=sha256:dd95840dd199baea12d9cc096a1d452caa6596a1c1e4b5f3dbd1541855d5e815
+pytz==2026.4 ; python_full_version < '3.11' \
+    --hash=sha256:464303645bafafd72418898368b2429458f709cf1eb6a15372fbcc396b64da63 \
+    --hash=sha256:9d514388fbc89ca0833203464272ac485b8828568ab73532f5020f17e892a0ff
     # via pandas
 pyyaml==6.0.3 \
     --hash=sha256:00c4bdeba853cc34e7dd471f16b4114f4162dc03e6b7afcc2128711f0eca823c \
@@ -2404,7 +2382,6 @@ typing-extensions==4.16.0 \
     --hash=sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5
     # via
     #   anyio
-    #   asgiref
     #   click-repl
     #   cryptography
     #   exceptiongroup
@@ -2541,9 +2518,28 @@ watchfiles==1.3.0 \
     --hash=sha256:ec3cd4bb181a7b6329134204c2277c7144ab5f62cce9c5335d6f901ee7ce8d6a \
     --hash=sha256:f0c9865240e065a2247f4b5248528ae3d01e0e8ae071462c250c884dc16e3ee3
     # via uvicorn
-wcwidth==0.8.4 \
-    --hash=sha256:2097bb1d28a0ba8fe177c2eb607317f9b1627b03f33ebebfd3da670b337a65ba \
-    --hash=sha256:2dae09efa25253ae2874188e86d6861af3b1652aef4118cdf3f0bda288a957fb
+wcwidth==0.9.1 \
+    --hash=sha256:03cfca3dcbffa86564290fe3c9978a6191ba003e8ced7f7dbda315fcb3fbe725 \
+    --hash=sha256:0665ee822ea04e25801e6e82e5407528be0863e88a17b0e7ca038843a4a3ac0c \
+    --hash=sha256:0d68a30d504c68cfdff2a5f804675c1e7ab4c0bbe878024c8b680ec5579cde67 \
+    --hash=sha256:10b00ba23482e352f874d2e8135e7ace9da838646c7dd800566246bbd46125ff \
+    --hash=sha256:356376852357b8fca71fe5415808ec421679e04b4a98eb7c9cb6a7984b911a05 \
+    --hash=sha256:40d936d72c9bdc10df43f93a8be502bc5024b487259139f66a328722c07f34a9 \
+    --hash=sha256:5823209b0d43af322ce698c689380d7c15ca31fa8e6e3be8459f27031bef0af5 \
+    --hash=sha256:61bd7aef9cafb6cb77a37a169998d7928ce82a51522146d11f60db9e7d1cb43a \
+    --hash=sha256:69bb970cf5652b88cfdb9d3fdd1764fc15e5f8ad531643e7bb3e894cd969740e \
+    --hash=sha256:6e1272b7986cefe79783737e38bdb9eaae0682b333c7bd132024441193dd5ce7 \
+    --hash=sha256:708158c082364af442f9983de7b6ec9ac0d2e1b825ada25f0911b1f138d55405 \
+    --hash=sha256:747fb724223f417a17541a95a17c1dac3a8ef9a0cf41684950f0eab191a35f65 \
+    --hash=sha256:991d1c8834f548e9c1f16432075ee84638e122312556bbf1ed595ea8fffc4673 \
+    --hash=sha256:9f1636c5075ffd5c2e835b4561874f6e5dd2bbeba3c6c2c99f067d0d16883af8 \
+    --hash=sha256:b5da43d6967668982e44a52fb551967d293f86d26cd86036ac95bbdd34394ed9 \
+    --hash=sha256:bcb9ed4a367cc025bf1092ac679a156759605182d60b7ed3c28f7221a42ddf55 \
+    --hash=sha256:c4cead196551112cb8f43cdd1f80c235ef2456e34b1a9955c424537ec99961b2 \
+    --hash=sha256:dc10e262c3ac0abbfd0a2a51e45a848b1b7f500b21ff512630277973ba25674d \
+    --hash=sha256:e0c3a1c45c5b9550c6919a4449e95f5b177f6e165786376981db8f1addae9b21 \
+    --hash=sha256:eab587e18e7cadf1a750b0098fc8bebfb62c125eb9306f2268f0443a282a3d78 \
+    --hash=sha256:fe021c4d8de9d36c31a0cb41d0d2546dadd3b0708a301f1a0c66ce200851831f
     # via prompt-toolkit
 websockets==16.1.1 \
     --hash=sha256:01fbdcbac298efe19360b94bc0039c8f746f0220ba570f327577bfee81059175 \

@@ -8,7 +8,7 @@ dependencies = [
   "pillow",
   "smart_open",
   "jq",
-  "garf-executors>=1.0.0",
+  "garf-executors>=1.7.0.post1",
   "garf-io>=1.0.0",
   "pandas",
   "pydantic",
