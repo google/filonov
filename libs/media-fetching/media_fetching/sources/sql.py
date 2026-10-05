@@ -20,10 +20,16 @@ from collections.abc import Sequence
 from typing import Literal
 
 import pydantic
+import sqlparse
 from garf.core import report
 from garf.executors import bq_executor, sql_executor
 
+from media_fetching import exceptions
 from media_fetching.sources import models
+
+
+class SqlFetchingError(exceptions.MediaFetchingError):
+  """Errors specific to SQL source."""
 
 
 class TableFetchingParameters(models.FetchingParameters):
@@ -48,7 +54,10 @@ class TableFetchingParameters(models.FetchingParameters):
       segments = ', '.join(self.segments)
       if segments:
         fields = f'{fields}, {segments}'
-    return f'SELECT {fields} FROM {self.table}'
+    query = f'SELECT {fields} FROM {self.table}'
+    if len(queries := sqlparse.split(query)) > 1:
+      raise SqlFetchingError('Multiple queries detected')
+    return queries[0]
 
   def model_post_init(self, __context__):
     if isinstance(self.metrics, str):
