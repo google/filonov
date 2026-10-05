@@ -18,12 +18,6 @@ import celery
 import media_fetching
 import media_similarity
 import media_tagging
-from garf.executors.entrypoints import utils as garf_utils
-from media_tagging.entrypoints.tracer import (
-  initialize_logger,
-  initialize_meter,
-  initialize_tracer,
-)
 
 import filonov
 from filonov import version
@@ -38,22 +32,6 @@ _OTEL_ATTRIBUTES = {
   'media_fetching.version': version.fetching_version,
   'media_similarity.version': version.similarity_version,
 }
-
-
-@celery.signals.worker_process_init.connect(weak=False)
-def init_celery_telemetry(*args, **kwargs):
-  otel_service_name = os.getenv('OTEL_SERVICE_NAME', 'filonov-celery')
-  initialize_tracer(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
-  initialize_meter(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
-
-  logger = garf_utils.init_logging(
-    loglevel=os.getenv('OTEL_LOG_LEVEL', 'INFO'),
-    logger_type='local',
-    name=otel_service_name,
-  )
-  logger.addHandler(
-    initialize_logger(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
-  )
 
 
 app = celery.Celery(
@@ -84,7 +62,7 @@ def create_map(
   """Writes filonov data to creative map."""
   generated_map = filonov.FilonovService(
     fetching_service=media_fetching.MediaFetchingService.from_source_alias(
-      **request.source_parameters.model_dump()
+      source=request.source, **request.source_parameters.model_dump()
     ),
     tagging_service=tagging_service,
     similarity_service=similarity_service,
@@ -103,7 +81,7 @@ def create_tables(
   """Writes filonov data to tables."""
   return filonov.FilonovService(
     fetching_service=media_fetching.MediaFetchingService.from_source_alias(
-      **request.source_parameters.model_dump()
+      source=request.source, **request.source_parameters.model_dump()
     ),
     tagging_service=tagging_service,
     similarity_service=similarity_service,
