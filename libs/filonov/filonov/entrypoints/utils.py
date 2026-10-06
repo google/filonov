@@ -16,6 +16,8 @@
 
 """Utils module for filonov entrypoints."""
 
+import os
+import re
 from collections.abc import Sequence
 
 import filonov
@@ -23,9 +25,23 @@ import filonov
 
 def build_creative_map_destination(path: str):
   """Build correct output path."""
+  filonov_directory = os.getenv('FILONOV_OUTPUT_DIR', '.').rstrip('/')
+  if re.match(r'\.\.|\$', path):
+    raise filonov.exceptions.FilonovError(
+      'Overwriting filonov directory not allowed'
+    )
+
   if path_elements := path.split('.')[0:-1]:
     path = '.'.join(path_elements)
-  return f'{path}.json'
+  if '://' in filonov_directory:
+    if '://' in path and filonov_directory not in path:
+      raise filonov.exceptions.FilonovError('Remote file location mismatch')
+
+    if filonov_directory in path:
+      return f'{path}.json'
+    path = path.lstrip('/')
+    return f'{filonov_directory}/{path}.json'
+  return re.sub(r'/+', '/', f'{filonov_directory}/{path}.json')
 
 
 def build_cli_command(

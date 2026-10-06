@@ -22,12 +22,11 @@ from filonov.entrypoints import utils
 @pytest.mark.parametrize(
   'path, expected',
   [
-    ('creative_map', 'creative_map.json'),
-    ('creative_map.json', 'creative_map.json'),
-    ('/app/creative_map', '/app/creative_map.json'),
-    ('/app/creative_map.json', '/app/creative_map.json'),
-    ('gs://bucket/creative_map', 'gs://bucket/creative_map.json'),
-    ('gs://bucket/creative_map.json', 'gs://bucket/creative_map.json'),
+    ('creative_map', './creative_map.json'),
+    ('creative_map.json', './creative_map.json'),
+    ('/app/creative_map', './app/creative_map.json'),
+    # ('../app/creative_map', './app/creative_map.json'),
+    ('/app/creative_map.json', './app/creative_map.json'),
   ],
 )
 def test_build_creative_map_destination_returns_correct_file_name(
@@ -35,6 +34,40 @@ def test_build_creative_map_destination_returns_correct_file_name(
 ):
   result = utils.build_creative_map_destination(path)
   assert result == expected
+
+
+@pytest.mark.parametrize(
+  'path, expected',
+  [
+    ('gs://bucket/creative_map', 'gs://bucket/creative_map.json'),
+    ('gs://bucket/creative_map.json', 'gs://bucket/creative_map.json'),
+    ('/app/creative_map', 'gs://bucket/app/creative_map.json'),
+  ],
+)
+def test_build_creative_map_destination_returns_correct_remote_file_name(
+  monkeypatch, path: str, expected: str
+):
+  monkeypatch.setenv('FILONOV_OUTPUT_DIR', 'gs://bucket/')
+  result = utils.build_creative_map_destination(path)
+  assert result == expected
+
+
+@pytest.mark.parametrize(
+  'path, error',
+  [
+    ('gs://wrong-bucket/creative_map', 'Remote file location mismatch'),
+    (
+      '../other-bucket/creative_map',
+      'Overwriting filonov directory not allowed',
+    ),
+  ],
+)
+def test_build_creative_map_destination_raises_error_from_remote_file_mismatch(
+  monkeypatch, path: str, error: str
+):
+  monkeypatch.setenv('FILONOV_OUTPUT_DIR', 'gs://bucket/')
+  with pytest.raises(filonov.exceptions.FilonovError, match=error):
+    utils.build_creative_map_destination(path)
 
 
 def test_build_cli_command_map():
