@@ -23,6 +23,7 @@ from garf.executors.entrypoints import utils as garf_utils
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
+import media_tagging
 from media_tagging import (
   exceptions,
   media_tagging_service,
@@ -94,7 +95,7 @@ def available_taggers() -> list[str]:
 @app.post('/tag', deprecated=True)
 @app.post('/api/tag')
 def tag(
-  request: tasks.TaggingRequest,
+  request: media_tagging.MediaTaggingRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> dict[str, str]:
   """Performs media tagging.
@@ -108,12 +109,6 @@ def tag(
   """
   try:
     tagging_results = dependencies.tagging_service.tag_media(request)
-    if writer := request.writer:
-      return {
-        'result': tagging_results.save(
-          request.output, writer, **request.writer_parameters
-        )
-      }
     return fastapi.responses.JSONResponse(
       content=fastapi.encoders.jsonable_encoder(tagging_results)
     )
@@ -123,7 +118,7 @@ def tag(
 
 @app.post('/api/tag:task', status_code=fastapi.status.HTTP_202_ACCEPTED)
 def tag_task(
-  request: tasks.TaggingRequest,
+  request: media_tagging.MediaTaggingRequest,
 ) -> dict[str, str]:
   """Sends tagging request.
 
@@ -163,7 +158,7 @@ def cancel_operation(operation_id: str):
 @app.post('/describe', deprecated=True)
 @app.post('/api/describe')
 def describe(
-  request: tasks.TaggingRequest,
+  request: media_tagging.MediaTaggingRequest,
   dependencies: Annotated[Dependencies, fastapi.Depends(Dependencies)],
 ) -> dict[str, str]:
   """Performs media tagging.
@@ -177,12 +172,6 @@ def describe(
   """
   try:
     tagging_results = dependencies.tagging_service.describe_media(request)
-    if writer := request.writer:
-      return {
-        'result': tagging_results.save(
-          request.output, writer, **request.writer_parameters
-        )
-      }
     return fastapi.responses.JSONResponse(
       content=fastapi.encoders.jsonable_encoder(tagging_results)
     )
@@ -192,7 +181,7 @@ def describe(
 
 @app.post('/api/describe:task', status_code=fastapi.status.HTTP_202_ACCEPTED)
 def describe_task(
-  request: tasks.TaggingRequest,
+  request: media_tagging.MediaTaggingRequest,
 ) -> dict[str, str]:
   """Sends tagging request.
 
