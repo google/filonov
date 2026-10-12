@@ -92,22 +92,24 @@ Create the name of the service account to use
 Create redis connection string
 */}}
 {{- define "media-tagging.redisUrl" -}}
-{{- printf "redis://:%s@%s-redis-master:%v/0" .Values.redis.auth.password .Release.Name .Values.redis.master.containerPorts.redis }}
+{{- $fullname := include "media-tagging.fullname" . -}}
+{{- printf "redis://:%s@%s-redis-master:%v/0" .Values.redis.auth.password $fullname .Values.redis.master.containerPorts.redis }}
 {{- end }}
 
 {{/*
 Create postgresql connection string for media tagging Db
 */}}
 {{- define "media-tagging.mediaTaggingDb" -}}
-{{- if .Values.mediaSimilarity.taggingDb.connectionString }}
-{{- .Values.mediaSimilarity.taggingDb.connectionString }}
+{{- if .Values.mediaTagging.taggingDb.connectionString }}
+{{- .Values.mediaTagging.taggingDb.connectionString }}
 {{- else }}
+{{- $fullname := include "media-tagging.fullname" . -}}
 {{- printf "postgresql+psycopg2://%s:%s@%s-postgresql:%v/%s"
 .Values.postgresql.auth.username
 .Values.postgresql.auth.postgresPassword
-.Release.Name
+$fullname
 .Values.postgresql.containerPorts.postgresql
-.Values.mediaSimilarity.taggingDb.name }}
+.Values.mediaTagging.taggingDb.name }}
 {{- end }}
 {{- end }}
 

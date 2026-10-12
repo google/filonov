@@ -8,8 +8,8 @@ spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: http
+      targetPort: {{ .Values.filonov.server.type }}
       protocol: TCP
-      name: http
+      name: {{ .Values.filonov.server.type }}
   selector:
     {{- include "filonov.selectorLabels" . | nindent 4 }}

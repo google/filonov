@@ -6,7 +6,7 @@ metadata:
     {{- include "filonov.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.filonov.server.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
@@ -58,9 +58,31 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          {{ if eq .Values.filonov.server.type "http" }}
+          command:
+            {{- if .Values.filonov.otel.enabled }}
+            - "opentelemetry-instrument"
+            {{- end }}
+            - "uvicorn"
+            - "filonov.entrypoints.server:app"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "{{ .Values.service.port | int }}"
+          {{ else if eq .Values.filonov.server.type "grpc" }}
+          command:
+            {{- if .Values.filonov.otel.enabled }}
+            - "opentelemetry-instrument"
+            {{- end }}
+            - "python"
+            - "-m"
+            - "filonov.entrypoints.grpc_server"
+            - "--port"
+            - "{{ .Values.service.port | int }}"
+          {{ end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
+            - name: {{ .Values.filonov.server.type }}
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           {{- with .Values.livenessProbe }}
@@ -95,6 +117,12 @@ spec:
             {{- if .Values.filonov.similarityDb.enabled }}
             - name: SIMILARITY_DB_URL
               value: {{ include "filonov.mediaSimilarityDb" . | quote }}
+            {{- end }}
+            {{- if .Values.filonov.otel.enabled }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ .Values.filonov.otel.serviceName | quote }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.filonov.otel.otelExporterOtlpEndpoint | quote }}
             {{- end }}
             {{- with .Values.env }}
             {{- include "filonov.renderEnv" . | nindent 12 }}
