@@ -1,6 +1,6 @@
 apiVersion: v2
 name: media-tagging
-description: A Helm chart for Media Tagging
+description: A Helm chart for Media Tagging server
 type: application
 version: 0.2.0
 appVersion: "2.6.0"
@@ -8,7 +8,7 @@ maintainers:
    - name: Andrei Markin
 dependencies:
    - name: redis
-     condition: filonov.worker.enabled
+     condition: mediaTagging.worker.enabled
      version: "23.x.x"
      repository: oci://registry-1.docker.io/bitnamicharts
    - name: postgresql

@@ -95,10 +95,11 @@ Create postgresql connection string for media tagging Db
 {{- if .Values.filonov.taggingDb.connectionString }}
 {{- .Values.filonov.taggingDb.connectionString }}
 {{- else }}
+{{- $fullname := include "filonov.fullname" . -}}
 {{- printf "postgresql+psycopg2://%s:%s@%s-postgresql:%v/%s"
 .Values.postgresql.auth.username
 .Values.postgresql.auth.postgresPassword
-.Release.Name
+$fullname
 .Values.postgresql.containerPorts.postgresql
 .Values.filonov.taggingDb.name }}
 {{- end }}
@@ -111,10 +112,11 @@ Create postgresql connection string for media similarity Db
 {{- if .Values.filonov.similarityDb.connectionString }}
 {{- .Values.filonov.similarityDb.connectionString }}
 {{- else }}
+{{- $fullname := include "filonov.fullname" . -}}
 {{- printf "postgresql+psycopg2://%s:%s@%s-postgresql:%v/%s"
 .Values.postgresql.auth.username
 .Values.postgresql.auth.postgresPassword
-.Release.Name
+$fullname
 .Values.postgresql.containerPorts.postgresql
 .Values.filonov.similarityDb.name }}
 {{- end }}
@@ -124,7 +126,8 @@ Create postgresql connection string for media similarity Db
 Create redis connection string
 */}}
 {{- define "filonov.redisUrl" -}}
-{{- printf "redis://:%s@%s-redis-master:%v/0" .Values.redis.auth.password .Release.Name .Values.redis.master.containerPorts.redis }}
+{{- $fullname := include "filonov.fullname" . -}}
+{{- printf "redis://:%s@%s-redis-master:%v/0" .Values.redis.auth.password $fullname .Values.redis.master.containerPorts.redis }}
 {{- end }}
 
 

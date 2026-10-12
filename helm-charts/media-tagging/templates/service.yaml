@@ -8,8 +8,8 @@ spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: http
+      targetPort: {{ .Values.mediaTagging.server.type }}
       protocol: TCP
-      name: http
+      name: {{ .Values.mediaTagging.server.type }}
   selector:
     {{- include "media-tagging.selectorLabels" . | nindent 4 }}
