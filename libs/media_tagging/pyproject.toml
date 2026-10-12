@@ -63,6 +63,7 @@ server = [
   "pydantic-settings",
   "celery[redis]",
   "grpcio-reflection",
+  "grpcio-health-checking",
 ]
 gcp= [
   "opentelemetry-exporter-gcp-trace",

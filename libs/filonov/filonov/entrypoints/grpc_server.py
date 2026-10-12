@@ -16,12 +16,19 @@
 """gRPC endpoint for filonov."""
 
 import logging
+import os
 from concurrent import futures
 
 import grpc
 import typer
+from garf.executors.entrypoints import utils as garf_utils
 from google.protobuf.json_format import MessageToDict
+from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 from grpc_reflection.v1alpha import reflection
+from media_tagging.entrypoints.tracer import (
+  initialize_logger,
+  initialize_tracer,
+)
 from typing_extensions import Annotated
 
 import filonov
@@ -70,16 +77,32 @@ def main(
   port: Annotated[int, typer.Option('--port', '-p')] = 50051,
   parallel_threshold: Annotated[int, typer.Option()] = 10,
 ) -> None:
+  otel_service_name = os.getenv('OTEL_SERVICE_NAME', 'filonov')
+  initialize_tracer(otel_service_name)
+  logger = garf_utils.init_logging(
+    loglevel='INFO',
+    logger_type='local',
+    name=otel_service_name,
+  )
+  logger.addHandler(initialize_logger(otel_service_name))
   server = grpc.server(
     futures.ThreadPoolExecutor(max_workers=parallel_threshold)
   )
   service = FilonovService()
   filonov_pb2_grpc.add_FilonovServiceServicer_to_server(service, server)
+  health_servicer = health.HealthServicer()
+  health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
+  health_servicer.set('', health_pb2.HealthCheckResponse.SERVING)
+  health_servicer.set(
+    filonov_pb2.DESCRIPTOR.services_by_name['FilonovService'].full_name,
+    health_pb2.HealthCheckResponse.SERVING,
+  )
   service_names = (
     filonov_pb2.DESCRIPTOR.services_by_name['FilonovService'].full_name,
     reflection.SERVICE_NAME,
   )
-  reflection.enable_server_reflection(service_names, server)
+  if os.getenv('FILONOV_GRPC_SERVER_ENABLE_REFLECTION'):
+    reflection.enable_server_reflection(service_names, server)
   server.add_insecure_port(f'[::]:{port}')
   server.start()
   logging.info('FilonovService started, listening on port %d', port)
