@@ -306,11 +306,11 @@ class Fetcher(models.BaseMediaInfoFetcher):
     video_durations = video_durations.to_dict(
       key_column='video_id',
       value_column='duration',
-      value_column_output='scalar',
+      value_column_output='list',
     )
     for row in performance:
       video_id = row.media_url
-      row['duration'] = video_durations.get(video_id, 0.0)
+      row['duration'] = max(video_durations.get(video_id, [0.0]))
 
   def _get_campaign_ids_for_countries(self, countries: list[str]) -> list[int]:
     threshold = 0.5
