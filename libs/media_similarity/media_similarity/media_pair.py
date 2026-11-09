@@ -147,7 +147,7 @@ class MediaPair:
     )
 
 
-@tracer.start_as_current_span('build_media_pairs')
+@tracer.start_as_current_span('media_similarity.build_media_pairs')
 def build_media_pairs(
   tagging_results: Sequence[tagging_result.TaggingResult],
 ) -> list[MediaPair]:
@@ -160,8 +160,12 @@ def build_media_pairs(
     Unique media pairs.
   """
   span = trace.get_current_span()
-  combinations = itertools.combinations(set(tagging_results), 2)
-  span.set_attribute('n_combinations', math.comb(len(tagging_results), 2))
+  unique_tagging_results = set(tagging_results)
+  combinations = itertools.combinations(unique_tagging_results, 2)
+  span.set_attribute(
+    'media_similarity.num_combinations',
+    math.comb(len(unique_tagging_results), 2),
+  )
   pairs = []
   for media_1, media_2 in combinations:
     if media_1.hash != media_2.hash:

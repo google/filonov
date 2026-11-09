@@ -65,7 +65,7 @@ class AdaptiveThreshold:
     )
 
 
-@tracer.start_as_current_span('compute_adaptive_threshold')
+@tracer.start_as_current_span('media_similarity.calculate_adaptive_threshold')
 def compute_adaptive_threshold(
   similarity_scores: Sequence[media_pair.SimilarityPair],
   normalize: bool = False,
@@ -92,7 +92,7 @@ def compute_adaptive_threshold(
   threshold_value = (
     2 * statistics.pstdev(similarity_scores)
   ) + statistics.mean(similarity_scores)
-  span.set_attribute('threshold', threshold_value)
+  span.set_attribute('media_similarity.adaptive_threshold', threshold_value)
   return AdaptiveThreshold(
     threshold=threshold_value,
     num_pairs=num_pairs,
