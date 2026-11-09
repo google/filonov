@@ -163,7 +163,7 @@ class BaseTagger(abc.ABC):
     retry=tenacity.retry_if_exception_type(pydantic.ValidationError),
     reraise=True,
   )
-  @tracer.start_as_current_span('tag')
+  @tracer.start_as_current_span('media_tagging.tagger.tag')
   def tag(
     self,
     medium: media.Medium,
@@ -174,9 +174,9 @@ class BaseTagger(abc.ABC):
     span = trace.get_current_span()
     span.set_attributes(
       {
-        'media.name': medium.name,
-        'media.type': medium.type,
-        'media.path': medium.media_path,
+        'media_tagging.media.name': medium.name,
+        'media_tagging.media.type': medium.type.name,
+        'media_tagging.media.path': str(medium.media_path),
       }
     )
     result = self.get_tagging_strategy(medium.type).tag(
@@ -195,7 +195,7 @@ class BaseTagger(abc.ABC):
     retry=tenacity.retry_if_exception_type(pydantic.ValidationError),
     reraise=True,
   )
-  @tracer.start_as_current_span('describe')
+  @tracer.start_as_current_span('media_tagging.tagger.describe')
   def describe(
     self,
     medium: media.Medium,
@@ -206,9 +206,9 @@ class BaseTagger(abc.ABC):
     span = trace.get_current_span()
     span.set_attributes(
       {
-        'media.name': medium.name,
-        'media.type': medium.type,
-        'media.path': medium.media_path,
+        'media_tagging.media.name': medium.name,
+        'media_tagging.media.type': medium.type.name,
+        'media_tagging.media.path': str(medium.media_path),
       }
     )
     result = self.get_tagging_strategy(medium.type).describe(

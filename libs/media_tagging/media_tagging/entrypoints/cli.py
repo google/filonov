@@ -30,12 +30,21 @@ from media_tagging import media, media_tagging_service, repositories, version
 from media_tagging.entrypoints import utils
 from media_tagging.entrypoints.tracer import (
   initialize_logger,
+  initialize_meter,
   initialize_tracer,
 )
 from media_tagging.telemetry import tracer
 
 OTEL_SERVICE_NAME = 'media-tagging'
-initialize_tracer(service_name=OTEL_SERVICE_NAME)
+_OTEL_ATTRIBUTES = {
+  'media_tagging.version': version.__version__,
+}
+initialize_tracer(
+  service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+)
+initialize_meter(
+  service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+)
 typer_app = typer.Typer()
 console = Console()
 
@@ -160,7 +169,6 @@ def tag(
     repositories.SqlAlchemyTaggingResultsRepository(db_uri)
   )
   media_paths, parameters = utils.parse_typer_arguments(media_paths)
-  span.set_attribute('media_tagging.num_media_to_process', len(media_paths))
   extra_parameters = garf_utils.ParamsParser(['tagger', writer, 'input']).parse(
     parameters
   )
@@ -168,11 +176,16 @@ def tag(
   logger = garf_utils.init_logging(
     loglevel=loglevel, logger_type=logger.upper(), name=log_name
   )
-  logger.addHandler(initialize_logger(service_name=OTEL_SERVICE_NAME))
+  logger.addHandler(
+    initialize_logger(
+      service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+    )
+  )
 
   media_paths = media_paths or media.get_media_paths_from_file(
     media.InputConfig(path=input, **extra_parameters.get('input'))
   )
+  span.set_attribute('media_tagging.num_media_to_process', len(media_paths))
   request = media_tagging_service.MediaTaggingRequest(
     tagger_type=tagger,
     media_type=media_type,
@@ -212,6 +225,7 @@ def describe(
   log_name: LogName = 'media-tagger',
   parallel_threshold: ParallelTreshold = 10,
 ):
+  span = trace.get_current_span()
   tagging_service = media_tagging_service.MediaTaggingService(
     repositories.SqlAlchemyTaggingResultsRepository(db_uri)
   )
@@ -223,11 +237,16 @@ def describe(
   logger = garf_utils.init_logging(
     loglevel=loglevel, logger_type=logger, name=log_name
   )
-  logger.addHandler(initialize_logger('media-tagger'))
+  logger.addHandler(
+    initialize_logger(
+      service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+    )
+  )
 
   media_paths = media_paths or media.get_media_paths_from_file(
     media.InputConfig(path=input, **extra_parameters.get('input'))
   )
+  span.set_attribute('media_tagging.num_media_to_process', len(media_paths))
   request = media_tagging_service.MediaTaggingRequest(
     tagger_type=tagger,
     media_type=media_type,

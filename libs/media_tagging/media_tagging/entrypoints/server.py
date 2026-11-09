@@ -20,6 +20,7 @@ import fastapi
 import typer
 import uvicorn
 from garf.executors.entrypoints import utils as garf_utils
+from opentelemetry import trace
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
@@ -46,13 +47,18 @@ app = fastapi.FastAPI(
 typer_app = typer.Typer()
 
 OTEL_SERVICE_NAME = 'media-tagging'
-initialize_tracer(OTEL_SERVICE_NAME)
-meter = initialize_meter(OTEL_SERVICE_NAME)
+_OTEL_ATTRIBUTES = {
+  'media_tagging.version': version.__version__,
+}
+initialize_tracer(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
+meter = initialize_meter(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
 
 logger = garf_utils.init_logging(
   loglevel='INFO', logger_type='local', name=OTEL_SERVICE_NAME
 )
-logger.addHandler(initialize_logger(OTEL_SERVICE_NAME))
+logger.addHandler(
+  initialize_logger(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
+)
 
 
 class MediaTaggingSettings(BaseSettings):
@@ -129,6 +135,8 @@ def tag_task(
     Operation id and its status.
   """
   task = tasks.tag.delay(request.model_dump())
+  span = trace.get_current_span()
+  span.set_attribute('media_tagging.operation.id', task.id)
   return {'operation_id': task.id, 'status': 'PENDING'}
 
 
@@ -192,6 +200,8 @@ def describe_task(
     Operation id and its status.
   """
   task = tasks.describe.delay(request.model_dump())
+  span = trace.get_current_span()
+  span.set_attribute('media_tagging.operation.id', task.id)
   return {'operation_id': task.id, 'status': 'PENDING'}
 
 

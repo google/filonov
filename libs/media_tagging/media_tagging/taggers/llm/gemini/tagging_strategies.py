@@ -26,13 +26,13 @@ from typing import Final
 import pydantic
 import tenacity
 from google import genai
-from opentelemetry import metrics, trace
+from opentelemetry import trace
 from typing_extensions import override
 
 from media_tagging import exceptions, media, tagging_result
 from media_tagging.taggers import base
 from media_tagging.taggers.llm import utils
-from media_tagging.telemetry import tracer
+from media_tagging.telemetry import meter, tracer
 
 MAX_NUMBER_LLM_TAGS: Final[int] = 10
 
@@ -43,23 +43,22 @@ logging.getLogger('google_genai._api_client').setLevel(logging.ERROR)
 
 
 logger = logging.getLogger(__name__)
-meter = metrics.get_meter('media-tagger')
 
 gemini_calls_counter = meter.create_counter(
-  'media_tagging_gemini_calls_total',
-  unit='1',
+  'media_tagging.gemini.calls',
+  unit='{call}',
   description='Counts number of LLM calls',
 )
 
 gemini_errors_counter = meter.create_counter(
-  'media_tagging_gemini_errors_total',
-  unit='1',
+  'media_tagging.gemini.errors',
+  unit='{error}',
   description='Counts number of failed LLM calls',
 )
 gemini_token_counter = meter.create_counter(
-  'media_tagging_gemini_token_total',
-  unit='1',
-  description='Counts number of token used',
+  'media_tagging.gemini.tokens',
+  unit='{token}',
+  description='Counts number of tokens used',
 )
 
 
@@ -147,7 +146,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     retry=tenacity.retry_if_exception_type(json.decoder.JSONDecodeError),
     reraise=True,
   )
-  @tracer.start_as_current_span('gemini.get_llm_response')
+  @tracer.start_as_current_span('media_tagging.gemini.get_llm_response')
   def get_llm_response(
     self,
     medium: media.Medium,
@@ -175,7 +174,7 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
     )
     metric_attributes = {
       'model_name': self.model_name,
-      'media_type': medium.type,
+      'media_type': medium.type.name,
     }
     try:
       gemini_calls_counter.add(1, attributes=metric_attributes)
@@ -189,10 +188,10 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       )
     except genai.errors.APIError as e:
       if e.code == 429:
-        metric_attributes['reason'] = 'quota'
+        metric_attributes['error_type'] = 'quota'
         gemini_errors_counter.add(1, attributes=metric_attributes)
         raise GeminiModelQuotaError
-      metric_attributes['reason'] = 'generic'
+      metric_attributes['error_type'] = 'generic'
       gemini_errors_counter.add(1, attributes=metric_attributes)
       raise
 
@@ -204,20 +203,29 @@ class GeminiTaggingStrategy(base.TaggingStrategy):
       )
       span.set_attributes(
         {
-          f'gemini.{k}': json.dumps(v) if isinstance(v, list) else v
+          f'media_tagging.gemini.{k}': (
+            json.dumps(v) if isinstance(v, list) else v
+          )
           for k, v in response.usage_metadata.dict().items()
           if v
         }
       )
-      gemini_token_counter.add(
-        response.usage_metadata.prompt_token_count, attributes=metric_attributes
-      )
+      if prompt_tokens := response.usage_metadata.prompt_token_count:
+        gemini_token_counter.add(
+          prompt_tokens,
+          attributes={**metric_attributes, 'token_type': 'input'},
+        )
+      if candidate_tokens := response.usage_metadata.candidates_token_count:
+        gemini_token_counter.add(
+          candidate_tokens,
+          attributes={**metric_attributes, 'token_type': 'output'},
+        )
     try:
       return json.loads(response.text)
     except json.decoder.JSONDecodeError as e:
       span.record_exception(e, attributes={'response': response.text})
       span.set_status(trace.StatusCode.ERROR, f'Error: {e}')
-      metric_attributes['reason'] = 'json_validation'
+      metric_attributes['error_type'] = 'validation'
       gemini_errors_counter.add(1, attributes=metric_attributes)
 
       raise e
