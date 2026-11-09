@@ -36,7 +36,7 @@ from media_tagging.telemetry import tracer
 
 OTEL_SERVICE_NAME = 'media-tagging'
 _OTEL_ATTRIBUTES = {
-  'media_tagging.version': version.__version__,
+  'service.version': version.__version__,
 }
 initialize_tracer(
   service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES

@@ -16,6 +16,7 @@
 
 """Handles creative map generation."""
 
+import json
 import logging
 import operator
 from collections.abc import Sequence
@@ -138,6 +139,7 @@ class FilonovService:
     self.tagging_service = tagging_service
     self.similarity_service = similarity_service
 
+  @tracer.start_as_current_span('filonov.prepare_data_sources')
   def _prepare_data_sources(self, request) -> tuple[str]:
     if not request.tagger and not self.tagging_service:
       raise exceptions.FilonovError(
@@ -222,7 +224,7 @@ class FilonovService:
       tagging_response.trim(trim_threshold)
     return media_data, tagging_response, clustering_results
 
-  @tracer.start_as_current_span('generate_tables')
+  @tracer.start_as_current_span('filonov.generate_tables')
   def generate_tables(
     self,
     request: GenerateTablesRequest,
@@ -245,7 +247,7 @@ class FilonovService:
       FilonovError: When performance or tagging data not found.
     """
     span = trace.get_current_span()
-    span.set_attributes(request.model_dump(exclude_none=True))
+    span.set_attributes(_build_span_attributes(request))
     media_data, tagging_response, clustering_results = (
       self._prepare_data_sources(request)
     )
@@ -296,7 +298,7 @@ class FilonovService:
       'tag_performance': str(tag_performance_destination),
     }
 
-  @tracer.start_as_current_span('generate_creative_map')
+  @tracer.start_as_current_span('filonov.generate_creative_map')
   def generate_creative_map(
     self,
     request: GenerateCreativeMapRequest,
@@ -319,7 +321,7 @@ class FilonovService:
       FilonovError: When performance or tagging data not found.
     """
     span = trace.get_current_span()
-    span.set_attributes(request.model_dump(exclude_none=True))
+    span.set_attributes(_build_span_attributes(request))
     media_data, tagging_response, clustering_results = (
       self._prepare_data_sources(request)
     )
@@ -339,3 +341,16 @@ class FilonovService:
       fetching_request=request.source_parameters.model_dump(),
       embed_previews=request.embed_previews,
     )
+
+
+def _build_span_attributes(request: BaseRequest) -> dict[str, Any]:
+  """Extracts flat, namespace-prefixed span attributes from a request."""
+  attributes: dict[str, Any] = {}
+  for key, value in request.model_dump(
+    exclude={'context'}, exclude_none=True
+  ).items():
+    if isinstance(value, dict):
+      attributes[f'filonov.{key}'] = json.dumps(value, default=str)
+    else:
+      attributes[f'filonov.{key}'] = value
+  return attributes

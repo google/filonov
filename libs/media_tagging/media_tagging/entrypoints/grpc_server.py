@@ -34,7 +34,7 @@ from media_tagging.entrypoints.tracer import (
 )
 
 _OTEL_ATTRIBUTES = {
-  'media_tagging.version': version.__version__,
+  'service.version': version.__version__,
 }
 
 

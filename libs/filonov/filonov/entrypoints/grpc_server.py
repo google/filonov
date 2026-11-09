@@ -27,15 +27,21 @@ from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 from grpc_reflection.v1alpha import reflection
 from media_tagging.entrypoints.tracer import (
   initialize_logger,
+  initialize_meter,
   initialize_tracer,
 )
+from opentelemetry import trace
 from typing_extensions import Annotated
 
 import filonov
-from filonov import filonov_pb2, filonov_pb2_grpc
+from filonov import filonov_pb2, filonov_pb2_grpc, version
 from filonov.entrypoints import tasks
 
 typer_app = typer.Typer()
+
+_OTEL_ATTRIBUTES = {
+  'service.version': version.__version__,
+}
 
 
 class FilonovService(filonov_pb2_grpc.FilonovService):
@@ -51,6 +57,8 @@ class FilonovService(filonov_pb2_grpc.FilonovService):
     request_dict['source_parameters'] = source_parameters
     filonov_request = filonov.GenerateCreativeMapRequest(**request_dict)
     task = tasks.create_map.delay(filonov_request.model_dump())
+    span = trace.get_current_span()
+    span.set_attribute('filonov.operation.id', task.id)
     return filonov_pb2.Operation(id=task.id, done=False)
 
   def GenerateTables(self, request: filonov_pb2.GenerateTablesRequest, context):
@@ -63,6 +71,8 @@ class FilonovService(filonov_pb2_grpc.FilonovService):
     request_dict['source_parameters'] = source_parameters
     filonov_request = filonov.GenerateTablesRequest(**request_dict)
     task = tasks.create_tables.delay(filonov_request.model_dump())
+    span = trace.get_current_span()
+    span.set_attribute('filonov.operation.id', task.id)
     return filonov_pb2.Operation(id=task.id, done=False)
 
   def GetOperation(self, request: filonov_pb2.GetOperationRequest, context):
@@ -78,13 +88,16 @@ def main(
   parallel_threshold: Annotated[int, typer.Option()] = 10,
 ) -> None:
   otel_service_name = os.getenv('OTEL_SERVICE_NAME', 'filonov')
-  initialize_tracer(otel_service_name)
+  initialize_tracer(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
+  initialize_meter(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
   logger = garf_utils.init_logging(
     loglevel='INFO',
     logger_type='local',
     name=otel_service_name,
   )
-  logger.addHandler(initialize_logger(otel_service_name))
+  logger.addHandler(
+    initialize_logger(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
+  )
   server = grpc.server(
     futures.ThreadPoolExecutor(max_workers=parallel_threshold)
   )
