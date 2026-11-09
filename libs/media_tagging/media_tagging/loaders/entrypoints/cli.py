@@ -23,15 +23,26 @@ from garf.executors.entrypoints import utils as garf_utils
 from typing_extensions import Annotated
 
 import media_tagging
-from media_tagging import media, repositories
+from media_tagging import media, repositories, version
 from media_tagging.entrypoints import utils
 from media_tagging.entrypoints.tracer import (
   initialize_logger,
+  initialize_meter,
   initialize_tracer,
 )
 from media_tagging.loaders import media_loader_service
+from media_tagging.telemetry import tracer
 
-initialize_tracer('media-loader')
+OTEL_SERVICE_NAME = 'media-loader'
+_OTEL_ATTRIBUTES = {
+  'media_tagging.version': version.__version__,
+}
+initialize_tracer(
+  service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+)
+initialize_meter(
+  service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+)
 typer_app = typer.Typer()
 
 MediaType = Annotated[
@@ -82,6 +93,7 @@ def _version_callback(show_version: bool) -> None:
 @typer_app.command(
   context_settings={'allow_extra_args': True, 'ignore_unknown_options': True},
 )
+@tracer.start_as_current_span('media_tagging.loader.cli.main')
 @utils.log_shutdown
 def main(
   location: Input,
@@ -122,7 +134,11 @@ def main(
   logger = garf_utils.init_logging(
     loglevel=loglevel.upper(), logger_type=logger, name=log_name
   )
-  logger.addHandler(initialize_logger('media-loader'))
+  logger.addHandler(
+    initialize_logger(
+      service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+    )
+  )
 
   for loc in file_locations:
     logger.info('Getting tagging results from %s', loc)

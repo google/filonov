@@ -29,8 +29,13 @@ from media_tagging import repositories, tagging_pb2, tagging_pb2_grpc, version
 from media_tagging.entrypoints.tracer import (
   DEFAULT_SERVICE_NAME,
   initialize_logger,
+  initialize_meter,
   initialize_tracer,
 )
+
+_OTEL_ATTRIBUTES = {
+  'media_tagging.version': version.__version__,
+}
 
 
 class MediaTaggingService(tagging_pb2_grpc.MediaTaggingService):
@@ -74,13 +79,16 @@ if __name__ == '__main__':
   )
   args, _ = parser.parse_known_args()
   otel_service_name = os.getenv('OTEL_SERVICE_NAME', DEFAULT_SERVICE_NAME)
-  initialize_tracer(otel_service_name)
+  initialize_tracer(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
+  initialize_meter(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
   logger = garf_utils.init_logging(
     loglevel='INFO',
     logger_type='local',
     name=otel_service_name,
   )
-  logger.addHandler(initialize_logger(otel_service_name))
+  logger.addHandler(
+    initialize_logger(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
+  )
   server = grpc.server(
     futures.ThreadPoolExecutor(max_workers=args.parallel_threshold)
   )

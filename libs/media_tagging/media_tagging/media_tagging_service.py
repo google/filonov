@@ -30,26 +30,25 @@ from typing import Any, Callable, Final, Iterable, Literal
 import pydantic
 from garf.io import writer as garf_writer
 from google.api_core import exceptions as google_api_exceptions
-from opentelemetry import metrics, trace
+from opentelemetry import trace
 
 from media_tagging import exceptions, media, repositories, tagging_result
 from media_tagging.taggers import TAGGERS
 from media_tagging.taggers import base as base_tagger
-from media_tagging.telemetry import tracer
+from media_tagging.telemetry import meter, tracer
 
 DEFAULT_NUMBER_TAGS: Final[int] = 10
 
 logger = logging.getLogger(__name__)
-meter = metrics.get_meter('media-tagger')
 
 media_processed_counter = meter.create_counter(
-  'media_tagging_processed_total',
-  unit='1',
+  'media_tagging.media.processed',
+  unit='{media}',
   description='Counts number of processed media',
 )
 media_unprocessed_counter = meter.create_counter(
-  'media_tagging_process_errors_total',
-  unit='1',
+  'media_tagging.media.errors',
+  unit='{error}',
   description='Counts processing errors',
 )
 BATCH_SIZE: Final[int] = 10
@@ -61,7 +60,7 @@ def _batched(iterable: Iterable[Any], chunk_size: int):
     yield chunk
 
 
-@tracer.start_as_current_span('discover_path_processors')
+@tracer.start_as_current_span('media_tagging.discover_path_processors')
 def discover_path_processors():
   """Loads all path processors exposed as `media_tagger_path` plugin."""
   processors = {}
@@ -203,7 +202,7 @@ class MediaTaggingResponse(pydantic.BaseModel):
     return bool(self.results)
 
 
-@tracer.start_as_current_span('discover_taggers')
+@tracer.start_as_current_span('media_tagging.discover_taggers')
 def discover_taggers(
   existing_taggers: Sequence[str],
 ) -> dict[str, base_tagger.BaseTagger]:
@@ -240,7 +239,7 @@ class MediaTaggingService:
       or repositories.SqlAlchemyTaggingResultsRepository()
     )
 
-  @tracer.start_as_current_span('get_media')
+  @tracer.start_as_current_span('media_tagging.get_media')
   def get_media(
     self,
     fetching_request: MediaFetchingRequest,
@@ -254,7 +253,7 @@ class MediaTaggingService:
     )
     return MediaTaggingResponse(results=results)
 
-  @tracer.start_as_current_span('tag_media')
+  @tracer.start_as_current_span('media_tagging.tag_media')
   def tag_media(
     self,
     tagging_request: MediaTaggingRequest,
@@ -277,7 +276,7 @@ class MediaTaggingService:
       path_processor=path_processor,
     )
 
-  @tracer.start_as_current_span('describe_media')
+  @tracer.start_as_current_span('media_tagging.describe_media')
   def describe_media(
     self,
     tagging_request: MediaTaggingRequest,
@@ -344,6 +343,10 @@ class MediaTaggingService:
     if isinstance(path_processor, str):
       path_processor_str = path_processor
       path_processor = discover_path_processors().get(path_processor_str)
+    elif path_processor:
+      path_processor_str = getattr(
+        path_processor, '__name__', str(path_processor)
+      )
     if not path_processor:
       path_processor = default_path_processor
     else:
@@ -357,9 +360,7 @@ class MediaTaggingService:
       exclude_none=True
     )
     if self.repo:
-      with tracer.start_as_current_span(
-        'media_tagging.get_from_repo'
-      ) as repo_span:
+      with tracer.start_as_current_span('media_tagging.repo.get') as repo_span:
         if tagged_media := self.repo.get(
           media_paths=tagging_request.media_paths,
           media_type=tagging_request.media_type,
@@ -396,7 +397,7 @@ class MediaTaggingService:
     ]
     identifiers = {(m.identifier, m.name) for m in all_media}
 
-    with tracer.start_as_current_span('media_tagging.add_auxiliary_to_repo'):
+    with tracer.start_as_current_span('media_tagging.repo.add_auxiliary'):
       self.repo.add_identifiers(identifiers)
       self.repo.add_tagging_details(tagging_details)
 
@@ -417,16 +418,14 @@ class MediaTaggingService:
         tagging_request.tagging_options,
         path_processor,
       )
-      with tracer.start_as_current_span(
-        'media_tagging.save_to_repo'
-      ) as save_repo:
+      with tracer.start_as_current_span('media_tagging.repo.add') as save_repo:
         if result:
           save_repo.set_attribute(
-            'tagging_result.tagging_options',
+            'media_tagging.tagging_options',
             json.dumps(result[0].tagging_details),
           )
         self.repo.add(result, add_identifiers=False, add_tagging_details=False)
-        save_repo.set_attribute('n_results', len(result))
+        save_repo.set_attribute('media_tagging.num_saved_results', len(result))
       results = list(result) + tagged_media
       return MediaTaggingResponse(results=results)
 
@@ -439,9 +438,9 @@ class MediaTaggingService:
       ) as batch_span:
         batch_span.set_attributes(
           {
-            'batch_size': batch_size,
-            'max_batch_size': BATCH_SIZE,
-            'batch_offset': batch_offset,
+            'media_tagging.batch.size': batch_size,
+            'media_tagging.batch.max_size': BATCH_SIZE,
+            'media_tagging.batch.offset': batch_offset,
           }
         )
         try:
@@ -478,12 +477,14 @@ class MediaTaggingService:
         result = list(itertools.chain.from_iterable(result))
         processed_results.append(result)
         with tracer.start_as_current_span(
-          'media_tagging.save_to_repo'
+          'media_tagging.repo.add'
         ) as save_repo:
           self.repo.add(
             result, add_identifiers=False, add_tagging_details=False
           )
-          save_repo.set_attribute('n_results', len(result))
+          save_repo.set_attribute(
+            'media_tagging.num_saved_results', len(result)
+          )
 
     tagging_results = itertools.chain.from_iterable(processed_results)
     results = list(tagging_results) + tagged_media
@@ -587,6 +588,11 @@ class MediaTaggingService:
         total_results,
         path,
       )
+      metric_attributes = {
+        'media_type': media_type.name,
+        'tagger': concrete_tagger.alias,
+        'action': action,
+      }
       try:
         if n_runs := tagging_options.n_runs:
           for j in range(1, n_runs):
@@ -610,36 +616,36 @@ class MediaTaggingService:
             continue
           results.append(tagging_results)
         media_processed_counter.add(
-          int(n_runs) if n_runs else 1, {'media_type': media_type.name}
+          int(n_runs) if n_runs else 1, metric_attributes
         )
       except base_tagger.TaggerError as e:
         logger.error('Tagger error: %s', str(e))
         media_unprocessed_counter.add(
-          1, {'media_type': str(media_type), 'source': 'tagger'}
+          1, {**metric_attributes, 'error_type': 'tagger'}
         )
         raise e
       except pydantic.ValidationError as e:
         logger.error('Failed to parse tagging results: %s', str(e))
         media_unprocessed_counter.add(
-          1, {'media_type': media_type.name, 'source': 'validation'}
+          1, {**metric_attributes, 'error_type': 'validation'}
         )
       except exceptions.FailedTaggingError as e:
         logger.error('Failed to perform tagging: %s', str(e))
         media_unprocessed_counter.add(
-          1, {'media_type': media_type.name, 'source': 'tagging'}
+          1, {**metric_attributes, 'error_type': 'tagging'}
         )
       except (
         exceptions.TaggingQuotaError,
         google_api_exceptions.ResourceExhausted,
       ) as e:
         media_unprocessed_counter.add(
-          1, {'media_type': media_type.name, 'source': 'quota'}
+          1, {**metric_attributes, 'error_type': 'quota'}
         )
         logger.error('Resource exhausted: %s', str(e))
         time.sleep(60)
       except Exception as e:
         media_unprocessed_counter.add(
-          1, {'media_type': media_type.name, 'source': 'unknown'}
+          1, {**metric_attributes, 'error_type': 'unknown'}
         )
         logger.error('Unknown error occurred: %s', str(e))
     return results

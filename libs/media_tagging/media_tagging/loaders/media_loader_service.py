@@ -25,6 +25,7 @@ from typing import Literal
 
 from media_tagging import media, repositories
 from media_tagging.loaders import base as base_loader
+from media_tagging.telemetry import tracer
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ class MediaLoaderService:
     """Initializes MediaTaggingService."""
     self.repo = tagging_results_repository
 
+  @tracer.start_as_current_span('media_tagging.loader.load_media_tags')
   def load_media_tags(
     self,
     loader_type: str,
@@ -80,6 +82,7 @@ class MediaLoaderService:
       loader_parameters,
     )
 
+  @tracer.start_as_current_span('media_tagging.loader.load_media_descriptions')
   def load_media_descriptions(
     self,
     loader_type: str,
