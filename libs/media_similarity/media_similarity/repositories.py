@@ -41,24 +41,28 @@ def _batched(iterable: Iterable[Any], chunk_size: int):
 class BaseSimilarityPairsRepository(abc.ABC):
   """Interface for defining repositories."""
 
-  @tracer.start_as_current_span('get_pairs')
+  @tracer.start_as_current_span('media_similarity.repo.get')
   def get(
     self, pairs: str | Sequence[str], tagger: str | None = None
   ) -> list[media_pair.SimilarityPair]:
     """Specifies get operations."""
+    span = trace.get_current_span()
     if isinstance(pairs, MutableSequence):
       pairs = {str(pair) for pair in pairs}
     else:
       pairs = (str(pairs),)
     if len(pairs) > DEFAULT_CHUNK_SIZE:
-      results = [
+      batches = [
         self._get(batch, tagger)
         for batch in _batched(pairs, DEFAULT_CHUNK_SIZE)
       ]
-      return list(itertools.chain.from_iterable(results))
-    return self._get(pairs, tagger)
+      results = list(itertools.chain.from_iterable(batches))
+    else:
+      results = self._get(pairs, tagger)
+    span.set_attribute('media_similarity.num_fetched_pairs', len(results))
+    return results
 
-  @tracer.start_as_current_span('add_pairs')
+  @tracer.start_as_current_span('media_similarity.repo.add')
   def add(
     self,
     pairs: media_pair.SimilarityPair | Sequence[media_pair.SimilarityPair],
@@ -68,7 +72,7 @@ class BaseSimilarityPairsRepository(abc.ABC):
     if not isinstance(pairs, MutableSequence):
       pairs = [pairs]
     self._add(pairs)
-    span.set_attribute('pairs_added', len(pairs))
+    span.set_attribute('media_similarity.num_added_pairs', len(pairs))
 
   @abc.abstractmethod
   def _get(

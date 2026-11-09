@@ -27,7 +27,6 @@ from media_tagging import media, repositories, version
 from media_tagging.entrypoints import utils
 from media_tagging.entrypoints.tracer import (
   initialize_logger,
-  initialize_meter,
   initialize_tracer,
 )
 from media_tagging.loaders import media_loader_service
@@ -38,9 +37,6 @@ _OTEL_ATTRIBUTES = {
   'media_tagging.version': version.__version__,
 }
 initialize_tracer(
-  service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
-)
-initialize_meter(
   service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
 )
 typer_app = typer.Typer()

@@ -18,11 +18,12 @@
 from __future__ import annotations
 
 import itertools
+import json
 import logging
 import os
 from collections.abc import Iterable, Sequence
 from concurrent import futures
-from typing import Final, Literal
+from typing import Any, Final, Literal
 
 import igraph
 import media_tagging
@@ -264,7 +265,7 @@ class MediaSimilarityService:
     repo.initialize()
     return MediaSimilarityService(repo)
 
-  @tracer.start_as_current_span('cluster_media')
+  @tracer.start_as_current_span('media_similarity.cluster_media')
   def cluster_media(
     self,
     request: MediaClusteringRequest,
@@ -281,7 +282,25 @@ class MediaSimilarityService:
       MediaSimilarityError: When not tagging results were found.
     """
     span = trace.get_current_span()
-    span.set_attributes(request.model_dump(exclude_none=True))
+    span_attributes: dict[str, Any] = {
+      'media_similarity.media_type': request.media_type,
+      'media_similarity.normalize': request.normalize,
+      'media_similarity.parallel_threshold': request.parallel_threshold,
+      'media_similarity.tagging_options': json.dumps(
+        request.tagging_options.model_dump(exclude_none=True)
+      ),
+    }
+    if request.tagger_type:
+      span_attributes['media_similarity.tagger'] = request.tagger_type
+    if request.custom_threshold is not None:
+      span_attributes['media_similarity.custom_threshold'] = (
+        request.custom_threshold
+      )
+    if request.algorithm:
+      span_attributes['media_similarity.algorithm'] = request.algorithm
+    if request.media_paths:
+      span_attributes['media_similarity.num_media'] = len(request.media_paths)
+    span.set_attributes(span_attributes)
     logger.info(
       'Performing media clustering with parameters: %s',
       {
@@ -330,21 +349,22 @@ class MediaSimilarityService:
     uncalculated_media_pairs = media_pairs
     calculated_similarity_pairs = []
     if self.repo:
-      with tracer.start_as_current_span('get_media_pairs_from_repo') as span:
-        calculated_similarity_pairs = self.repo.get(media_pairs, tagger)
-        span.set_attribute(
-          'num_fetched_pairs', len(calculated_similarity_pairs)
-        )
-        if calculated_similarity_pairs:
-          calculated_similarity_pairs_keys = {
-            pair.key for pair in calculated_similarity_pairs
-          }
-          uncalculated_media_pairs = [
-            pair
-            for pair in media_pairs
-            if str(pair) not in calculated_similarity_pairs_keys
-          ]
-    span.set_attribute('num_missing_pairs', len(uncalculated_media_pairs))
+      calculated_similarity_pairs = self.repo.get(media_pairs, tagger)
+      span.set_attribute(
+        'media_similarity.num_fetched_pairs', len(calculated_similarity_pairs)
+      )
+      if calculated_similarity_pairs:
+        calculated_similarity_pairs_keys = {
+          pair.key for pair in calculated_similarity_pairs
+        }
+        uncalculated_media_pairs = [
+          pair
+          for pair in media_pairs
+          if str(pair) not in calculated_similarity_pairs_keys
+        ]
+    span.set_attribute(
+      'media_similarity.num_missing_pairs', len(uncalculated_media_pairs)
+    )
 
     hash_to_identifiers_mapping = {
       t.hash: t.identifier for t in tagging_results
@@ -422,6 +442,7 @@ class MediaSimilarityService:
       algorithm=request.algorithm,
     )
 
+  @tracer.start_as_current_span('media_similarity.find_similar_media')
   def find_similar_media(
     self,
     request: MediaSimilaritySearchRequest,
@@ -457,6 +478,7 @@ class MediaSimilarityService:
       seed_media_identifier=seed_media_identifier, results=media_identifiers
     )
 
+  @tracer.start_as_current_span('media_similarity.compare_media')
   def compare_media(
     self,
     request: MediaSimilarityComparisonRequest,
@@ -502,7 +524,7 @@ def _calculate_threshold(
   return adaptive_threshold.AdaptiveThreshold(custom_threshold, num_pairs=None)
 
 
-@tracer.start_as_current_span('calculate_cluster_assignments')
+@tracer.start_as_current_span('media_similarity.calculate_cluster_assignments')
 def _calculate_cluster_assignments(
   similarity_pairs: Iterable[media_pair.SimilarityPair],
   threshold: adaptive_threshold.AdaptiveThreshold,
@@ -528,8 +550,12 @@ def _calculate_cluster_assignments(
   """
   span = trace.get_current_span()
   media: set[str] = set()
-  span.set_attribute('num_similarity_pairs', len(similarity_pairs))
-  span.set_attribute('clustering_algorithm', algorithm or 'community_walktrap')
+  span.set_attribute(
+    'media_similarity.num_similarity_pairs', len(similarity_pairs)
+  )
+  span.set_attribute(
+    'media_similarity.clustering_algorithm', algorithm or 'community_walktrap'
+  )
   similar_media: set[tuple[str, str, float]] = set()
   for pair in similarity_pairs:
     media_1, media_2 = pair.media
@@ -537,7 +563,9 @@ def _calculate_cluster_assignments(
     media.add(media_2)
     if pair.similarity_score.score > threshold.threshold:
       similar_media.add(pair.to_tuple())
-  span.set_attribute('num_media_above_threshold', len(similar_media))
+  span.set_attribute(
+    'media_similarity.num_media_above_threshold', len(similar_media)
+  )
 
   nodes = [{'name': node} for node in media]
   graph = igraph.Graph.DataFrame(
@@ -558,11 +586,11 @@ def _calculate_cluster_assignments(
         if media := hash_to_identifiers_mapping.get(media_hash):
           final_clusters[media] = i
   if not final_clusters:
-    span.set_attribute('dummy_final_clusters', True)
+    span.set_attribute('media_similarity.dummy_final_clusters', True)
     final_clusters = {
       m: i for i, m in enumerate(hash_to_identifiers_mapping.values(), 1)
     }
-  span.set_attribute('num_final_clusters', len(final_clusters))
+  span.set_attribute('media_similarity.num_final_clusters', len(final_clusters))
   if not similar_media:
     logger.warning('no edges found in graph')
     return ClusteringResults(
@@ -580,7 +608,7 @@ def _calculate_cluster_assignments(
 
     trim_ratio = 1 - len(trimmed_similar_media) / len(similar_media)
     logger.info('trimmed graph edges by %.2f', trim_ratio)
-    span.set_attribute('trim_ratio', trim_ratio)
+    span.set_attribute('media_similarity.trim_ratio', trim_ratio)
   return ClusteringResults(
     clusters=final_clusters,
     adaptive_threshold=threshold.threshold,

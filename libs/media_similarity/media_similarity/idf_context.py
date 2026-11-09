@@ -35,7 +35,7 @@ class IdfContext(UserDict):
     return {'idf': 1.0}
 
 
-@tracer.start_as_current_span('calculate_idf_context')
+@tracer.start_as_current_span('media_similarity.calculate_idf_context')
 def calculate_idf_context(
   tagging_results: Sequence[tagging_result.TaggingResult],
 ) -> IdfContext:
@@ -59,6 +59,9 @@ def calculate_idf_context(
       len(tagging_results) / idf_context[tag]['total_media']
     )
   span.set_attributes(
-    {'num_tagging_results': len(tagging_results), 'num_tags': len(idf_context)}
+    {
+      'media_similarity.num_tagging_results': len(tagging_results),
+      'media_similarity.num_tags': len(idf_context),
+    }
   )
   return IdfContext(idf_context)
