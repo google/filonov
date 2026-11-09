@@ -38,9 +38,7 @@ from filonov.entrypoints import tasks
 
 OTEL_SERVICE_NAME = 'filonov'
 _OTEL_ATTRIBUTES = {
-  'filonov.version': version.__version__,
-  'media_fetching.version': version.fetching_version,
-  'media_similarity.version': version.similarity_version,
+  'service.version': version.__version__,
 }
 
 app = fastapi.FastAPI(
@@ -50,7 +48,7 @@ app = fastapi.FastAPI(
 )
 typer_app = typer.Typer()
 
-initialize_tracer(OTEL_SERVICE_NAME)
+initialize_tracer(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
 meter = initialize_meter(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
 
 logger = garf_utils.init_logging(
@@ -208,7 +206,7 @@ def cancel_operation(operation_id: str):
 @app.post(
   '/api/dashboard/file:task', status_code=fastapi.status.HTTP_202_ACCEPTED
 )
-def tag_task(
+def generate_tables_file_task(
   request: GenerateTablesFileRequest,
 ) -> dict[str, str]:
   """Sends file-based dashboard generating request to Celery.
@@ -353,6 +351,8 @@ def generate_tables_dbm_task(
 ) -> dict[str, str]:
   """Generates dashboard sources JSON based on BidManager API."""
   task = tasks.create_tables.delay(request.model_dump())
+  span = trace.get_current_span()
+  span.set_attribute('filonov.operation.id', task.id)
   return {'operation_id': task.id, 'status': 'PENDING'}
 
 
@@ -373,6 +373,8 @@ def generate_creative_map_dbm_task(
 ) -> dict[str, str]:
   """Generates creative map JSON based on BidManager API."""
   task = tasks.create_map.delay(request.model_dump())
+  span = trace.get_current_span()
+  span.set_attribute('filonov.operation.id', task.id)
   return {'operation_id': task.id, 'status': 'PENDING'}
 
 

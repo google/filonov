@@ -20,18 +20,11 @@ import media_similarity
 import media_tagging
 
 import filonov
-from filonov import version
 from filonov.entrypoints import utils
 
 redis_url = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
 media_tagging_db_url = os.getenv('MEDIA_TAGGING_DB_URL')
 similarity_db_url = os.getenv('SIMILARITY_DB_URL', media_tagging_db_url)
-
-_OTEL_ATTRIBUTES = {
-  'filonov.version': version.__version__,
-  'media_fetching.version': version.fetching_version,
-  'media_similarity.version': version.similarity_version,
-}
 
 
 app = celery.Celery(

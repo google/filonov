@@ -37,7 +37,7 @@ from media_similarity.telemetry import tracer
 
 OTEL_SERVICE_NAME = 'media-similarity'
 _OTEL_ATTRIBUTES = {
-  'media_similarity.version': version.__version__,
+  'service.version': version.__version__,
 }
 
 initialize_tracer(

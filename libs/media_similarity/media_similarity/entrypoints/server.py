@@ -40,7 +40,7 @@ typer_app = typer.Typer()
 
 OTEL_SERVICE_NAME = 'media-similarity'
 _OTEL_ATTRIBUTES = {
-  'media_similarity.version': version.__version__,
+  'service.version': version.__version__,
 }
 initialize_tracer(service_name=OTEL_SERVICE_NAME)
 initialize_tracer(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)

@@ -48,7 +48,7 @@ typer_app = typer.Typer()
 
 OTEL_SERVICE_NAME = 'media-tagging'
 _OTEL_ATTRIBUTES = {
-  'media_tagging.version': version.__version__,
+  'service.version': version.__version__,
 }
 initialize_tracer(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
 meter = initialize_meter(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)

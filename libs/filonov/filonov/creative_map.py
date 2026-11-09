@@ -116,7 +116,7 @@ class CreativeMap:
     self.clusters: dict[int, ClusterInfo] = clusters or {}
 
   @classmethod
-  @tracer.start_as_current_span('create_map')
+  @tracer.start_as_current_span('filonov.creative_map.from_clustering')
   def from_clustering(
     cls,
     clustering_results: media_similarity_service.ClusteringResults,
@@ -195,7 +195,7 @@ class CreativeMap:
       'edges': self.edges,
     }
 
-  @tracer.start_as_current_span('save')
+  @tracer.start_as_current_span('filonov.creative_map.save')
   def save(self, path: str | os.PathLike[str]) -> None:
     """Saves map to a json file."""
     span = trace.get_current_span()
@@ -204,7 +204,9 @@ class CreativeMap:
       json.dump(self.to_json(), f)
 
 
-@tracer.start_as_current_span('convert_report_to_media_info')
+@tracer.start_as_current_span(
+  'filonov.creative_map.convert_report_to_media_info'
+)
 def convert_report_to_media_info(
   performance: report.GarfReport,
   media_type: media.MediaTypeEnum,

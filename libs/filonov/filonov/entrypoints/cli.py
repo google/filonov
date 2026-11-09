@@ -39,12 +39,10 @@ from filonov import version
 from filonov.entrypoints import utils
 from filonov.telemetry import tracer
 
-_OTEL_ATTRIBUTES = {
-  'filonov.version': version.__version__,
-  'media_fetching.version': version.fetching_version,
-  'media_similarity.version': version.similarity_version,
-}
 OTEL_SERVICE_NAME = 'filonov'
+_OTEL_ATTRIBUTES = {
+  'service.version': version.__version__,
+}
 initialize_tracer(
   service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
 )
