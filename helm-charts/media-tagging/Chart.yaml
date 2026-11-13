@@ -3,7 +3,7 @@ name: media-tagging
 description: A Helm chart for Media Tagging server
 type: application
 version: 0.2.0
-appVersion: "2.6.0"
+appVersion: "2.6.1"
 maintainers:
    - name: Andrei Markin
 dependencies:
