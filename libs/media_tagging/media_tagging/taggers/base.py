@@ -58,6 +58,7 @@ class TaggingOptions(pydantic.BaseModel):
   no_schema: str | bool | None = None
 
   def model_post_init(self, __context__):  # noqa: D105
+    super().model_post_init(__context__)
     if self.tags:
       if not isinstance(self.tags, MutableSequence):
         self.tags = [tag.strip() for tag in self.tags.split(',')]

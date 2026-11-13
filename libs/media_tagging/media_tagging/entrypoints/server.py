@@ -85,6 +85,23 @@ class Dependencies:
     )
 
 
+@app.exception_handler(exceptions.MediaTaggingError)
+async def error_handler(
+  request: fastapi.Request, exc: exceptions.MediaTaggingError
+):
+  error_mapping = {}
+
+  status_code = error_mapping.get(type(exc), 400)
+
+  return fastapi.responses.JSONResponse(
+    status_code=status_code,
+    content={
+      'error_type': type(exc).__name__,
+      'detail': str(exc),
+    },
+  )
+
+
 @app.get('/api/version')
 async def tagging_version() -> str:
   return version.__version__
