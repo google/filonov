@@ -22,14 +22,74 @@ import media_tagging
 import pytest
 from fastapi import testclient
 from media_tagging import media
-from media_tagging.entrypoints.server import router
+from media_tagging.entrypoints import tasks
+from media_tagging.entrypoints.server import app
 
-app = fastapi.FastAPI()
-app.include_router(router)
 client = testclient.TestClient(app)
 
 dotenv.load_dotenv()
 filonov_test_text = 'To be or not to be this is the question.'
+
+
+class TestFakeTagger:
+  tagger = 'fake'
+
+  def test_tag(self):
+    media_type = 'TEXT'
+    test_schema = {'type': 'STRING'}
+    request = media_tagging.MediaTaggingRequest(
+      tagger_type=self.tagger,
+      media_type=media_type,
+      media_paths=[filonov_test_text],
+      tagging_options={
+        'custom_prompt': 'test prompt',
+        'custom_schema': test_schema,
+      },
+    )
+    response = client.post('/api/tag', json=request.model_dump())
+    assert response.status_code == fastapi.status.HTTP_200_OK
+
+    result = media_tagging.tagging_result.TaggingResult(
+      **response.json().get('results')[0]
+    )
+    medium = media.Medium(media_path=filonov_test_text, media_type=media_type)
+    assert result.identifier == medium.name
+    assert result.output == 'tag'
+    assert result.type == media_type.lower()
+    assert result.tagger == self.tagger
+    assert isinstance(result.content[0], media_tagging.tagging_result.Tag)
+    assert result.tagging_details.get('custom_prompt') == 'test prompt'
+    assert result.tagging_details.get('custom_schema') == test_schema
+
+  def test_tag_failes_on_custom_prompt_file(self):
+    request = {
+      'tagger_type': 'self.tagger',
+      'media_type': 'TEXT',
+      'media_paths': [filonov_test_text],
+      'tagging_options': {'custom_prompt': 'prompt-file.txt'},
+    }
+    response = client.post('/api/tag', json=request)
+    assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+    assert response.json() == {
+      'error_type': 'TaggingRequestError',
+      'detail': 'Providing custom prompt as file not supported '
+      'for media tagging server.',
+    }
+
+  def test_tag_failes_on_custom_schema_file(self):
+    request = {
+      'tagger_type': 'self.tagger',
+      'media_type': 'TEXT',
+      'media_paths': [filonov_test_text],
+      'tagging_options': {'custom_schema': 'schema-file.json'},
+    }
+    response = client.post('/api/tag', json=request)
+    assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+    assert response.json() == {
+      'error_type': 'TaggingRequestError',
+      'detail': 'Providing custom schema as file not supported '
+      'for media tagging server.',
+    }
 
 
 class TestGeminiTagger:
@@ -50,7 +110,7 @@ class TestGeminiTagger:
       media_type=media_type,
       media_paths=[str(media_location)],
     )
-    response = client.post('/media_tagging/tag', json=request.model_dump())
+    response = client.post('/api/tag', json=request.model_dump())
     assert response.status_code == fastapi.status.HTTP_200_OK
 
     result = media_tagging.tagging_result.TaggingResult(
@@ -78,7 +138,7 @@ class TestGeminiTagger:
       media_type=media_type,
       media_paths=[str(media_location)],
     )
-    response = client.post('/media_tagging/describe', json=request.model_dump())
+    response = client.post('/api/describe', json=request.model_dump())
     assert response.status_code == fastapi.status.HTTP_200_OK
 
     result = media_tagging.tagging_result.TaggingResult(
@@ -122,7 +182,7 @@ class TestGoogleCloudTagger:
       media_type=media_type,
       media_paths=[str(media_location)],
     )
-    response = client.post('/media_tagging/tag', json=request.model_dump())
+    response = client.post('/api/tag', json=request.model_dump())
     assert response.status_code == expected_return_code
     if expected_return_code == fastapi.status.HTTP_404_NOT_FOUND:
       return
@@ -169,6 +229,6 @@ class TestGoogleCloudTagger:
       media_type=media_type,
       media_paths=[str(media_location)],
     )
-    response = client.post('/media_tagging/describe', json=request.model_dump())
+    response = client.post('/api/describe', json=request.model_dump())
     assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
     assert error in response.json().get('detail')
