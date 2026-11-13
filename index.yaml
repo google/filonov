@@ -1,0 +1,72 @@
+apiVersion: v1
+entries:
+  filonov:
+  - apiVersion: v2
+    appVersion: 0.12.0
+    created: "2026-11-13T13:18:51.946887229Z"
+    dependencies:
+    - condition: filonov.worker.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 23.x.x
+    - condition: filonov.taggingDb.enabled, filonov.similarityDb.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 15.x.x
+    description: A Helm chart for Filonov backend
+    digest: a95117ad247508d549372c829d7cd25a979c2e25042d35d87d32fd66cccc1504
+    name: filonov
+    type: application
+    urls:
+    - https://github.com/google/filonov/releases/download/filonov-0.1.0/filonov-0.1.0.tgz
+    version: 0.1.0
+  media-fetching:
+  - apiVersion: v2
+    appVersion: 0.6.3
+    created: "2026-11-13T13:18:52.096390678Z"
+    description: A Helm chart for Filonov's Media Fetching
+    digest: 1a2173ed81ded70575a70a1df29f501ee78ecd287fabb668eadd248d03ba6eb9
+    name: media-fetching
+    type: application
+    urls:
+    - https://github.com/google/filonov/releases/download/media-fetching-0.1.0/media-fetching-0.1.0.tgz
+    version: 0.1.0
+  media-similarity:
+  - apiVersion: v2
+    appVersion: 0.10.0
+    created: "2026-11-13T13:18:52.261492321Z"
+    dependencies:
+    - condition: mediaSimilarity.taggingDb.enabled, mediaSimilarity.similarityDb.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 15.x.x
+    description: A Helm chart for Filonov's media similarity
+    digest: 010c9ef7beafc8336e7b29e8431eae5ae15df770cf0b874bf219e7562f6f558c
+    name: media-similarity
+    type: application
+    urls:
+    - https://github.com/google/filonov/releases/download/media-similarity-0.1.0/media-similarity-0.1.0.tgz
+    version: 0.1.0
+  media-tagging:
+  - apiVersion: v2
+    appVersion: 2.6.1
+    created: "2026-11-13T13:18:52.424891755Z"
+    dependencies:
+    - condition: mediaTagging.worker.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 23.x.x
+    - condition: mediaTagging.taggingDb.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 15.x.x
+    description: A Helm chart for Media Tagging server
+    digest: 824ffd2c03e60a65628e2baddc26514c4ab7507ab1320728ed2c120ef1d7d037
+    maintainers:
+    - name: Andrei Markin
+    name: media-tagging
+    type: application
+    urls:
+    - https://github.com/google/filonov/releases/download/media-tagging-0.2.1/media-tagging-0.2.1.tgz
+    version: 0.2.1
+generated: "2026-11-13T13:18:52.424900979Z"
