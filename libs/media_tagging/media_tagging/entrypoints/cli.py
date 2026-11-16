@@ -38,7 +38,11 @@ OTEL_SERVICE_NAME = 'media-tagging'
 _OTEL_ATTRIBUTES = {
   'service.version': version.__version__,
 }
-initialize_tracer(
+telemetry_tracer = initialize_tracer(
+  service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+)
+trace.set_tracer_provider(telemetry_tracer)
+initialize_logger(
   service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
 )
 typer_app = typer.Typer()
@@ -172,12 +176,6 @@ def tag(
   logger = garf_utils.init_logging(
     loglevel=loglevel, logger_type=logger.upper(), name=log_name
   )
-  logger.addHandler(
-    initialize_logger(
-      service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
-    )
-  )
-
   media_paths = media_paths or media.get_media_paths_from_file(
     media.InputConfig(path=input, **extra_parameters.get('input'))
   )
