@@ -8,7 +8,7 @@ dependencies = [
   "pillow",
   "smart_open",
   "jq",
-  "garf-executors>=1.7.0.post1",
+  "garf-executors",
   "garf-io>=1.0.0",
   "pandas",
   "pydantic",
@@ -50,10 +50,10 @@ version = {attr = "media_tagging.version.__version__"}
 
 [project.optional-dependencies]
 google-cloud-vision=[
-  "google-cloud-vision==3.9.0",
+  "google-cloud-vision",
 ]
 google-cloud-videointelligence=[
-  "google-cloud-videointelligence==2.15.0",
+  "google-cloud-videointelligence",
 ]
 google-cloud=[
   "media-tagging[google-cloud-vision,google-cloud-videointelligence]",
@@ -62,6 +62,8 @@ server = [
   "fastapi[standard]",
   "pydantic-settings",
   "celery[redis]",
+  "protobuf>=7.35.1",
+  "grpcio>=1.83.0",
   "grpcio-reflection",
   "grpcio-health-checking",
 ]
