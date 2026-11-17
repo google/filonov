@@ -28,7 +28,7 @@ from media_tagging.entrypoints.tracer import (
   initialize_meter,
   initialize_tracer,
 )
-from opentelemetry import trace
+from opentelemetry import _logs, metrics, trace
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
@@ -48,14 +48,17 @@ app = fastapi.FastAPI(
 )
 typer_app = typer.Typer()
 
-initialize_tracer(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
+tracer = initialize_tracer(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
 meter = initialize_meter(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
+telemetry_logger = initialize_logger(
+  OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+)
+trace.set_tracer_provider(tracer)
+metrics.set_meter_provider(meter)
+_logs.set_logger_provider(telemetry_logger)
 
 logger = garf_utils.init_logging(
   loglevel='INFO', logger_type='local', name=OTEL_SERVICE_NAME
-)
-logger.addHandler(
-  initialize_logger(OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES)
 )
 
 

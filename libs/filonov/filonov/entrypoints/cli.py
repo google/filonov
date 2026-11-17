@@ -43,7 +43,11 @@ OTEL_SERVICE_NAME = 'filonov'
 _OTEL_ATTRIBUTES = {
   'service.version': version.__version__,
 }
-initialize_tracer(
+telemetry_tracer = initialize_tracer(
+  service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
+)
+trace.set_tracer_provider(telemetry_tracer)
+initialize_logger(
   service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
 )
 typer_app = typer.Typer()
@@ -176,12 +180,6 @@ def main(
   logger = garf_utils.init_logging(
     loglevel=loglevel.upper(), logger_type=logger, name=log_name
   )
-  logger.addHandler(
-    initialize_logger(
-      service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
-    )
-  )
-
   supported_enrichers = (
     media_fetching.enrichers.enricher.AVAILABLE_MODULES.keys()
   )

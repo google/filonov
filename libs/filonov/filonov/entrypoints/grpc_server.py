@@ -95,9 +95,7 @@ def main(
     logger_type='local',
     name=otel_service_name,
   )
-  logger.addHandler(
-    initialize_logger(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
-  )
+  initialize_logger(otel_service_name, extra_attributes=_OTEL_ATTRIBUTES)
   server = grpc.server(
     futures.ThreadPoolExecutor(max_workers=parallel_threshold)
   )
