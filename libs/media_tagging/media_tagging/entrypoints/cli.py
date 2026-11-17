@@ -231,12 +231,6 @@ def describe(
   logger = garf_utils.init_logging(
     loglevel=loglevel, logger_type=logger, name=log_name
   )
-  logger.addHandler(
-    initialize_logger(
-      service_name=OTEL_SERVICE_NAME, extra_attributes=_OTEL_ATTRIBUTES
-    )
-  )
-
   media_paths = media_paths or media.get_media_paths_from_file(
     media.InputConfig(path=input, **extra_parameters.get('input'))
   )
