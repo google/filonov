@@ -3,6 +3,25 @@ entries:
   filonov:
   - apiVersion: v2
     appVersion: 0.12.1
+    created: "2026-11-17T11:15:31.319866537Z"
+    dependencies:
+    - condition: filonov.worker.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 23.x.x
+    - condition: filonov.taggingDb.enabled, filonov.similarityDb.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 15.x.x
+    description: A Helm chart for Filonov backend
+    digest: 53b843cad64b75ac9a257b429e386ad01daf39ce2d4bfa76dadbb2551fd0822c
+    name: filonov
+    type: application
+    urls:
+    - https://github.com/google/filonov/releases/download/filonov-0.1.2/filonov-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
+    appVersion: 0.12.1
     created: "2026-11-17T08:05:59.087113375Z"
     dependencies:
     - condition: filonov.worker.enabled
@@ -69,6 +88,27 @@ entries:
   media-tagging:
   - apiVersion: v2
     appVersion: 2.6.2
+    created: "2026-11-17T11:15:31.596872987Z"
+    dependencies:
+    - condition: mediaTagging.worker.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 23.x.x
+    - condition: mediaTagging.taggingDb.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 15.x.x
+    description: A Helm chart for Media Tagging server
+    digest: f32d7f39feb8c36f0a465e056d8067feb11c8a95e6df775c0112c5a5f950ca3e
+    maintainers:
+    - name: Andrei Markin
+    name: media-tagging
+    type: application
+    urls:
+    - https://github.com/google/filonov/releases/download/media-tagging-0.2.3/media-tagging-0.2.3.tgz
+    version: 0.2.3
+  - apiVersion: v2
+    appVersion: 2.6.2
     created: "2026-11-17T08:05:59.291443325Z"
     dependencies:
     - condition: mediaTagging.worker.enabled
@@ -109,4 +149,4 @@ entries:
     urls:
     - https://github.com/google/filonov/releases/download/media-tagging-0.2.1/media-tagging-0.2.1.tgz
     version: 0.2.1
-generated: "2026-11-17T08:05:59.291456865Z"
+generated: "2026-11-17T11:15:31.596890624Z"
