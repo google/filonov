@@ -119,6 +119,8 @@ spec:
               value: {{ .Values.mediaTagging.otel.serviceName | quote }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.mediaTagging.otel.otelExporterOtlpEndpoint | quote }}
+            - name: OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED
+              value: true
             {{- end }}
             {{- with .Values.env }}
             {{- include "media-tagging.renderEnv" . | nindent 12 }}
