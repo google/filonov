@@ -2,6 +2,25 @@ apiVersion: v1
 entries:
   filonov:
   - apiVersion: v2
+    appVersion: 0.12.1
+    created: "2026-11-17T08:05:59.087113375Z"
+    dependencies:
+    - condition: filonov.worker.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 23.x.x
+    - condition: filonov.taggingDb.enabled, filonov.similarityDb.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 15.x.x
+    description: A Helm chart for Filonov backend
+    digest: f18ed8b9f51305c841840dc190adaa5cfbe4a5b3fb35c5cb8fd0d6b8e2150f3e
+    name: filonov
+    type: application
+    urls:
+    - https://github.com/google/filonov/releases/download/filonov-0.1.1/filonov-0.1.1.tgz
+    version: 0.1.1
+  - apiVersion: v2
     appVersion: 0.12.0
     created: "2026-11-13T13:18:51.946887229Z"
     dependencies:
@@ -49,6 +68,27 @@ entries:
     version: 0.1.0
   media-tagging:
   - apiVersion: v2
+    appVersion: 2.6.2
+    created: "2026-11-17T08:05:59.291443325Z"
+    dependencies:
+    - condition: mediaTagging.worker.enabled
+      name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 23.x.x
+    - condition: mediaTagging.taggingDb.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 15.x.x
+    description: A Helm chart for Media Tagging server
+    digest: 413de1f8fa2adb2703dd1e6cf62cdd20ce1e00d428bb662cceb1931a7cba483f
+    maintainers:
+    - name: Andrei Markin
+    name: media-tagging
+    type: application
+    urls:
+    - https://github.com/google/filonov/releases/download/media-tagging-0.2.2/media-tagging-0.2.2.tgz
+    version: 0.2.2
+  - apiVersion: v2
     appVersion: 2.6.1
     created: "2026-11-13T13:18:52.424891755Z"
     dependencies:
@@ -69,4 +109,4 @@ entries:
     urls:
     - https://github.com/google/filonov/releases/download/media-tagging-0.2.1/media-tagging-0.2.1.tgz
     version: 0.2.1
-generated: "2026-11-13T13:18:52.424900979Z"
+generated: "2026-11-17T08:05:59.291456865Z"
