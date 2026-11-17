@@ -2,7 +2,7 @@ apiVersion: v2
 name: filonov
 description: A Helm chart for Filonov backend
 type: application
-version: 0.1.1
+version: 0.1.2
 appVersion: "0.12.1"
 dependencies:
    - name: redis
